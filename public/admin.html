@@ -2075,6 +2075,66 @@
 
 
   <div class="settings-grid">
+    <div class="panel settings-card">
+      <div class="settings-card-icon">🏢</div>
+      <div class="settings-card-header">
+        <h3>Datos de JR Electricidad</h3>
+        <p>Estos datos se utilizarán como información comercial y base para documentos.</p>
+      </div>
+
+      <form id="businessSettingsForm">
+        <div class="settings-fields-grid">
+          <div class="form-group">
+            <label for="businessName">Nombre comercial</label>
+            <input id="businessName" maxlength="150" required>
+          </div>
+          <div class="form-group">
+            <label for="legalName">Razón social / titular</label>
+            <input id="legalName" maxlength="180">
+          </div>
+          <div class="form-group">
+            <label for="businessPhone">Teléfono</label>
+            <input id="businessPhone" maxlength="50">
+          </div>
+          <div class="form-group">
+            <label for="businessWhatsapp">WhatsApp</label>
+            <input id="businessWhatsapp" maxlength="50">
+          </div>
+          <div class="form-group">
+            <label for="businessEmail">Email</label>
+            <input id="businessEmail" type="email" maxlength="190">
+          </div>
+          <div class="form-group">
+            <label for="businessCity">Localidad</label>
+            <input id="businessCity" maxlength="120">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="businessAddress">Dirección</label>
+            <input id="businessAddress" maxlength="255">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="businessHours">Horarios de atención</label>
+            <input id="businessHours" maxlength="255" placeholder="Lunes a viernes de 8:00 a 18:00">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="businessLogo">Logo / URL de logo</label>
+            <input id="businessLogo" maxlength="500" placeholder="/uploads/logo.png">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="pdfFooter">Pie del PDF</label>
+            <input id="pdfFooter" maxlength="500">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="pdfNotes">Texto adicional para PDF</label>
+            <textarea id="pdfNotes" rows="4" maxlength="5000"></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn">💾 Guardar configuración</button>
+      </form>
+    </div>
+
+
 
 
     <!-- DATOS PERSONALES -->
