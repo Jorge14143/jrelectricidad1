@@ -2853,152 +2853,95 @@ app.get(
   "/api/admin/stats",
   requireAdmin,
   async (req, res) => {
-
     try {
+      const daysRaw = Number(req.query.days || 30);
+      const days = [7, 30, 90, 365].includes(daysRaw) ? daysRaw : 30;
 
-      // -----------------------------------------------------
-      // USUARIOS
-      // -----------------------------------------------------
+      const [[users]] = await pool.query("SELECT COUNT(*) AS total FROM users");
+      const [[services]] = await pool.query("SELECT COUNT(*) AS total FROM services");
+      const [[activeServices]] = await pool.query("SELECT COUNT(*) AS total FROM services WHERE active=1");
+      const [[pendingRequests]] = await pool.query("SELECT COUNT(*) AS total FROM quote_requests WHERE status='pendiente'");
+      const [[totalRequests]] = await pool.query("SELECT COUNT(*) AS total FROM quote_requests");
+      const [[acceptedQuotes]] = await pool.query("SELECT COUNT(*) AS total FROM quotes WHERE status='aceptado'");
+      const [[sentQuotes]] = await pool.query("SELECT COUNT(*) AS total FROM quotes WHERE status='enviado'");
+      const [[rejectedQuotes]] = await pool.query("SELECT COUNT(*) AS total FROM quotes WHERE status='rechazado'");
+      const [[expiredQuotes]] = await pool.query("SELECT COUNT(*) AS total FROM quotes WHERE status='vencido'");
+      const [[jobsInProgress]] = await pool.query("SELECT COUNT(*) AS total FROM jobs WHERE status='en_proceso'");
+      const [[completedJobs]] = await pool.query("SELECT COUNT(*) AS total FROM jobs WHERE status='cerrado'");
 
-      const [[users]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM users
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // SERVICIOS
-      // -----------------------------------------------------
-
-      const [[services]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM services
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // SERVICIOS ACTIVOS
-      // -----------------------------------------------------
-
-      const [[activeServices]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM services
-          WHERE active = 1
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // PRESUPUESTOS ACEPTADOS
-      // -----------------------------------------------------
-
-      const [[acceptedQuotes]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM quotes
-          WHERE status = 'aceptado'
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // TRABAJOS EN PROCESO
-      // -----------------------------------------------------
-
-      const [[jobsInProgress]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM jobs
-          WHERE status = 'en_proceso'
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // TRABAJOS TERMINADOS
-      // -----------------------------------------------------
-
-      const [[completedJobs]] =
-        await pool.query(
-          `
-          SELECT
-            COUNT(*) AS total
-          FROM jobs
-          WHERE status = 'cerrado'
-          `
-        );
-
-
-      // -----------------------------------------------------
-      // RESPUESTA
-      // -----------------------------------------------------
-
-      res.json({
-
-        users:
-          Number(
-            users.total
-          ),
-
-        services:
-          Number(
-            services.total
-          ),
-
-        activeServices:
-          Number(
-            activeServices.total
-          ),
-
-        acceptedQuotes:
-          Number(
-            acceptedQuotes.total
-          ),
-
-        jobsInProgress:
-          Number(
-            jobsInProgress.total
-          ),
-
-        completedJobs:
-          Number(
-            completedJobs.total
-          )
-
-      });
-
-
-    } catch (e) {
-
-      console.error(
-        "Error obteniendo estadísticas:",
-        e
+      const [[financial]] = await pool.query(
+        `SELECT
+          COALESCE(SUM(CASE WHEN status='aceptado' THEN total ELSE 0 END),0) AS acceptedAmount,
+          COALESCE(SUM(CASE WHEN status='enviado' THEN total ELSE 0 END),0) AS pendingAmount,
+          COALESCE(SUM(CASE WHEN status='rechazado' THEN total ELSE 0 END),0) AS rejectedAmount
+        FROM quotes`
       );
 
-      res.status(500).json({
-        error:
-          "No se pudieron obtener las estadísticas."
+      const [monthly] = await pool.query(
+        `SELECT DATE_FORMAT(COALESCE(issue_date, created_at),'%Y-%m') AS month,
+                COUNT(*) AS quotes,
+                COALESCE(SUM(total),0) AS amount
+         FROM quotes
+         WHERE COALESCE(issue_date, created_at) >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+         GROUP BY DATE_FORMAT(COALESCE(issue_date, created_at),'%Y-%m')
+         ORDER BY month ASC`
+      );
+
+      const [recentActivity] = await pool.query(
+        `SELECT 'solicitud' AS type, id, name AS title, service AS detail, created_at AS date
+         FROM quote_requests
+         ORDER BY created_at DESC LIMIT 5`
+      );
+
+      const [periodQuotes] = await pool.query(
+        `SELECT COUNT(*) AS count, COALESCE(SUM(total),0) AS amount
+         FROM quotes
+         WHERE COALESCE(issue_date, created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+        [days]
+      );
+
+      const [periodJobs] = await pool.query(
+        `SELECT COUNT(*) AS count
+         FROM jobs
+         WHERE COALESCE(completed_at, started_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+        [days]
+      );
+
+      res.json({
+        users: Number(users.total),
+        services: Number(services.total),
+        activeServices: Number(activeServices.total),
+        pendingRequests: Number(pendingRequests.total),
+        totalRequests: Number(totalRequests.total),
+        acceptedQuotes: Number(acceptedQuotes.total),
+        sentQuotes: Number(sentQuotes.total),
+        rejectedQuotes: Number(rejectedQuotes.total),
+        expiredQuotes: Number(expiredQuotes.total),
+        jobsInProgress: Number(jobsInProgress.total),
+        completedJobs: Number(completedJobs.total),
+        acceptedAmount: Number(financial.acceptedAmount || 0),
+        pendingAmount: Number(financial.pendingAmount || 0),
+        rejectedAmount: Number(financial.rejectedAmount || 0),
+        period: {
+          days,
+          quotes: Number(periodQuotes[0]?.count || 0),
+          amount: Number(periodQuotes[0]?.amount || 0),
+          jobs: Number(periodJobs[0]?.count || 0)
+        },
+        monthly: monthly.map(row => ({
+          month: row.month,
+          quotes: Number(row.quotes || 0),
+          amount: Number(row.amount || 0)
+        })),
+        recentActivity
       });
-
+    } catch (e) {
+      console.error("Error obteniendo estadísticas:", e);
+      res.status(500).json({ error: "No se pudieron obtener las estadísticas." });
     }
-
   }
 );
+
 // =========================================================
 // ADMIN - CONFIGURACIÓN DE CUENTA
 // =========================================================
