@@ -1330,6 +1330,18 @@
 
       <section class="panel">
 
+        <div class="users-toolbar">
+          <input type="search" id="usersSearch" placeholder="Buscar por nombre o email..." autocomplete="off">
+          <select id="usersRoleFilter">
+            <option value="">Todos los roles</option>
+            <option value="user">Usuarios</option>
+            <option value="admin">Administradores</option>
+          </select>
+          <button type="button" class="btn btn-secondary" id="clearUsersFilters">Limpiar</button>
+          <button type="button" class="btn btn-primary" id="refreshUsers">🔄 Actualizar</button>
+        </div>
+
+        <div class="users-summary" id="usersSummary"></div>
         <div class="table-wrap" id="users"></div>
 
       </section>
