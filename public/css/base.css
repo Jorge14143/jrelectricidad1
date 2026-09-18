@@ -1,0 +1,39 @@
+:root {
+  --bg: #080a0f;
+  --card: #10141c;
+  --line: #202733;
+  --text: #f5f7fb;
+  --muted: #9ca6b5;
+  --accent: #ffc400;
+  --accent2: #ff8a00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at 80% 0,
+      #17130a 0,
+      #080a0f 35%
+    );
+  color: var(--text);
+  font-family:
+    Inter,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
