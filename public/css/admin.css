@@ -10135,3 +10135,56 @@ body.lightbox-open {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* =========================================================
+   USUARIOS Y GALERÍA — FILTROS
+========================================================= */
+.users-toolbar,
+.gallery-admin-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, .45fr) auto auto;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.users-toolbar input,
+.users-toolbar select,
+.gallery-admin-toolbar input,
+.gallery-admin-toolbar select {
+  min-height: 42px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #202733);
+  border-radius: 9px;
+  background: var(--card, #10141c);
+  color: var(--text, #f5f7fb);
+}
+.users-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.users-summary span,
+.gallery-featured-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,196,0,.2);
+  border-radius: 999px;
+  background: rgba(255,196,0,.06);
+  color: var(--muted, #9ca6b5);
+  font-size: 12px;
+  font-weight: 700;
+}
+.gallery-admin-badges { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:8px 0; }
+@media (max-width: 800px) {
+  .users-toolbar,
+  .gallery-admin-toolbar { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .users-toolbar,
+  .gallery-admin-toolbar { grid-template-columns: 1fr; }
+}
