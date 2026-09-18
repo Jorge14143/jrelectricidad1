@@ -580,6 +580,45 @@
 
       </div>
 
+      <div class="quote-requests-toolbar">
+
+        <input
+          type="search"
+          id="quoteRequestSearch"
+          placeholder="Buscar por nombre, teléfono, email o servicio..."
+          autocomplete="off"
+        >
+
+        <select id="quoteRequestStatusFilter">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="contactado">Contactados</option>
+          <option value="presupuestado">Presupuestados</option>
+          <option value="cerrado">Cerrados</option>
+        </select>
+
+        <input
+          type="date"
+          id="quoteRequestDateFrom"
+          title="Desde"
+        >
+
+        <input
+          type="date"
+          id="quoteRequestDateTo"
+          title="Hasta"
+        >
+
+        <button
+          type="button"
+          class="btn tiny"
+          id="refreshQuoteRequests"
+        >
+          🔄 Actualizar
+        </button>
+
+      </div>
+
 
       <div
         id="quoteRequestsLoading"
