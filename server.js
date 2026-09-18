@@ -6514,50 +6514,7 @@ app.post(
 );
 
 
-// =====================================================
-// SOLICITUDES DE PRESUPUESTO
-// =====================================================
 
-// Obtener todas las solicitudes de presupuesto
-app.get(
-  "/api/admin/quote-requests",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const [rows] = await pool.query(`
-        SELECT
-          id,
-          name,
-          phone,
-          email,
-          service,
-          description,
-          preferred_date,
-          status,
-          created_at
-        FROM quote_requests
-        ORDER BY created_at DESC
-      `);
-
-      res.json(rows);
-    } catch (error) {
-
-      console.error(
-        "Error obteniendo solicitudes:",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "No se pudieron obtener las solicitudes."
-      });
-
-    }
-
-  }
-);
 // ---------------------------------------------------------
 // ACEPTAR PRESUPUESTO PÚBLICO
 // ---------------------------------------------------------
