@@ -4355,6 +4355,25 @@ app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
     }
 
     // -------------------------------------------------
+    // VALIDAR TRANSICIONES DE ESTADO
+    // -------------------------------------------------
+
+    const allowedTransitions = {
+      pendiente_presupuesto: ["presupuesto_enviado", "rechazado"],
+      presupuesto_enviado: ["aceptado", "rechazado"],
+      aceptado: ["en_proceso"],
+      en_proceso: ["cerrado"]
+    };
+
+    const nextStatuses = allowedTransitions[job.status] || [];
+
+    if (!nextStatuses.includes(status)) {
+      return res.status(400).json({
+        error: "No se puede cambiar a ese estado desde el estado actual."
+      });
+    }
+
+    // -------------------------------------------------
     // INICIAR TRABAJO
     // -------------------------------------------------
 
@@ -4378,6 +4397,14 @@ app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
         WHERE id = ?
         `,
         [jobId]
+      );
+
+      await pool.query(
+        `
+        INSERT INTO admin_notifications (type, quote_id, message)
+        VALUES ('job_started', ?, ?)
+        `,
+        [job.quote_id, "Se inició el trabajo asociado al presupuesto #" + job.quote_id + "."]
       );
 
       return res.json({
@@ -4408,6 +4435,14 @@ app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
         WHERE id = ?
         `,
         [jobId]
+      );
+
+      await pool.query(
+        `
+        INSERT INTO admin_notifications (type, quote_id, message)
+        VALUES ('job_closed', ?, ?)
+        `,
+        [job.quote_id, "Se cerró el trabajo asociado al presupuesto #" + job.quote_id + "."]
       );
 
       return res.json({
@@ -6446,10 +6481,18 @@ app.get(
 
     try {
 
+      const quoteId = Number(req.params.id);
+
+      if (!Number.isInteger(quoteId) || quoteId <= 0) {
+        return res.status(400).json({
+          error: "ID de presupuesto inválido."
+        });
+      }
+
       const quote =
         await getQuoteDetail(
           pool,
-          req.params.id
+          quoteId
         );
 
 
