@@ -29,8 +29,8 @@ DROP TABLE IF EXISTS `admin_notifications`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `type` enum('quote_accepted','quote_rejected') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `quote_id` int NOT NULL,
+  `type` enum('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `quote_id` int DEFAULT NULL,
   `message` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -213,7 +213,9 @@ CREATE TABLE `services` (
   `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `price` decimal(12,2) DEFAULT NULL,
+  `category` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
