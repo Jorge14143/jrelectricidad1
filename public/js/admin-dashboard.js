@@ -80,6 +80,7 @@ async function loadClients() {
             <th>Solicitudes</th>
             <th>Presupuestos</th>
             <th>Última actividad</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -92,9 +93,20 @@ async function loadClients() {
                 <div>${h(client.phone || "Sin teléfono")}</div>
                 <small>${h(client.email || "Sin email")}</small>
               </td>
-              <td>${client.requests}</td>
-              <td>${client.quotes}</td>
+              <td>${Number(client.requests || 0)}</td>
+              <td>${Number(client.quotes || 0)}</td>
               <td>${client.last_activity ? new Date(client.last_activity).toLocaleDateString("es-AR") : "-"}</td>
+              <td class="row-actions">
+                <button
+                  type="button"
+                  class="btn tiny"
+                  data-client-action="detail"
+                  data-client-phone="${h(client.phone || "")}"
+                  data-client-email="${h(client.email || "")}"
+                >
+                  Ver ficha
+                </button>
+              </td>
             </tr>
           `).join("")}
         </tbody>
@@ -106,6 +118,167 @@ async function loadClients() {
     container.innerHTML = `
       <div class="admin-error">${h(error.message)}</div>
     `;
+  } finally {
+    if (loading) loading.hidden = true;
+  }
+}
+
+function setupClients() {
+  const search = $("clientsSearch");
+  const refresh = $("refreshClients");
+  const clear = $("clearClientsSearch");
+  const container = $("clients");
+
+  if (search) {
+    let timer;
+
+    search.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => loadClients(), 250);
+    });
+  }
+
+  if (refresh) {
+    refresh.addEventListener("click", () => loadClients());
+  }
+
+  if (clear) {
+    clear.addEventListener("click", () => {
+      if (search) search.value = "";
+      loadClients();
+    });
+  }
+
+  if (container) {
+    container.addEventListener("click", event => {
+      const button = event.target.closest("[data-client-action='detail']");
+      if (!button) return;
+
+      loadClientDetail(
+        button.dataset.clientPhone || "",
+        button.dataset.clientEmail || ""
+      );
+    });
+  }
+
+  const closeButton = $("closeClientDetail");
+  const closeFooterButton = $("closeClientDetailButton");
+
+  closeButton?.addEventListener("click", closeClientDetail);
+  closeFooterButton?.addEventListener("click", closeClientDetail);
+}
+
+function closeClientDetail() {
+  const modal = $("clientDetailModal");
+  if (modal) modal.hidden = true;
+}
+
+async function loadClientDetail(phone, email) {
+  const modal = $("clientDetailModal");
+  const loading = $("clientDetailLoading");
+  const errorBox = $("clientDetailError");
+  const content = $("clientDetailContent");
+
+  if (!modal || !phone) return;
+
+  modal.hidden = false;
+  if (loading) loading.hidden = false;
+  if (errorBox) {
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+  }
+  if (content) content.hidden = true;
+
+  try {
+    const params = new URLSearchParams({
+      phone,
+      email
+    });
+
+    const data = await api(
+      "/api/admin/clients/detail?" + params.toString()
+    );
+
+    const client = data.client || {};
+
+    $("clientDetailTitle").textContent =
+      client.name || "Ficha del cliente";
+
+    $("clientDetailContact").textContent =
+      [client.phone, client.email].filter(Boolean).join(" · ") || "-";
+
+    $("clientDetailRequests").textContent =
+      client.requests ?? 0;
+
+    $("clientDetailQuotes").textContent =
+      client.quotes ?? 0;
+
+    $("clientDetailJobs").textContent =
+      client.totalJobs ?? 0;
+
+    $("clientDetailCompletedJobs").textContent =
+      client.completedJobs ?? 0;
+
+    $("clientDetailTotal").textContent =
+      money(client.totalQuoted);
+
+    const requests = Array.isArray(data.requests)
+      ? data.requests
+      : [];
+
+    $("clientDetailRequestsList").innerHTML =
+      requests.length
+        ? requests.map(item => `
+          <div class="job-detail-section">
+            <strong>${h(item.service || "Solicitud de presupuesto")}</strong>
+            <p>${h(item.description || "Sin descripción")}</p>
+            <small>
+              Estado: ${h(item.status || "-")}
+              · ${item.created_at ? new Date(item.created_at).toLocaleDateString("es-AR") : "-"}
+            </small>
+          </div>
+        `).join("")
+        : "<p class=\"muted\">No hay solicitudes.</p>";
+
+    const quotes = Array.isArray(data.quotes)
+      ? data.quotes
+      : [];
+
+    $("clientDetailQuotesList").innerHTML =
+      quotes.length
+        ? quotes.map(item => `
+          <div class="job-detail-section">
+            <div class="job-detail-grid">
+              <div>
+                <span>Presupuesto</span>
+                <strong>${h(item.quote_number || "-")}</strong>
+              </div>
+              <div>
+                <span>Estado</span>
+                <strong>${h(item.status || "-")}</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong>${money(item.total)}</strong>
+              </div>
+              <div>
+                <span>Trabajo</span>
+                <strong>${h(item.job_status || "Sin trabajo")}</strong>
+              </div>
+            </div>
+          </div>
+        `).join("")
+        : "<p class=\"muted\">No hay presupuestos.</p>";
+
+    if (content) content.hidden = false;
+
+  } catch (error) {
+    console.error("Error cargando ficha del cliente:", error);
+
+    if (errorBox) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+    }
   } finally {
     if (loading) loading.hidden = true;
   }
