@@ -114,7 +114,7 @@ const pool = mysql.createPool({
 // MIDDLEWARE
 // =========================================================
 
-app.set("trust proxy", 1);
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
 
 app.use(
   helmet({
@@ -191,6 +191,15 @@ const authLimiter = rateLimit({
 // =========================================================
 // AUTENTICACIÓN
 // =========================================================
+
+async function invalidateUserSessions(userId, keepSessionId = null) {
+  const pattern = '%"user":{"id":' + Number(userId) + ',%';
+  if (keepSessionId) {
+    await pool.query(`DELETE FROM sessions WHERE session_id <> ? AND data LIKE ?`, [keepSessionId, pattern]);
+    return;
+  }
+  await pool.query(`DELETE FROM sessions WHERE data LIKE ?`, [pattern]);
+}
 
 function requireAuth(req, res, next) {
 
@@ -497,15 +506,7 @@ app.put(
       );
 
 
-      await pool.query(
-        `
-        DELETE FROM sessions
-        WHERE session_id <> ?
-        `,
-        [
-          req.sessionID
-        ]
-      );
+      await invalidateUserSessions(req.session.user.id, req.sessionID);
 
 
       res.json({
@@ -835,23 +836,10 @@ app.post(
         );
 
 
-      req.session.user = {
-
-        id:
-          result.insertId,
-
-        name:
-          name.trim(),
-
-        email:
-          normalized,
-
-        role:
-          "user"
-
-      };
-
-
+      const registeredUser = { id: result.insertId, name: name.trim(), email: normalized, role: "user" };
+      await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
+      req.session.user = registeredUser;
+      await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
       res.json({
 
         ok: true,
@@ -935,12 +923,10 @@ app.post(
       }
 
 
-      req.session.user =
-        cleanUser(
-          rows[0]
-        );
-
-
+      const loggedUser = cleanUser(rows[0]);
+      await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
+      req.session.user = loggedUser;
+      await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
       res.json({
 
         ok: true,
@@ -1182,17 +1168,13 @@ app.post(
         );
 
 
-      await pool.query(
-        `
+      await pool.query(`
         UPDATE users
         SET password_hash=?
         WHERE id=?
-        `,
-        [
-          hash,
-          rows[0].user_id
-        ]
-      );
+        `, [hash, rows[0].user_id]);
+
+      await invalidateUserSessions(rows[0].user_id);
 
 
       await pool.query(
@@ -1237,7 +1219,7 @@ app.post(
 // SOLICITUDES DE PRESUPUESTO - PÚBLICA
 // ========================================
 
-app.post("/api/quote-requests", async (req, res) => {
+app.post("/api/quote-requests", authLimiter, async (req, res) => {
   try {
     const {
       name,
@@ -1557,22 +1539,8 @@ if (featured) {
 		  featured,
 		  sort_order
         )
-        VALUES
-        (
-          ?,
-          ?,
-          ?,
-          ?
-        )
-        `,
-        [
-          title,
-          description,
-          imageUrl,
-          active,
-		  featured,
-		  sort_order
-        ]
+        VALUES (?, ?, ?, ?, ?, ?)
+        
       );
 
 
@@ -5711,9 +5679,7 @@ app.get(
 
   }
 );
-app.get(
-  "/api/public/quotes/:token",
-  async (req, res) => {
+app.get("/api/public/quotes/:token", authLimiter, async (req, res) => {
 
     try {
 
@@ -6048,7 +6014,7 @@ app.get(
 // ACEPTAR PRESUPUESTO PÚBLICO
 // ---------------------------------------------------------
 
-app.post("/api/public/quotes/:token/accept", async (req, res) => {
+app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
   try {
     const [result] = await pool.query(
       `
@@ -6174,7 +6140,7 @@ app.post("/api/public/quotes/:token/accept", async (req, res) => {
 // RECHAZAR PRESUPUESTO PÚBLICO
 // ---------------------------------------------------------
 
-app.post("/api/public/quotes/:token/reject", async (req, res) => {
+app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
   try {
     const [result] = await pool.query(
       `
@@ -6888,28 +6854,9 @@ app.post(
       // NÚMERO DE PRESUPUESTO
       // ---------------------------------------------------
 
-      const [lastQuote] =
-        await connection.query(
-          `
-          SELECT id
-
-          FROM quotes
-
-          ORDER BY id DESC
-
-          LIMIT 1
-          `
-        );
-
-
-      const nextNumber =
-        lastQuote.length
-          ? lastQuote[0].id + 1
-          : 1;
-
-
-      const quoteNumber =
-        `P-${String(nextNumber).padStart(6, "0")}`;
+      const [[sequenceRow]] = await connection.query(`SELECT COALESCE(MAX(id), 0) + 1 AS next_number FROM quotes FOR UPDATE`);
+      const nextNumber = Number(sequenceRow.next_number);
+      const quoteNumber = `P-${String(nextNumber).padStart(6, "0")}`;
 
 
       // ---------------------------------------------------
