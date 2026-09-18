@@ -940,9 +940,16 @@ app.post(
       const [rows] =
         await pool.query(
           `
-          SELECT *
+          SELECT
+            id,
+            name,
+            email,
+            password_hash,
+            role,
+            created_at
           FROM users
           WHERE email=?
+          LIMIT 1
           `,
           [
             email
@@ -1149,116 +1156,109 @@ app.post(
   "/api/reset-password",
   authLimiter,
   async (req, res) => {
+    const connection = await pool.getConnection();
 
     try {
-
       const {
         token,
         password
       } = req.body;
 
-
       if (
         !token ||
+        typeof token !== "string" ||
         !password ||
-        password.length < 8
+        typeof password !== "string" ||
+        password.length < 8 ||
+        password.length > 200
       ) {
-
         return res.status(400).json({
-          error:
-            "Token o contraseña inválidos."
+          error: "Token o contraseña inválidos."
         });
-
       }
-
 
       const tokenHash =
-        crypto.createHash(
-          "sha256"
-        )
-        .update(token)
-        .digest("hex");
+        crypto
+          .createHash("sha256")
+          .update(token)
+          .digest("hex");
 
+      await connection.beginTransaction();
 
-      const [rows] =
-        await pool.query(
-          `
-          SELECT *
-          FROM password_resets
-          WHERE token_hash=?
+      const [rows] = await connection.query(
+        `
+        SELECT
+          id,
+          user_id
+        FROM password_resets
+        WHERE token_hash=?
           AND used=0
           AND expires_at > NOW()
-          LIMIT 1
-          `,
-          [
-            tokenHash
-          ]
-        );
-
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [tokenHash]
+      );
 
       if (!rows.length) {
+        await connection.rollback();
 
         return res.status(400).json({
-          error:
-            "El enlace no es válido o ya venció."
+          error: "El enlace no es válido o ya venció."
         });
-
       }
 
-
       const hash =
-        await bcrypt.hash(
-          password,
-          12
-        );
+        await bcrypt.hash(password, 12);
 
-
-      await pool.query(`
+      await connection.query(
+        `
         UPDATE users
         SET password_hash=?
         WHERE id=?
-        `, [hash, rows[0].user_id]);
+        `,
+        [hash, rows[0].user_id]
+      );
 
-      await invalidateUserSessions(rows[0].user_id);
-
-
-      await pool.query(
+      await connection.query(
         `
         UPDATE password_resets
         SET used=1
         WHERE id=?
         `,
-        [
-          rows[0].id
-        ]
+        [rows[0].id]
       );
 
+      await connection.commit();
 
-      res.json({
+      await invalidateUserSessions(
+        rows[0].user_id
+      );
 
+      return res.json({
         ok: true,
-
         message:
           "Contraseña actualizada correctamente."
-
       });
-
 
     } catch (e) {
+      await connection.rollback().catch(() => {});
 
-      console.error(e);
+      console.error(
+        "Error restableciendo contraseña:",
+        e
+      );
 
-      res.status(500).json({
-
+      return res.status(500).json({
         error:
           "No se pudo cambiar la contraseña."
-
       });
 
+    } finally {
+      connection.release();
     }
-
   }
-);
+)
 
 // ========================================
 // SOLICITUDES DE PRESUPUESTO - PÚBLICA
