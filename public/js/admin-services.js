@@ -11,6 +11,12 @@ function editService(x) {
   $("serviceDescription").value =
     x.description || "";
 
+  $("serviceCategory").value =
+    x.category || "";
+
+  $("serviceOrder").value =
+    x.sort_order ?? "";
+
   $("servicePrice").value =
     x.price ?? "";
 
@@ -39,6 +45,9 @@ function resetServiceForm() {
 
   $("serviceId").value = "";
 
+  if ($("serviceCategory")) $("serviceCategory").value = "";
+  if ($("serviceOrder")) $("serviceOrder").value = "";
+
   $("serviceFormTitle").textContent =
     "Agregar servicio";
 
@@ -65,6 +74,12 @@ if (serviceForm) {
 
       description:
         $("serviceDescription").value.trim(),
+
+      category:
+        $("serviceCategory").value.trim(),
+
+      sort_order:
+        $("serviceOrder").value,
 
       price:
         $("servicePrice").value
@@ -233,3 +248,20 @@ async function del(id) {
 }
 
 
+
+async function moveService(id, direction) {
+  try {
+    const result = await api(
+      `/api/admin/services/${id}/order`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction })
+      }
+    );
+    showMsg(result.message || "Orden actualizado.");
+    await load();
+  } catch (e) {
+    showMsg(e.message, true);
+  }
+}
