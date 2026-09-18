@@ -3895,6 +3895,36 @@ app.get(
 
 
 // =========================================================
+ // VALIDACIÓN DE CONFIGURACIÓN
+ // =========================================================
+
+function validateProductionConfig() {
+  const required = [
+    "DB_HOST",
+    "DB_USER",
+    "DB_NAME",
+    "SESSION_SECRET"
+  ];
+
+  const missing = required.filter(key => !String(process.env[key] || "").trim());
+
+  if (missing.length) {
+    throw new Error(
+      "Faltan variables de entorno obligatorias: " + missing.join(", ")
+    );
+  }
+
+  if (
+    String(process.env.NODE_ENV || "").toLowerCase() === "production" &&
+    !String(process.env.APP_URL || "").trim()
+  ) {
+    throw new Error(
+      "APP_URL es obligatoria cuando NODE_ENV=production."
+    );
+  }
+}
+
+// =========================================================
 // INICIAR SERVIDOR
 // =========================================================
 
@@ -7050,8 +7080,7 @@ app.get("/health", async (req, res) => {
     await pool.query("SELECT 1");
     res.status(200).json({
       ok: true,
-      service: "jr-electricidad",
-      environment: process.env.NODE_ENV || "development"
+      service: "jr-electricidad"
     });
   } catch (error) {
     console.error("Health check MySQL:", error);
