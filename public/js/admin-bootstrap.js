@@ -44,6 +44,10 @@ if (closeCreateQuoteModalButton) {
 }
 
 
+if (typeof setupJobsHistory === "function") {
+  setupJobsHistory();
+}
+
 if (typeof setupQuoteRequestFilters === "function") {
   setupQuoteRequestFilters();
 }
