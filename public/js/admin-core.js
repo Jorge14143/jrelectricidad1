@@ -230,11 +230,6 @@ async function loadAccountSettings() {
     const nameInput = $("settingsName");
     const emailInput = $("settingsEmail");
 
-    console.log("CAMPOS:", {
-      nameInput,
-      emailInput
-    });
-
     if (nameInput) {
       nameInput.value = data.user.name || "";
     }
