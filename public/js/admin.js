@@ -555,6 +555,8 @@ async function load() {
       api("/api/admin/stats")
     ]);
 
+    await loadClients();
+
     // =====================================================
     // ESTADÍSTICAS
     // =====================================================
@@ -584,6 +586,73 @@ if ($("statCompletedJobs")) {
   $("statCompletedJobs").textContent =
     stats.completedJobs;
 }
+async function loadClients() {
+  const container = $("clients");
+  const loading = $("clientsLoading");
+  const empty = $("clientsEmpty");
+
+  if (!container) return;
+
+  try {
+    if (loading) loading.hidden = false;
+    if (empty) empty.hidden = true;
+
+    const search = $("clientsSearch")?.value.trim() || "";
+    const query = search
+      ? "?search=" + encodeURIComponent(search)
+      : "";
+
+    const data = await api("/api/admin/clients" + query);
+    const clients = Array.isArray(data.clients) ? data.clients : [];
+
+    container.innerHTML = "";
+
+    if (!clients.length) {
+      if (empty) empty.hidden = false;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Contacto</th>
+            <th>Solicitudes</th>
+            <th>Presupuestos</th>
+            <th>Última actividad</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${clients.map(client => `
+            <tr>
+              <td>
+                <strong>${h(client.name || "Sin nombre")}</strong>
+              </td>
+              <td>
+                <div>${h(client.phone || "Sin teléfono")}</div>
+                <small>${h(client.email || "Sin email")}</small>
+              </td>
+              <td>${client.requests}</td>
+              <td>${client.quotes}</td>
+              <td>${client.last_activity ? new Date(client.last_activity).toLocaleDateString("es-AR") : "-"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+
+  } catch (error) {
+    console.error("Error cargando clientes:", error);
+    container.innerHTML = `
+      <div class="admin-error">${h(error.message)}</div>
+    `;
+  } finally {
+    if (loading) loading.hidden = true;
+  }
+}
+
+
     // =====================================================
     // USUARIOS
     // =====================================================
@@ -4797,6 +4866,20 @@ function setupJobsHistory() {
     }
   );
 }
+function setupClients() {
+  $("refreshClients")?.addEventListener("click", loadClients);
+
+  $("clearClientsSearch")?.addEventListener("click", () => {
+    if ($("clientsSearch")) $("clientsSearch").value = "";
+    loadClients();
+  });
+
+  $("clientsSearch")?.addEventListener("keydown", event => {
+    if (event.key === "Enter") loadClients();
+  });
+}
+
+
 // =========================================================
 // NAVEGACIÓN ADMIN — UNA SECCIÓN A LA VEZ
 // =========================================================
@@ -4809,6 +4892,7 @@ function setupAdminNavigation() {
     "quotesSection",
     "jobsSection",
     "jobsHistorySection",
+    "clientsSection",
     "usersSection",
     "servicesSection",
     "gallerySection",
@@ -4943,6 +5027,7 @@ function setupSidebarMenus() {
 }
 
 setupSidebarMenus();
+setupClients();
 
 // Inicializar navegación
 setupAdminNavigation();
