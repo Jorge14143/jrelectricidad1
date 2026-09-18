@@ -2629,10 +2629,13 @@ app.put(
         });
       }
 
-      if (newPassword.length < 8) {
+      if (
+        newPassword.length < 8 ||
+        newPassword.length > 200
+      ) {
         return res.status(400).json({
           error:
-            "La nueva contraseña debe tener al menos 8 caracteres."
+            "La nueva contraseña debe tener entre 8 y 200 caracteres."
         });
       }
 
