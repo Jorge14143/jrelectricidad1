@@ -1,0 +1,364 @@
+NOSOTROS — DISEÑO PREMIUM
+   ========================================================= */
+
+#nosotros {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: 70px;
+
+  min-height: 600px !important;
+  padding: 110px 8% !important;
+
+  background:
+    radial-gradient(
+      circle at 85% 45%,
+      rgba(255, 196, 0, 0.08),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(8, 10, 15, 0.4),
+      rgba(8, 10, 15, 0.9)
+    );
+
+  overflow: hidden;
+}
+
+/* Línea decorativa */
+#nosotros::before {
+  content: "";
+  position: absolute;
+
+  top: 0;
+  left: 8%;
+  width: 180px;
+  height: 2px;
+
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    transparent
+  );
+
+  opacity: 0.8;
+}
+
+/* =========================================================
+   CONTENIDO IZQUIERDO
+   ========================================================= */
+
+#nosotros .about-content {
+  position: relative;
+  z-index: 2;
+
+  display: block !important;
+  visibility: visible !important;
+}
+
+#nosotros .about-content::before {
+  content: "JR ELECTRICIDAD";
+
+  display: block;
+  margin-bottom: 14px;
+
+  color: var(--accent);
+
+  font-size: 13px;
+  font-weight: 800;
+
+  letter-spacing: 3px;
+}
+
+#nosotros .about-content h2 {
+  margin: 0 0 25px;
+
+  max-width: 650px;
+
+  color: var(--text);
+
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 1.05;
+
+  letter-spacing: -1.5px;
+}
+
+#nosotros .about-content h2 span {
+  color: var(--accent);
+}
+
+#nosotros .about-content p {
+  max-width: 650px;
+
+  margin: 0 0 18px;
+
+  color: var(--muted);
+
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+/* =========================================================
+   BOTÓN
+   ========================================================= */
+
+#nosotros .about-content .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 15px;
+
+  padding: 14px 22px;
+
+  border-radius: 12px;
+
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    var(--accent2)
+  );
+
+  color: #080a0f;
+
+  font-weight: 800;
+
+  box-shadow:
+    0 10px 30px rgba(255, 196, 0, 0.15);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+#nosotros .about-content .btn:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 15px 35px rgba(255, 196, 0, 0.25);
+}
+
+/* =========================================================
+   ESTADÍSTICAS
+   ========================================================= */
+
+#nosotros .stats {
+  position: relative;
+  z-index: 2;
+
+  display: grid !important;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 14px;
+
+  visibility: visible !important;
+}
+
+/* Tarjetas estadísticas */
+#nosotros .stats > * {
+  position: relative;
+
+  min-height: 125px;
+
+  padding: 25px 20px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.045),
+      rgba(255, 255, 255, 0.012)
+    );
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.25);
+
+  overflow: hidden;
+
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Brillo de las estadísticas */
+#nosotros .stats > *::before {
+  content: "";
+
+  position: absolute;
+
+  width: 150px;
+  height: 150px;
+
+  top: -100px;
+  right: -80px;
+
+  background: radial-gradient(
+    circle,
+    rgba(255, 196, 0, 0.12),
+    transparent 70%
+  );
+}
+
+/* Hover */
+#nosotros .stats > *:hover {
+  transform: translateY(-6px);
+
+  border-color: rgba(255, 196, 0, 0.3);
+
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.35),
+    0 0 25px rgba(255, 196, 0, 0.05);
+}
+
+/* Números */
+#nosotros .stats strong,
+#nosotros .stats b {
+  position: relative;
+  z-index: 1;
+
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: var(--accent);
+
+  font-size: 26px;
+  font-weight: 900;
+}
+
+/* Texto */
+#nosotros .stats span,
+#nosotros .stats small {
+  position: relative;
+  z-index: 1;
+
+  color: var(--muted);
+
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   EFECTO DE LUZ DETRÁS DE LAS ESTADÍSTICAS
+   ========================================================= */
+
+#nosotros .stats::after {
+  content: "";
+
+  position: absolute;
+
+  width: 300px;
+  height: 300px;
+
+  top: 50%;
+  left: 50%;
+
+  transform: translate(-50%, -50%);
+
+  background: radial-gradient(
+    circle,
+    rgba(255, 196, 0, 0.07),
+    transparent 70%
+  );
+
+  pointer-events: none;
+
+  z-index: -1;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1000px) {
+
+  #nosotros {
+    grid-template-columns: 1fr;
+    gap: 50px;
+
+    padding: 90px 6% !important;
+  }
+
+  #nosotros .about-content h2 {
+    max-width: 800px;
+  }
+
+  #nosotros .about-content p {
+    max-width: 800px;
+  }
+
+}
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+  #nosotros {
+    grid-template-columns: 1fr;
+
+    min-height: auto !important;
+
+    padding: 75px 5% 85px !important;
+
+    gap: 40px;
+  }
+
+  #nosotros::before {
+    left: 5%;
+  }
+
+  #nosotros .about-content h2 {
+    font-size: 38px;
+  }
+
+  #nosotros .about-content p {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  #nosotros .stats {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  #nosotros .stats > * {
+    min-height: 100px;
+  }
+
+}
+
+/* =========================================================
+   CELULARES PEQUEÑOS
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+  #nosotros {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  #nosotros::before {
+    left: 20px;
+  }
+
+  #nosotros .about-content h2 {
+    font-size: 34px;
+  }
+
+}
+
+/* =========================================================
+   
