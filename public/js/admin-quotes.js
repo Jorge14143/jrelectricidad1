@@ -976,8 +976,6 @@ async function loadQuoteRequests() {
       (query ? "?" + query : "")
     );
 
-    console.log("Solicitudes recibidas:", data);
-
     quoteRequests = Array.isArray(data)
       ? data
       : (
