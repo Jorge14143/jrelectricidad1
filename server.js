@@ -3281,65 +3281,6 @@ app.get(
 
 
 // =========================================================
-// MANEJO DE ERRORES DE MULTER
-// =========================================================
-
-app.use(
-  (err, req, res, next) => {
-
-    if (
-      err instanceof
-      multer.MulterError
-    ) {
-
-      if (
-        err.code ===
-        "LIMIT_FILE_SIZE"
-      ) {
-
-        return res.status(400).json({
-
-          error:
-            "La imagen no puede superar los 5 MB."
-
-        });
-
-      }
-
-
-      return res.status(400).json({
-
-        error:
-          "Error al subir la imagen."
-
-      });
-
-    }
-
-
-    if (err) {
-
-      console.error(err);
-
-
-      return res.status(400).json({
-
-        error:
-          err.message ||
-          "Error al procesar la solicitud."
-
-      });
-
-    }
-
-
-    next();
-
-  }
-);
-
-
-// =========================================================
 // INICIAR SERVIDOR
 // =========================================================
 
@@ -6341,5 +6282,34 @@ app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
   }
 });
 
+
+// =========================================================
+// MANEJO GLOBAL DE ERRORES
+// Debe quedar al final de todas las rutas.
+// =========================================================
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        error: "La imagen no puede superar los 5 MB."
+      });
+    }
+
+    return res.status(400).json({
+      error: "Error al subir la imagen."
+    });
+  }
+
+  console.error("Error no controlado:", err);
+
+  return res.status(500).json({
+    error: "Error interno del servidor."
+  });
+});
 
 start();
