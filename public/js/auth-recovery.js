@@ -1,8 +1,74 @@
-if(login) login.onsubmit=async e=>{e.preventDefault();try{const f=new FormData(login);const j=await api("/api/login",Object.fromEntries(f));location.href=j.user.role==="admin"?"/admin":"/";}catch(x){msg.textContent=x.message}};
-const reg=document.getElementById("registerForm");
-if(reg) reg.onsubmit=async e=>{e.preventDefault();try{const f=new FormData(reg);const j=await api("/api/register",Object.fromEntries(f));location.href="/";}catch(x){msg.textContent=x.message}};
-const forgot=document.getElementById("forgotForm");
-if(forgot) forgot.onsubmit=async e=>{e.preventDefault();try{const f=new FormData(forgot);const j=await api("/api/forgot-password",Object.fromEntries(f));msg.textContent=j.message;}catch(x){msg.textContent=x.message}};
-const reset=document.getElementById("resetForm");
-if(reset) reset.onsubmit=async e=>{e.preventDefault();const f=new FormData(reset);if(f.get("password")!==f.get("password2")){msg.textContent="Las contraseñas no coinciden.";return}try{const j=await api("/api/reset-password",{token:new URLSearchParams(location.search).get("token"),password:f.get("password")});msg.textContent=j.message;setTimeout(()=>location.href="/login.html",1500)}catch(x){msg.textContent=x.message}};
+"use strict";
 
+const messageBox = document.getElementById("msg");
+
+function showAuthMessage(message, type = "") {
+  if (!messageBox) return;
+  messageBox.textContent = message;
+  messageBox.className = type ? `notice ${type}` : "notice";
+}
+
+const forgotForm = document.getElementById("forgotForm");
+
+forgotForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const button = forgotForm.querySelector("button[type='submit']");
+  const email = forgotForm.elements.email?.value.trim() || "";
+
+  showAuthMessage("Procesando solicitud...");
+  if (button) button.disabled = true;
+
+  try {
+    const data = await api("/api/forgot-password", { email });
+    showAuthMessage("✅ " + data.message, "success");
+    forgotForm.reset();
+  } catch (error) {
+    showAuthMessage("❌ " + error.message, "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
+
+const resetForm = document.getElementById("resetForm");
+
+resetForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const button = resetForm.querySelector("button[type='submit']");
+  const password = resetForm.elements.password?.value || "";
+  const password2 = resetForm.elements.password2?.value || "";
+  const token = new URLSearchParams(window.location.search).get("token");
+
+  if (!token) {
+    showAuthMessage("❌ El enlace de recuperación no es válido.", "error");
+    return;
+  }
+
+  if (password.length < 8) {
+    showAuthMessage("❌ La contraseña debe tener al menos 8 caracteres.", "error");
+    return;
+  }
+
+  if (password !== password2) {
+    showAuthMessage("❌ Las contraseñas no coinciden.", "error");
+    return;
+  }
+
+  showAuthMessage("Actualizando contraseña...");
+  if (button) button.disabled = true;
+
+  try {
+    const data = await api("/api/reset-password", { token, password });
+    showAuthMessage("✅ " + data.message, "success");
+    resetForm.reset();
+
+    window.setTimeout(() => {
+      window.location.href = "/login.html";
+    }, 1200);
+  } catch (error) {
+    showAuthMessage("❌ " + error.message, "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
