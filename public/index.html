@@ -4,6 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="JR Electricidad: instalaciones, reparaciones, tableros, iluminación y mantenimiento eléctrico. Electricista Matriculado Cat. 3 en Laboulaye y zona.">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#080a0f">
+  <meta property="og:title" content="JR Electricidad | Electricista Matriculado Cat. 3">
+  <meta property="og:description" content="Soluciones eléctricas profesionales para hogares, comercios y empresas en Laboulaye y zona.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_AR">
 
   <title>JR Electricidad | Electricista Matriculado Cat. 3</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -13,13 +20,15 @@
 
 <body>
 
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
 <header class="nav">
 
   <a class="logo" href="/">
     ⚡ JR <span>ELECTRICIDAD</span>
   </a>
 
-  <nav>
+  <nav aria-label="Navegación principal">
 
     <a href="#inicio">Inicio</a>
 
@@ -39,7 +48,7 @@
 </header>
 
 
-<main>
+<main id="contenido">
 
 
 <!-- =========================
@@ -513,10 +522,10 @@
     </p>
   </div>
 
-  <div id="gallery" class="gallery-grid">
+  <div id="gallery" class="gallery-grid" aria-live="polite">
     <!-- Las fotos se cargarán automáticamente -->
   </div>
-  <div id="lightbox" class="lightbox">
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle" hidden>
 
     <button
       id="lightboxClose"
@@ -530,7 +539,8 @@
       <img
         id="lightboxImage"
         src=""
-        alt="Trabajo realizado">
+        alt="Trabajo realizado"
+        loading="lazy">
 
       <div id="lightboxInfo" class="lightbox-info">
 
@@ -609,7 +619,7 @@
       </div>
 
 
-      <form id="quoteForm" class="quote-form">
+      <form id="quoteForm" class="quote-form" novalidate>
 
         <div class="quote-fields">
 
@@ -751,11 +761,12 @@
             <input
               type="file"
               id="quoteImage"
+              aria-describedby="quoteImageHelp"
               name="image"
               accept="image/jpeg,image/png,image/webp,image/gif"
             >
 
-            <small class="muted">
+            <small id="quoteImageHelp" class="muted">
               Podés adjuntar una foto para ayudar a identificar el trabajo.
               Máximo 5 MB.
             </small>
