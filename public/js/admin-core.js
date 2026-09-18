@@ -225,9 +225,7 @@ async function loadAccountSettings() {
   try {
     const data = await api("/api/admin/account");
 
-    console.log("CONFIGURACIÓN CUENTA:", data);
-
-    if (!data || !data.user) return;
+        if (!data || !data.user) return;
 
     const nameInput = $("settingsName");
     const emailInput = $("settingsEmail");
