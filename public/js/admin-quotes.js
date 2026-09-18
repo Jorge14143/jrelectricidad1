@@ -28,7 +28,8 @@ function quoteStatusLabel(status) {
     enviado: "Enviado",
     aceptado: "Aceptado",
     rechazado: "Rechazado",
-    vencido: "Vencido"
+    vencido: "Vencido",
+    cerrado: "Cerrado"
   };
 
   return labels[status] || status || "Borrador";
@@ -469,7 +470,7 @@ async function viewQuote(id) {
       return;
     }
 
-    const imageHtml = request.image_url
+    const imageHtml = quote.image_url
       ? `
         <div class="quote-detail-block">
           <div class="quote-detail-block-title">
