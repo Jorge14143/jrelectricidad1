@@ -3861,11 +3861,23 @@ app.get("/api/admin/jobs", requireAdmin, async (req, res) => {
 
 app.get("/api/admin/jobs-history", requireAdmin, async (req, res) => {
   try {
-    const {
-      search = "",
-      date_from = "",
-      date_to = ""
-    } = req.query;
+    const search = String(req.query.search || "").trim();
+    const dateFrom = String(req.query.date_from || "").trim();
+    const dateTo = String(req.query.date_to || "").trim();
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if ((dateFrom && !dateRegex.test(dateFrom)) || (dateTo && !dateRegex.test(dateTo))) {
+      return res.status(400).json({
+        error: "Las fechas del historial no son válidas."
+      });
+    }
+
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      return res.status(400).json({
+        error: "La fecha desde no puede ser posterior a la fecha hasta."
+      });
+    }
 
     let sql = `
       SELECT
@@ -3876,79 +3888,68 @@ app.get("/api/admin/jobs-history", requireAdmin, async (req, res) => {
         j.completed_at,
         j.created_at,
         j.updated_at,
-
         q.quote_number,
         q.issue_date,
         q.subtotal,
         q.discount,
         q.total,
         q.notes,
-
         qr.name AS client_name,
         qr.phone AS client_phone,
         qr.email AS client_email,
         qr.service AS requested_service,
         qr.description AS work_description,
         qr.preferred_date
-
       FROM jobs j
-
-      INNER JOIN quotes q
-        ON q.id = j.quote_id
-
-      INNER JOIN quote_requests qr
-        ON qr.id = q.quote_request_id
-
+      INNER JOIN quotes q ON q.id = j.quote_id
+      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
       WHERE j.status = 'cerrado'
     `;
 
     const params = [];
 
-    // Buscar por cliente, teléfono o presupuesto
-    if (search.trim()) {
+    if (search) {
       sql += `
         AND (
           qr.name LIKE ?
           OR qr.phone LIKE ?
+          OR qr.email LIKE ?
+          OR qr.service LIKE ?
           OR q.quote_number LIKE ?
+          OR qr.description LIKE ?
         )
       `;
 
-      const searchValue = `%${search.trim()}%`;
-
-      params.push(
-        searchValue,
-        searchValue,
-        searchValue
-      );    }
-
-    // Fecha desde
-    if (date_from) {
-      sql += `
-        AND DATE(j.completed_at) >= ?
-      `;
-
-      params.push(date_from);
+      const value = `%${search}%`;
+      params.push(value, value, value, value, value, value);
     }
 
-    // Fecha hasta
-    if (date_to) {
-      sql += `
-        AND DATE(j.completed_at) <= ?
-      `;
-
-      params.push(date_to);
+    if (dateFrom) {
+      sql += " AND DATE(j.completed_at) >= ?";
+      params.push(dateFrom);
     }
 
-    sql += `
-      ORDER BY j.completed_at DESC, j.id DESC
-    `;
+    if (dateTo) {
+      sql += " AND DATE(j.completed_at) <= ?";
+      params.push(dateTo);
+    }
+
+    sql += " ORDER BY j.completed_at DESC, j.id DESC";
 
     const [rows] = await pool.query(sql, params);
 
+    const total = rows.reduce(
+      (sum, row) => sum + Number(row.total || 0),
+      0
+    );
+
     res.json({
       success: true,
-      jobs: rows
+      jobs: rows,
+      summary: {
+        count: rows.length,
+        total
+      }
     });
 
   } catch (error) {
@@ -3959,6 +3960,8 @@ app.get("/api/admin/jobs-history", requireAdmin, async (req, res) => {
     });
   }
 });
+
+
 app.get("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
   try {
     const jobId = Number(req.params.id);
