@@ -2,201 +2,60 @@
 // CARGAR PANEL
 // =========================================================
 
+let adminUsersData = [];
+
+async function loadUsers() {
+  const container = $("users");
+  if (!container) return;
+  try {
+    adminUsersData = await api("/api/admin/users");
+    renderUsers();
+  } catch (error) {
+    container.innerHTML = `<div class="admin-error">${h(error.message)}</div>`;
+  }
+}
+
+function renderUsers() {
+  const container = $("users");
+  if (!container) return;
+  const search = ($("usersSearch")?.value || "").trim().toLowerCase();
+  const role = $("usersRoleFilter")?.value || "";
+  const users = adminUsersData.filter(user => {
+    const matchesSearch = !search || String(user.name || "").toLowerCase().includes(search) || String(user.email || "").toLowerCase().includes(search);
+    return matchesSearch && (!role || user.role === role);
+  });
+  const summary = $("usersSummary");
+  if (summary) {
+    const admins = adminUsersData.filter(x => x.role === "admin").length;
+    const regular = adminUsersData.length - admins;
+    summary.innerHTML = `<span>👥 ${adminUsersData.length} usuarios</span><span>⚙️ ${admins} administradores</span><span>👤 ${regular} usuarios</span>`;
+  }
+  container.innerHTML = users.length ? `<table class="table"><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Alta</th><th>Acciones</th></tr></thead><tbody>
+    ${users.map(x => `<tr><td><strong>${h(x.name)}</strong></td><td>${h(x.email)}</td><td><span class="role ${h(x.role)}">${h(x.role)}</span></td><td>${x.created_at ? new Date(x.created_at).toLocaleDateString("es-AR") : "-"}</td><td class="row-actions"><button class="btn tiny" type="button" onclick="toggleRole(${Number(x.id)}, '${h(x.role)}')">${x.role === "admin" ? "Hacer usuario" : "Hacer admin"}</button><button class="btn tiny danger" type="button" onclick="deleteUser(${Number(x.id)}, '${h(x.name)}')">Eliminar</button></td></tr>`).join("")}</tbody></table>` : `<p class="muted">No hay usuarios que coincidan con los filtros.</p>`;
+}
+
+function setupUsers() {
+  $("usersSearch")?.addEventListener("input", renderUsers);
+  $("usersRoleFilter")?.addEventListener("change", renderUsers);
+  $("clearUsersFilters")?.addEventListener("click", () => { $("usersSearch").value = ""; $("usersRoleFilter").value = ""; renderUsers(); });
+  $("refreshUsers")?.addEventListener("click", loadUsers);
+}
+
 async function load() {
   try {
-    const [
-      users,
-      services,
-      stats
-    ] = await Promise.all([
-      api("/api/admin/users"),
-      api("/api/admin/services"),
-      api("/api/admin/stats")
-    ]);
-
+    const [services, stats] = await Promise.all([api("/api/admin/services"), api("/api/admin/stats")]);
+    await loadUsers();
     await loadClients();
-
-    // =====================================================
-    // ESTADÍSTICAS
-    // =====================================================
-
-    if ($("statUsers")) {
-      $("statUsers").textContent = stats.users;
-    }
-
-    if ($("statServices")) {
-      $("statServices").textContent = stats.services;
-    }
-
-    if ($("statActive")) {
-      $("statActive").textContent = stats.activeServices;
-    }
-if ($("statAcceptedQuotes")) {
-  $("statAcceptedQuotes").textContent =
-    stats.acceptedQuotes;
-}
-
-if ($("statJobsInProgress")) {
-  $("statJobsInProgress").textContent =
-    stats.jobsInProgress;
-}
-
-if ($("statCompletedJobs")) {
-  $("statCompletedJobs").textContent =
-    stats.completedJobs;
-}
-
-
-
-
-    // =====================================================
-    // USUARIOS
-    // =====================================================
-
-    if ($("users")) {
-      $("users").innerHTML = users.length
-        ? `
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              ${users.map(x => `
-                <tr>
-                  <td>${h(x.name)}</td>
-
-                  <td>${h(x.email)}</td>
-
-                  <td>
-                    <span class="role ${x.role}">
-                      ${h(x.role)}
-                    </span>
-                  </td>
-
-                  <td class="row-actions">
-
-                    <button
-                      class="btn tiny"
-                      onclick="toggleRole(${x.id}, '${x.role}')"
-                    >
-                      ${
-                        x.role === "admin"
-                          ? "Hacer usuario"
-                          : "Hacer admin"
-                      }
-                    </button>
-
-                    <button
-                      class="btn tiny danger"
-                      onclick="deleteUser(${x.id}, '${h(x.name)}')"
-                    >
-                      Eliminar
-                    </button>
-
-                  </td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        `
-        : `
-          <p class="muted">
-            No hay usuarios registrados.
-          </p>
-        `;
-    }
-
-    // =====================================================
-    // SERVICIOS
-    // =====================================================
-
-    if ($("adminServices")) {
-      $("adminServices").innerHTML = services.length
-        ? services.map(x => `
-          <div class="service-row ${x.active ? "" : "inactive"}">
-
-            <div class="service-info">
-
-              <div class="service-title-line">
-
-                <b>${h(x.title)}</b>
-
-                <span class="status ${x.active ? "on" : "off"}">
-                  ${x.active ? "Activo" : "Oculto"}
-                </span>
-
-              </div>
-
-              <small>
-                ${h(x.description || "Sin descripción")}
-              </small>
-
-              <strong class="service-price">
-                ${money(x.price)}
-              </strong>
-
-            </div>
-
-            <div class="row-actions">
-
-              <button
-                class="btn tiny"
-                onclick='editService(${JSON.stringify(x)})'
-              >
-                Editar
-              </button>
-
-              <button
-                class="btn tiny ghost"
-                onclick="toggleService(${x.id}, ${x.active ? 1 : 0})"
-              >
-                ${x.active ? "Ocultar" : "Publicar"}
-              </button>
-
-              <button
-                class="btn tiny danger"
-                onclick="del(${x.id})"
-              >
-                Eliminar
-              </button>
-
-            </div>
-
-          </div>
-        `).join("")
-        : `
-          <p class="muted">
-            No hay servicios.
-          </p>
-        `;
-    }
-
-    // =====================================================
-    // GALERÍA
-    // =====================================================
-
+    if ($("statUsers")) $("statUsers").textContent = stats.users;
+    if ($("statServices")) $("statServices").textContent = stats.services;
+    if ($("statActive")) $("statActive").textContent = stats.activeServices;
+    if ($("statAcceptedQuotes")) $("statAcceptedQuotes").textContent = stats.acceptedQuotes;
+    if ($("statJobsInProgress")) $("statJobsInProgress").textContent = stats.jobsInProgress;
+    if ($("statCompletedJobs")) $("statCompletedJobs").textContent = stats.completedJobs;
+    if ($("adminServices")) $("adminServices").innerHTML = services.length ? services.map(x => `<div class="service-row ${x.active ? "" : "inactive"}"><div class="service-info"><div class="service-title-line"><b>${h(x.title)}</b><span class="status ${x.active ? "on" : "off"}">${x.active ? "Activo" : "Oculto"}</span></div><small>${h(x.description || "Sin descripción")}</small><strong class="service-price">${money(x.price)}</strong></div><div class="row-actions"><button class="btn tiny" onclick='editService(${JSON.stringify(x)})'>Editar</button><button class="btn tiny ghost" onclick="toggleService(${x.id}, ${x.active ? 1 : 0})">${x.active ? "Ocultar" : "Publicar"}</button><button class="btn tiny danger" onclick="del(${x.id})">Eliminar</button></div></div>`).join("") : `<p class="muted">No hay servicios.</p>`;
     await loadGallery();
-
-    // =====================================================
-    // PRESUPUESTOS GUARDADOS
-    // =====================================================
-
     await loadQuotes();
-
-  } catch (e) {
-    console.error("Error cargando panel:", e);
-
-    showMsg(
-      e.message,
-      true
-    );
-  }
+  } catch (e) { console.error("Error cargando panel:", e); showMsg(e.message, true); }
 }
 
 async function loadClients() {
