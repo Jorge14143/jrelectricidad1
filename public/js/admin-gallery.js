@@ -455,6 +455,53 @@ async function toggleGallery(id, active) {
 
 
 // =========================================================
+// GALERÍA - ORDEN
+// =========================================================
+
+async function moveGallery(id, direction) {
+  const current = adminGalleryData
+    .find(item => Number(item.id) === Number(id));
+
+  if (!current) {
+    showMsg("Trabajo no encontrado.", true);
+    return;
+  }
+
+  const ordered = [...adminGalleryData]
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+
+  const index = ordered.findIndex(
+    item => Number(item.id) === Number(id)
+  );
+
+  const targetIndex =
+    direction === "up" ? index - 1 : index + 1;
+
+  if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
+    return;
+  }
+
+  const target = ordered[targetIndex];
+
+  try {
+    await api(`/api/admin/gallery/${current.id}/order`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        targetId: Number(target.id)
+      })
+    });
+
+    await loadGallery();
+  } catch (e) {
+    console.error("Error cambiando orden de galería:", e);
+    showMsg(e.message || "No se pudo cambiar el orden.", true);
+  }
+}
+
+// =========================================================
 // GALERÍA - ELIMINAR
 // =========================================================
 
