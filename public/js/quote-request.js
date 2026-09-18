@@ -24,6 +24,11 @@ if (quoteForm) {
       preferred_date: formData.get("preferred_date")
     };
 
+    const imageFile = formData.get("image");
+    if (imageFile && imageFile.size > 0) {
+      data.image = imageFile;
+    }
+
     quoteMessage.textContent = "";
     quoteMessage.className = "quote-message";
 
@@ -32,12 +37,15 @@ if (quoteForm) {
 
     try {
 
+      const requestData = new FormData();
+
+      Object.entries(data).forEach(([key, value]) => {
+        requestData.append(key, value);
+      });
+
       const response = await fetch("/api/quote-requests", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
+        body: requestData
       });
 
       const result = await response.json();
