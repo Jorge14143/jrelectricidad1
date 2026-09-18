@@ -915,6 +915,31 @@ app.put(
 );
 
 
+app.get(
+  "/api/settings",
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        `SELECT business_name, phone, whatsapp, email, address, city, hours, logo_url
+         FROM business_settings
+         WHERE id=1
+         LIMIT 1`
+      );
+
+      res.json({
+        success: true,
+        settings: rows[0] || null
+      });
+    } catch (error) {
+      console.error("Error obteniendo datos públicos:", error);
+      res.status(500).json({
+        error: "No se pudieron obtener los datos del negocio."
+      });
+    }
+  }
+);
+
+
 // =========================================================
 // USUARIO ACTUAL
 // =========================================================
