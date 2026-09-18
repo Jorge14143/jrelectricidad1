@@ -2393,6 +2393,124 @@ app.get(
 
 
 // =========================================================
+// ADMIN - CLIENTE: FICHA DETALLADA
+// =========================================================
+
+app.get(
+  "/api/admin/clients/detail",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const phone = String(req.query.phone || "").trim();
+      const email = String(req.query.email || "").trim().toLowerCase();
+
+      if (!phone) {
+        return res.status(400).json({
+          error: "El teléfono del cliente es obligatorio."
+        });
+      }
+
+      const [requests] = await pool.query(
+        `
+        SELECT
+          id,
+          name,
+          phone,
+          email,
+          service,
+          description,
+          preferred_date,
+          image_url,
+          status,
+          created_at
+        FROM quote_requests
+        WHERE phone = ?
+          AND (
+            (? = "" AND (email IS NULL OR email = ""))
+            OR (? <> "" AND LOWER(COALESCE(email, "")) = ?)
+          )
+        ORDER BY created_at DESC
+        `,
+        [phone, email, email, email]
+      );
+
+      if (!requests.length) {
+        return res.status(404).json({
+          error: "No se encontró el cliente."
+        });
+      }
+
+      const [quotes] = await pool.query(
+        `
+        SELECT
+          q.id,
+          q.quote_number,
+          q.issue_date,
+          q.expiration_date,
+          q.status,
+          q.subtotal,
+          q.discount,
+          q.total,
+          q.created_at,
+          q.updated_at,
+          j.id AS job_id,
+          j.status AS job_status,
+          j.started_at,
+          j.completed_at
+        FROM quotes q
+        INNER JOIN quote_requests qr
+          ON qr.id = q.quote_request_id
+        LEFT JOIN jobs j
+          ON j.quote_id = q.id
+        WHERE qr.phone = ?
+          AND (
+            (? = "" AND (qr.email IS NULL OR qr.email = ""))
+            OR (? <> "" AND LOWER(COALESCE(qr.email, "")) = ?)
+          )
+        ORDER BY q.created_at DESC
+        `,
+        [phone, email, email, email]
+      );
+
+      const client = {
+        name: requests[0].name || "Sin nombre",
+        phone: requests[0].phone || phone,
+        email: requests[0].email || email || "",
+        requests: requests.length,
+        quotes: quotes.length,
+        totalQuoted: quotes.reduce(
+          (sum, quote) => sum + Number(quote.total || 0),
+          0
+        ),
+        totalJobs: quotes.filter(quote => quote.job_id).length,
+        completedJobs: quotes.filter(
+          quote => quote.job_status === "cerrado"
+        ).length,
+        lastActivity: requests.reduce((latest, item) => {
+          const value = new Date(item.created_at).getTime();
+          return value > latest ? value : latest;
+        }, 0)
+      };
+
+      res.json({
+        success: true,
+        client,
+        requests,
+        quotes
+      });
+
+    } catch (error) {
+      console.error("Error obteniendo ficha del cliente:", error);
+
+      res.status(500).json({
+        error: "No se pudo obtener la ficha del cliente."
+      });
+    }
+  }
+);
+
+
+// =========================================================
 // ADMIN - ESTADÍSTICAS
 // =========================================================
 
