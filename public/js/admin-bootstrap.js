@@ -42,3 +42,8 @@ if (closeCreateQuoteModalButton) {
     closeCreateQuoteModal
   );
 }
+
+
+if (typeof setupQuoteRequestFilters === "function") {
+  setupQuoteRequestFilters();
+}
