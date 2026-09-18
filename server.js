@@ -174,7 +174,7 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 app.use(
   express.static(
@@ -768,6 +768,22 @@ app.put(
 // =========================================================
 // CONFIGURACIÓN DEL NEGOCIO
 // =========================================================
+
+async function ensureNotificationSchema() {
+  await pool.query("ALTER TABLE admin_notifications MODIFY quote_id INT NULL").catch(error => {
+    if (!/Duplicate|already exists/i.test(error.message)) throw error;
+  });
+
+  await pool.query(
+    "ALTER TABLE admin_notifications MODIFY type ENUM('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed') NOT NULL"
+  );
+
+  await pool.query(
+    "ALTER TABLE admin_notifications ADD INDEX idx_notifications_read_created (is_read, created_at)"
+  ).catch(error => {
+    if (!/Duplicate key name|already exists/i.test(error.message)) throw error;
+  });
+}
 
 async function ensureServiceColumns() {
   await pool.query("ALTER TABLE services ADD COLUMN category VARCHAR(100) NOT NULL DEFAULT '' AFTER description").catch(error => {
@@ -1591,6 +1607,14 @@ app.post(
         preferred_date || null,
         imageUrl
       ]
+    );
+
+    await pool.query(
+      `
+      INSERT INTO admin_notifications (type, quote_id, message)
+      VALUES ('quote_request_created', NULL, ?)
+      `,
+      [`Nueva solicitud de presupuesto de ${cleanName}.`]
     );
 
     res.status(201).json({
@@ -3887,8 +3911,10 @@ app.get(
 // =========================================================
 
 async function start() {
+  validateProductionConfig();
   await ensureBusinessSettingsTable();
   await ensureServiceColumns();
+  await ensureNotificationSchema();
 
 
   try {
@@ -4574,6 +4600,16 @@ app.patch(
           error: "Solicitud no encontrada."
         });
       }
+
+      await pool.query(
+        `
+        INSERT INTO admin_notifications (type, quote_id, message)
+        SELECT 'quote_request_status', NULL, ?
+        FROM quote_requests
+        WHERE id = ?
+        `,
+        [`La solicitud #${id} cambió al estado "${status}".`, id]
+      );
 
       res.json({
         ok: true,
