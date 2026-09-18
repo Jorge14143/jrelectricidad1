@@ -4226,8 +4226,15 @@ app.get(
   async (req, res) => {
 
     try {
+      const {
+        search = "",
+        status = "",
+        date_from = "",
+        date_to = ""
+      } = req.query;
 
-      const [rows] = await pool.query(`
+      const params = [];
+      let sql = `
         SELECT
           id,
           name,
@@ -4236,11 +4243,73 @@ app.get(
           service,
           description,
           preferred_date,
+          image_url,
           status,
           created_at
         FROM quote_requests
-        ORDER BY created_at DESC
-      `);
+        WHERE 1=1
+      `;
+
+      const cleanSearch = String(search || "").trim();
+
+      if (cleanSearch) {
+        sql += `
+          AND (
+            name LIKE ?
+            OR phone LIKE ?
+            OR email LIKE ?
+            OR service LIKE ?
+            OR description LIKE ?
+          )
+        `;
+
+        const value = `%${cleanSearch}%`;
+        params.push(value, value, value, value, value);
+      }
+
+      const allowedStatuses = [
+        "pendiente",
+        "contactado",
+        "presupuestado",
+        "cerrado"
+      ];
+
+      if (status) {
+        if (!allowedStatuses.includes(status)) {
+          return res.status(400).json({
+            error: "Estado de solicitud inválido."
+          });
+        }
+
+        sql += " AND status = ?";
+        params.push(status);
+      }
+
+      if (date_from) {
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(date_from))) {
+          return res.status(400).json({
+            error: "La fecha desde no es válida."
+          });
+        }
+
+        sql += " AND DATE(created_at) >= ?";
+        params.push(date_from);
+      }
+
+      if (date_to) {
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(date_to))) {
+          return res.status(400).json({
+            error: "La fecha hasta no es válida."
+          });
+        }
+
+        sql += " AND DATE(created_at) <= ?";
+        params.push(date_to);
+      }
+
+      sql += " ORDER BY created_at DESC";
+
+      const [rows] = await pool.query(sql, params);
 
       res.json(rows);
 
@@ -4254,7 +4323,66 @@ app.get(
       res.status(500).json({
         error: "No se pudieron obtener las solicitudes."
       });
+    }
+  }
+);
 
+app.patch(
+  "/api/admin/quote-requests/:id/status",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const status = String(req.body.status || "").trim();
+
+      const allowedStatuses = [
+        "pendiente",
+        "contactado",
+        "presupuestado",
+        "cerrado"
+      ];
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          error: "ID de solicitud inválido."
+        });
+      }
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          error: "Estado de solicitud inválido."
+        });
+      }
+
+      const [result] = await pool.query(
+        `
+        UPDATE quote_requests
+        SET status = ?
+        WHERE id = ?
+        `,
+        [status, id]
+      );
+
+      if (!result.affectedRows) {
+        return res.status(404).json({
+          error: "Solicitud no encontrada."
+        });
+      }
+
+      res.json({
+        ok: true,
+        message: "Estado de la solicitud actualizado."
+      });
+
+    } catch (error) {
+      console.error(
+        "Error actualizando solicitud:",
+        error
+      );
+
+      res.status(500).json({
+        error: "No se pudo actualizar la solicitud."
+      });
     }
   }
 );
@@ -4278,6 +4406,7 @@ app.get(
           service,
           description,
           preferred_date,
+          image_url,
           status,
           created_at
         FROM quote_requests
