@@ -336,11 +336,6 @@ formData.append(
           }
         );
 
-      console.log(
-        "Galería guardada:",
-        result
-      );
-
       showMsg(
         result.message ||
         (
