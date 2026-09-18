@@ -118,6 +118,7 @@ function openLightbox(work) {
     work.description || "";
 
   lightbox.classList.add("active");
+  lightbox.setAttribute("aria-hidden", "false");
 
   document.body.classList.add("lightbox-open");
 }
@@ -126,6 +127,7 @@ function closeLightbox() {
   if (!lightbox) return;
 
   lightbox.classList.remove("active");
+  lightbox.setAttribute("aria-hidden", "true");
 
   document.body.classList.remove("lightbox-open");
 
