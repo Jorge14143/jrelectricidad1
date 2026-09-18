@@ -124,6 +124,30 @@ CREATE TABLE `quote_items` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+--
+-- Table structure for table `business_settings`
+--
+
+DROP TABLE IF EXISTS `business_settings`;
+CREATE TABLE `business_settings` (
+  `id` tinyint unsigned NOT NULL,
+  `business_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'JR Electricidad',
+  `legal_name` varchar(180) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `phone` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `whatsapp` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `email` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `city` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `hours` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `logo_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `pdf_footer` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT '',
+  `pdf_notes` text COLLATE utf8mb4_unicode_ci,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `business_settings` (`id`, `business_name`, `phone`, `whatsapp`, `email`, `pdf_footer`) VALUES (1, 'JR Electricidad', '3385684660', '3385684660', 'jorge9609@hotmail.com', 'JR Electricidad · Electricista Matriculado Cat. 3');
 --
 -- Table structure for table `quote_requests`
 --
