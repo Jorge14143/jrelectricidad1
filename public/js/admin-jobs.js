@@ -680,6 +680,8 @@ function formatJobDateOnly(value) {
 // HISTORIAL DE TRABAJOS CERRADOS
 // =====================================================
 
+let jobsHistoryData = [];
+
 async function loadJobsHistory() {
   const list = document.getElementById("jobsHistoryList");
   const loading = document.getElementById("jobsHistoryLoading");
@@ -687,45 +689,51 @@ async function loadJobsHistory() {
 
   if (!list) return;
 
+  const params = new URLSearchParams();
+  const search = document.getElementById("jobsHistorySearch")?.value.trim() || "";
+  const dateFrom = document.getElementById("jobsHistoryDateFrom")?.value || "";
+  const dateTo = document.getElementById("jobsHistoryDateTo")?.value || "";
+
+  if (search) params.set("search", search);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+
   try {
     if (loading) loading.hidden = false;
     if (empty) empty.hidden = true;
 
     const response = await fetch(
-      "/api/admin/jobs-history",
-      {
-        credentials: "same-origin"
-      }
+      "/api/admin/jobs-history" + (params.toString() ? "?" + params.toString() : ""),
+      { credentials: "same-origin" }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(
-        data.error || "No se pudo cargar el historial."
-      );
+      throw new Error(data.error || "No se pudo cargar el historial.");
     }
 
-    const jobs = Array.isArray(data.jobs)
-      ? data.jobs
-      : [];
+    jobsHistoryData = Array.isArray(data.jobs) ? data.jobs : [];
+
+    const count = document.getElementById("historyCount");
+    const total = document.getElementById("historyTotal");
+
+    if (count) count.textContent = String(data.summary?.count ?? jobsHistoryData.length);
+    if (total) total.textContent = formatJobMoney(data.summary?.total ?? 0);
 
     list.innerHTML = "";
 
-    if (!jobs.length) {
+    if (!jobsHistoryData.length) {
       if (empty) empty.hidden = false;
       return;
     }
 
-    jobs.forEach(job => {
+    jobsHistoryData.forEach(job => {
       list.appendChild(createHistoryCard(job));
     });
 
   } catch (error) {
-    console.error(
-      "Error cargando historial:",
-      error
-    );
+    console.error("Error cargando historial:", error);
 
     list.innerHTML = `
       <div class="admin-error">
@@ -741,136 +749,65 @@ async function loadJobsHistory() {
 
 function createHistoryCard(job) {
   const card = document.createElement("div");
-
   card.className = "job-history-card";
 
   const total = Number(job.total || 0);
-
-  const completedAt =
-    formatJobDate(job.completed_at);
-
-  const startedAt =
-    formatJobDate(job.started_at);
+  const completedAt = formatJobDate(job.completed_at);
+  const startedAt = formatJobDate(job.started_at);
 
   card.innerHTML = `
     <div class="job-history-header">
-
       <div>
-        <strong>
-          ${escapeHtml(
-            job.client_name || "Sin nombre"
-          )}
-        </strong>
-
-        <span class="job-quote-number">
-          ${escapeHtml(
-            job.quote_number || ""
-          )}
-        </span>
+        <strong>${escapeHtml(job.client_name || "Sin nombre")}</strong>
+        <span class="job-quote-number">${escapeHtml(job.quote_number || "")}</span>
       </div>
 
-      <span class="job-status status-closed">
-        ⚫ Cerrado
-      </span>
-
+      <span class="job-status status-closed">⚫ Cerrado</span>
     </div>
 
-
     <div class="job-history-body">
-
       <div class="job-history-info">
-
-        <span>
-          📞
-          ${escapeHtml(
-            job.client_phone ||
-            "Sin teléfono"
-          )}
-        </span>
-
-        <span>
-          ⚡
-          ${escapeHtml(
-            job.requested_service ||
-            "Sin servicio"
-          )}
-        </span>
-
+        <span>📞 ${escapeHtml(job.client_phone || "Sin teléfono")}</span>
+        <span>✉️ ${escapeHtml(job.client_email || "Sin email")}</span>
+        <span>⚡ ${escapeHtml(job.requested_service || "Sin servicio")}</span>
       </div>
-
 
       <div class="job-history-work">
-
-        <strong>
-          Trabajo realizado
-        </strong>
-
-        <p>
-          ${escapeHtml(
-            job.work_description ||
-            "Sin descripción"
-          )}
-        </p>
-
+        <strong>Trabajo realizado</strong>
+        <p>${escapeHtml(job.work_description || "Sin descripción")}</p>
       </div>
 
-
       <div class="job-history-dates">
-
         <div>
           <span>📅 Presupuesto</span>
-
-          <strong>
-            ${formatJobDateOnly(
-              job.issue_date
-            )}
-          </strong>
+          <strong>${formatJobDateOnly(job.issue_date)}</strong>
         </div>
 
         <div>
           <span>🔧 Inicio</span>
-
-          <strong>
-            ${startedAt || "-"}
-          </strong>
+          <strong>${startedAt || "-"}</strong>
         </div>
 
         <div>
           <span>⚫ Finalización</span>
-
-          <strong>
-            ${completedAt || "-"}
-          </strong>
+          <strong>${completedAt || "-"}</strong>
         </div>
-
       </div>
-
 
       <div class="job-history-total">
-
-        <span>
-          Total
-        </span>
-
-        <strong>
-          ${formatJobMoney(total)}
-        </strong>
-
+        <span>Total</span>
+        <strong>${formatJobMoney(total)}</strong>
       </div>
 
-
       <div class="job-history-actions">
-
         <button
           type="button"
           class="btn btn-secondary btn-small"
-          onclick="openJobDetail(${job.id})"
+          data-history-job-id="${Number(job.id)}"
         >
           👁️ Ver detalle
         </button>
-
       </div>
-
     </div>
   `;
 
@@ -879,43 +816,58 @@ function createHistoryCard(job) {
 
 
 function setupJobsHistory() {
-  const list =
-    document.getElementById("jobsHistoryList");
-
+  const list = document.getElementById("jobsHistoryList");
   if (!list) return;
 
-  loadJobsHistory();
+  const search = document.getElementById("jobsHistorySearch");
+  const dateFrom = document.getElementById("jobsHistoryDateFrom");
+  const dateTo = document.getElementById("jobsHistoryDateTo");
+  const refresh = document.getElementById("refreshJobsHistory");
+  const clear = document.getElementById("clearJobsHistoryFilters");
 
-  const closeButton =
-    document.getElementById("closeJobDetail");
+  let timer = null;
 
-  const closeFooterButton =
-    document.getElementById(
-      "closeJobDetailButton"
-    );
+  search?.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(loadJobsHistory, 300);
+  });
 
-  const modal =
-    document.getElementById("jobDetailModal");
+  dateFrom?.addEventListener("change", loadJobsHistory);
+  dateTo?.addEventListener("change", loadJobsHistory);
+  refresh?.addEventListener("click", loadJobsHistory);
 
-  closeButton?.addEventListener(
-    "click",
-    closeJobDetail
-  );
+  clear?.addEventListener("click", () => {
+    if (search) search.value = "";
+    if (dateFrom) dateFrom.value = "";
+    if (dateTo) dateTo.value = "";
+    loadJobsHistory();
+  });
 
-  closeFooterButton?.addEventListener(
-    "click",
-    closeJobDetail
-  );
+  list.addEventListener("click", event => {
+    const button = event.target.closest("[data-history-job-id]");
+    if (!button) return;
 
-  modal?.addEventListener(
-    "click",
-    event => {
-      if (event.target === modal) {
-        closeJobDetail();
-      }
+    const id = Number(button.dataset.historyJobId);
+    if (Number.isInteger(id) && id > 0) {
+      openJobDetail(id);
     }
-  );
+  });
+
+  const closeButton = document.getElementById("closeJobDetail");
+  const closeFooterButton = document.getElementById("closeJobDetailButton");
+  const modal = document.getElementById("jobDetailModal");
+
+  closeButton?.addEventListener("click", closeJobDetail);
+  closeFooterButton?.addEventListener("click", closeJobDetail);
+
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closeJobDetail();
+  });
+
+  loadJobsHistory();
 }
+
+
 function setupClients() {
   $("refreshClients")?.addEventListener("click", loadClients);
 
