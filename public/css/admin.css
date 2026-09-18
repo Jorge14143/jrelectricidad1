@@ -9985,3 +9985,76 @@ body.lightbox-open {
     grid-column: auto;
   }
 }
+
+
+/* =========================================================
+   SOLICITUDES - FILTROS Y ESTADO
+========================================================= */
+.quote-requests-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(160px, .8fr) repeat(2, minmax(140px, .6fr)) auto;
+  gap: 10px;
+  margin: 18px 0 20px;
+}
+
+.quote-requests-toolbar input,
+.quote-requests-toolbar select {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #202733);
+  border-radius: 9px;
+  background: var(--card, #10141c);
+  color: var(--text, #f5f7fb);
+}
+
+.quote-request-status-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line, #202733);
+  border-radius: 10px;
+  background: rgba(255,196,0,.05);
+}
+
+.quote-request-status-control label {
+  color: var(--muted, #9ca6b5);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.quote-request-status-control select {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--line, #202733);
+  border-radius: 8px;
+  background: var(--card, #10141c);
+  color: var(--text, #f5f7fb);
+}
+
+@media (max-width: 900px) {
+  .quote-requests-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .quote-requests-toolbar input[type="search"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .quote-requests-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .quote-requests-toolbar input[type="search"] {
+    grid-column: auto;
+  }
+
+  .quote-request-status-control {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
