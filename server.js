@@ -1540,7 +1540,15 @@ if (featured) {
 		  sort_order
         )
         VALUES (?, ?, ?, ?, ?, ?)
-        
+        `,
+        [
+          title,
+          description,
+          imageUrl,
+          active,
+          featured,
+          sortOrder
+        ]
       );
 
 
