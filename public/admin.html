@@ -531,6 +531,46 @@
       </div>
     </section>
 
+    <section class="admin-dashboard analytics-dashboard" id="dashboardAnalytics">
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">ANÁLISIS</span>
+            <h2>Resumen del negocio</h2>
+            <p class="muted">Actividad, presupuestos y trabajos del período seleccionado.</p>
+          </div>
+          <select id="dashboardPeriod" aria-label="Período del dashboard">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="365">Último año</option>
+          </select>
+        </div>
+        <div class="dashboard-kpis">
+          <div><span>Solicitudes</span><strong id="dashRequests">—</strong></div>
+          <div><span>Presupuestos enviados</span><strong id="dashSentQuotes">—</strong></div>
+          <div><span>Rechazados</span><strong id="dashRejectedQuotes">—</strong></div>
+          <div><span>Facturación aceptada</span><strong id="dashAcceptedAmount">—</strong></div>
+          <div><span>Presupuestos del período</span><strong id="dashPeriodQuotes">—</strong></div>
+          <div><span>Trabajos del período</span><strong id="dashPeriodJobs">—</strong></div>
+        </div>
+        <div class="dashboard-chart-wrap">
+          <div class="dashboard-chart-title">Presupuestos por mes</div>
+          <div id="dashboardMonthlyChart" class="dashboard-monthly-chart" aria-label="Presupuestos por mes"></div>
+        </div>
+      </div>
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">ACTIVIDAD</span>
+            <h2>Actividad reciente</h2>
+            <p class="muted">Últimas solicitudes recibidas.</p>
+          </div>
+        </div>
+        <div id="dashboardRecentActivity" class="dashboard-activity-list"></div>
+      </div>
+    </section>
+
 
     <!-- =====================================================
          PRESUPUESTOS — SOLICITUDES
