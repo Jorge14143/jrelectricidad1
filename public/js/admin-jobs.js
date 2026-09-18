@@ -868,17 +868,3 @@ function setupJobsHistory() {
 }
 
 
-function setupClients() {
-  $("refreshClients")?.addEventListener("click", loadClients);
-
-  $("clearClientsSearch")?.addEventListener("click", () => {
-    if ($("clientsSearch")) $("clientsSearch").value = "";
-    loadClients();
-  });
-
-  $("clientsSearch")?.addEventListener("keydown", event => {
-    if (event.key === "Enter") loadClients();
-  });
-}
-
-
