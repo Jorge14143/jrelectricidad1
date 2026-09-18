@@ -941,6 +941,59 @@ app.get(
 
 
 // =========================================================
+// CUENTA DEL USUARIO - PERFIL
+// =========================================================
+
+app.put(
+  "/api/account/profile",
+  requireAuth,
+  authLimiter,
+  async (req, res) => {
+    try {
+      const userId = Number(req.session.user.id);
+      const name = String(req.body.name || "").trim();
+      const email = String(req.body.email || "").trim().toLowerCase();
+
+      if (!name || name.length > 150) {
+        return res.status(400).json({ error: "El nombre es obligatorio y no puede superar 150 caracteres." });
+      }
+
+      const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+      if (!emailRegex.test(email) || email.length > 190) {
+        return res.status(400).json({ error: "Ingresá un email válido." });
+      }
+
+      const [existing] = await pool.query(
+        "SELECT id FROM users WHERE email=? AND id<>? LIMIT 1",
+        [email, userId]
+      );
+
+      if (existing.length) {
+        return res.status(409).json({ error: "Ese email ya está registrado." });
+      }
+
+      await pool.query(
+        "UPDATE users SET name=?, email=? WHERE id=?",
+        [name, email, userId]
+      );
+
+      req.session.user.name = name;
+      req.session.user.email = email;
+
+      res.json({
+        success: true,
+        message: "Datos personales actualizados correctamente.",
+        user: cleanUser(req.session.user)
+      });
+    } catch (error) {
+      console.error("Error actualizando perfil:", error);
+      res.status(500).json({ error: "No se pudieron actualizar los datos personales." });
+    }
+  }
+);
+
+
+// =========================================================
 // USUARIO ACTUAL
 // =========================================================
 
