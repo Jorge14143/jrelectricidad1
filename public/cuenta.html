@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>Mi cuenta | JR Electricidad</title>
+
+  <link
+    rel="stylesheet"
+    href="/css/style.css"
+  >
+
+</head>
+
+
+<body>
+
+
+<header class="nav">
+
+  <a class="logo" href="/">
+    ⚡ JR <span>ELECTRICIDAD</span>
+  </a>
+
+  <nav>
+
+    <a href="/">
+      Inicio
+    </a>
+
+    <a href="/#servicios">
+      Servicios
+    </a>
+
+    <a href="/#nosotros">
+      Nosotros
+    </a>
+
+    <a href="/#contacto">
+      Contacto
+    </a>
+
+  </nav>
+
+</header>
+
+
+
+<main class="account-page">
+
+  <section class="account-card">
+
+    <div class="account-icon">
+      👤
+    </div>
+
+    <div class="eyebrow">
+      MI CUENTA
+    </div>
+
+    <h1>
+      Mi perfil
+    </h1>
+
+    <p class="account-description">
+      Administrá la información y seguridad de tu cuenta.
+    </p>
+
+
+    <div
+      id="account-message"
+      class="account-message"
+    >
+      Cargando información...
+    </div>
+
+
+    <div
+      id="account-data"
+      class="account-data"
+      style="display:none;"
+    >
+
+
+      <!-- INFORMACIÓN -->
+
+      <div class="account-section-title">
+        INFORMACIÓN DE LA CUENTA
+      </div>
+
+
+      <div class="account-field">
+
+        <span>
+          👤
+        </span>
+
+        <div>
+
+          <small>
+            Nombre
+          </small>
+
+          <strong id="account-name">
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="account-field">
+
+        <span>
+          ✉️
+        </span>
+
+        <div>
+
+          <small>
+            Email
+          </small>
+
+          <strong id="account-email">
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="account-field">
+
+        <span>
+          🔐
+        </span>
+
+        <div>
+
+          <small>
+            Tipo de cuenta
+          </small>
+
+          <strong id="account-role">
+          </strong>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- CAMBIAR CORREO -->
+
+      <div class="account-section-title">
+        CAMBIAR CORREO ELECTRÓNICO
+      </div>
+
+
+      <form id="email-form" class="account-form">
+
+        <label>
+          Nuevo correo electrónico
+
+          <input
+            id="new-email"
+            type="email"
+            placeholder="nuevo@email.com"
+            autocomplete="email"
+            required
+          >
+
+        </label>
+
+
+        <label>
+          Contraseña actual
+
+          <input
+            id="email-current-password"
+            type="password"
+            placeholder="Tu contraseña actual"
+            autocomplete="current-password"
+            required
+          >
+
+        </label>
+
+
+        <button
+          class="btn"
+          type="submit"
+        >
+          ✉️ Cambiar correo
+        </button>
+
+      </form>
+
+
+      <div
+        id="email-message"
+        class="account-form-message"
+      ></div>
+
+
+
+      <!-- CAMBIAR CONTRASEÑA -->
+
+      <div class="account-section-title">
+        CAMBIAR CONTRASEÑA
+      </div>
+
+
+      <form id="password-form" class="account-form">
+
+        <label>
+          Contraseña actual
+
+          <input
+            id="current-password"
+            type="password"
+            placeholder="Contraseña actual"
+            autocomplete="current-password"
+            required
+          >
+
+        </label>
+
+
+        <label>
+          Nueva contraseña
+
+          <input
+            id="new-password"
+            type="password"
+            placeholder="Mínimo 8 caracteres"
+            minlength="8"
+            autocomplete="new-password"
+            required
+          >
+
+        </label>
+
+
+        <label>
+          Repetir nueva contraseña
+
+          <input
+            id="confirm-password"
+            type="password"
+            placeholder="Repetí la nueva contraseña"
+            minlength="8"
+            autocomplete="new-password"
+            required
+          >
+
+        </label>
+
+
+        <button
+          class="btn"
+          type="submit"
+        >
+          🔐 Cambiar contraseña
+        </button>
+
+      </form>
+
+
+      <div
+        id="password-message"
+        class="account-form-message"
+      ></div>
+
+
+
+      <!-- ACCIONES -->
+
+      <div class="account-actions">
+
+        <a
+          class="btn ghost"
+          href="/"
+        >
+          ← Volver al inicio
+        </a>
+
+        <a
+          id="admin-link"
+          class="btn"
+          href="/admin"
+          style="display:none;"
+        >
+          ⚙️ Panel
+        </a>
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+</main>
+
+
+
+<footer>
+
+  © 2026 JR Electricidad ·
+  Electricista Matriculado Cat. 3
+
+</footer>
+
+
+
+<script>
+
+async function loadAccount() {
+
+  const message =
+    document.getElementById("account-message");
+
+  const dataBox =
+    document.getElementById("account-data");
+
+
+  try {
+
+    const response =
+      await fetch("/api/me");
+
+
+    if (!response.ok) {
+
+      window.location.href =
+        "/login.html";
+
+      return;
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (!data.user) {
+
+      window.location.href =
+        "/login.html";
+
+      return;
+
+    }
+
+
+    const user =
+      data.user;
+
+
+    document.getElementById("account-name")
+      .textContent =
+        user.name || "-";
+
+
+    document.getElementById("account-email")
+      .textContent =
+        user.email || "-";
+
+
+    document.getElementById("account-role")
+      .textContent =
+        user.role === "admin"
+          ? "Administrador"
+          : "Usuario";
+
+
+    if (user.role === "admin") {
+
+      document.getElementById("admin-link")
+        .style.display =
+          "inline-block";
+
+    }
+
+
+    message.style.display =
+      "none";
+
+    dataBox.style.display =
+      "grid";
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    message.textContent =
+      "No se pudo cargar la información.";
+
+  }
+
+}
+
+
+
+// =========================
+// CAMBIAR CORREO
+// =========================
+
+document
+  .getElementById("email-form")
+  .addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+
+    const newEmail =
+      document
+        .getElementById("new-email")
+        .value
+        .trim();
+
+
+    const currentPassword =
+      document
+        .getElementById("email-current-password")
+        .value;
+
+
+    const message =
+      document.getElementById("email-message");
+
+
+    message.textContent =
+      "Actualizando...";
+
+
+    try {
+
+      const response =
+        await fetch("/api/account/email", {
+
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            newEmail,
+            currentPassword
+          })
+
+        });
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        message.textContent =
+          data.error ||
+          "No se pudo cambiar el correo.";
+
+        return;
+
+      }
+
+
+      document.getElementById("account-email")
+        .textContent =
+          data.user.email;
+
+
+      document.getElementById(
+        "email-current-password"
+      ).value = "";
+
+
+      document.getElementById(
+        "new-email"
+      ).value = "";
+
+
+      message.textContent =
+        "✅ Correo actualizado correctamente.";
+
+    } catch (error) {
+
+      console.error(error);
+
+      message.textContent =
+        "No se pudo conectar con el servidor.";
+
+    }
+
+  });
+
+
+
+// =========================
+// CAMBIAR CONTRASEÑA
+// =========================
+
+document
+  .getElementById("password-form")
+  .addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+
+    const currentPassword =
+      document
+        .getElementById("current-password")
+        .value;
+
+
+    const newPassword =
+      document
+        .getElementById("new-password")
+        .value;
+
+
+    const confirmPassword =
+      document
+        .getElementById("confirm-password")
+        .value;
+
+
+    const message =
+      document.getElementById(
+        "password-message"
+      );
+
+
+    if (newPassword !== confirmPassword) {
+
+      message.textContent =
+        "❌ Las nuevas contraseñas no coinciden.";
+
+      return;
+
+    }
+
+
+    message.textContent =
+      "Actualizando...";
+
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/account/password",
+          {
+
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              currentPassword,
+              newPassword
+            })
+
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        message.textContent =
+          data.error ||
+          "No se pudo cambiar la contraseña.";
+
+        return;
+
+      }
+
+
+      document.getElementById(
+        "current-password"
+      ).value = "";
+
+
+      document.getElementById(
+        "new-password"
+      ).value = "";
+
+
+      document.getElementById(
+        "confirm-password"
+      ).value = "";
+
+
+      message.textContent =
+        "✅ Contraseña actualizada correctamente.";
+
+    } catch (error) {
+
+      console.error(error);
+
+      message.textContent =
+        "No se pudo conectar con el servidor.";
+
+    }
+
+  });
+
+
+loadAccount();
+
+</script>
+
+
+</body>
+
+</html>

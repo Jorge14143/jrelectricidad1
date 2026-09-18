@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Administración | JR Electricidad</title>
+
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="admin-page">
+
+<!-- =========================================================
+     SIDEBAR
+========================================================= -->
+
+<aside class="admin-sidebar" id="adminSidebar">
+
+  <div class="admin-sidebar-header">
+
+    <a href="/" class="admin-brand">
+      <span class="admin-brand-icon">⚡</span>
+
+      <span class="admin-brand-text">
+        <strong>JR</strong>
+        <small>ELECTRICIDAD</small>
+      </span>
+    </a>
+
+    <button
+      type="button"
+      class="admin-sidebar-toggle"
+      id="adminSidebarToggle"
+      aria-label="Contraer menú"
+    >
+      ☰
+    </button>
+
+  </div>
+
+
+  <nav class="admin-sidebar-nav">
+
+    <div class="admin-nav-label">
+      PRINCIPAL
+    </div>
+
+    <a href="#dashboardStats" class="admin-nav-item active">
+      <span>🏠</span>
+      <span>Dashboard</span>
+    </a>
+
+
+    <div class="admin-nav-label">
+      GESTIÓN
+    </div>
+
+    <button
+      type="button"
+      class="admin-nav-item admin-nav-toggle"
+      data-menu="presupuestosMenu"
+    >
+      <span>📋</span>
+      <span>Presupuestos</span>
+      <b>⌄</b>
+    </button>
+
+    <div class="admin-submenu" id="presupuestosMenu">
+
+      <a href="#quoteRequestsSection">
+        Solicitudes
+      </a>
+
+      <a href="#quotesSection">
+        Presupuestos
+      </a>
+
+      <a href="#jobsHistorySection">
+        Historial
+      </a>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="admin-nav-item admin-nav-toggle"
+      data-menu="trabajosMenu"
+    >
+      <span>🔧</span>
+      <span>Trabajos</span>
+      <b>⌄</b>
+    </button>
+
+    <div class="admin-submenu" id="trabajosMenu">
+
+      <a href="#jobsSection">
+        Activos
+      </a>
+
+      <a href="#jobsHistorySection">
+        Trabajos cerrados
+      </a>
+
+    </div>
+
+
+    <a href="#usersSection" class="admin-nav-item">
+      <span>👥</span>
+      <span>Clientes</span>
+    </a>
+
+
+    <a href="#servicesSection" class="admin-nav-item">
+      <span>🛠️</span>
+      <span>Servicios</span>
+    </a>
+
+
+    <a href="#gallerySection" class="admin-nav-item">
+      <span>🖼️</span>
+      <span>Galería</span>
+    </a>
+
+
+    <button
+      type="button"
+      class="admin-nav-item"
+      id="sidebarNotificationsButton"
+    >
+      <span>🔔</span>
+      <span>Notificaciones</span>
+
+      <em
+        id="sidebarNotificationsBadge"
+        class="admin-sidebar-badge"
+        hidden
+      >
+        0
+      </em>
+    </button>
+
+
+    <a href="#usersSection" class="admin-nav-item">
+      <span>👤</span>
+      <span>Usuarios</span>
+    </a>
+
+
+    <div class="admin-nav-label">
+      SISTEMA
+    </div>
+
+   <a href="#settingsSection" class="admin-nav-item">
+  <span>⚙️</span>
+  <span>Configuración</span>
+</a>
+  </nav>
+
+
+  <div class="admin-sidebar-footer">
+
+    <a href="/" class="admin-footer-link">
+      <span>🌐</span>
+      <span>Ver sitio</span>
+    </a>
+
+    <button
+      type="button"
+      id="logout"
+      class="admin-footer-link admin-logout"
+    >
+      <span>🚪</span>
+      <span>Cerrar sesión</span>
+    </button>
+
+  </div>
+
+</aside>
+
+
+<!-- =========================================================
+     CONTENIDO
+========================================================= -->
+
+<div class="admin-layout">
+
+  <!-- =======================================================
+       TOPBAR
+  ======================================================== -->
+
+  <header class="admin-topbar">
+
+    <div class="admin-topbar-left">
+
+      <button
+        type="button"
+        class="admin-mobile-menu"
+        id="adminMobileMenu"
+        aria-label="Abrir menú"
+      >
+        ☰
+      </button>
+
+      <div>
+        <span class="admin-topbar-label">
+          JR ADMIN
+        </span>
+
+        <strong>
+          Panel de administración
+        </strong>
+      </div>
+
+    </div>
+
+
+    <div class="admin-topbar-right">
+
+      <!-- NOTIFICACIONES -->
+
+      <div class="admin-notifications">
+
+        <button
+          id="notificationsButton"
+          class="notifications-button"
+          type="button"
+          aria-label="Notificaciones"
+          aria-expanded="false"
+        >
+          🔔
+
+          <span
+            id="notificationsBadge"
+            class="notifications-badge"
+            hidden
+          >
+            0
+          </span>
+        </button>
+
+
+        <div
+          id="notificationsPanel"
+          class="notifications-panel"
+          hidden
+        >
+
+          <div class="notifications-panel-header">
+
+            <div>
+
+              <strong>
+                Notificaciones
+              </strong>
+
+              <span id="notificationsCount">
+                Sin notificaciones nuevas
+              </span>
+
+            </div>
+
+            <button
+              id="markAllNotificationsRead"
+              class="notifications-read-all"
+              type="button"
+            >
+              Marcar todas
+            </button>
+
+          </div>
+
+
+          <div
+            id="notificationsList"
+            class="notifications-list"
+          >
+            <div class="notifications-loading">
+              Cargando...
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ADMIN -->
+
+<div class="admin-user-avatar" id="adminUserAvatar">
+  A
+</div>
+
+<div class="admin-user-info">
+
+  <strong id="adminUserName">
+    Administrador
+  </strong>
+
+  <small>
+    JR Electricidad
+  </small>
+
+</div>
+  </header>
+
+
+  <!-- =======================================================
+       MAIN
+  ======================================================== -->
+
+  <main class="admin-main">
+
+    <!-- =====================================================
+         BIENVENIDA
+    ====================================================== -->
+
+    <section class="admin-welcome">
+
+      <div>
+
+        <span class="section-label">
+          PANEL DE ADMINISTRACIÓN
+        </span>
+
+         <h1 id="adminWelcomeTitle">
+          Buenos días 👋
+         </h1>
+
+        <p class="muted">
+          Gestioná presupuestos, trabajos, clientes y todo tu
+          negocio desde un solo lugar.
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MENSAJES
+    ====================================================== -->
+
+    <div
+      id="msg"
+      class="notice"
+      hidden
+    ></div>
+
+
+    <!-- =====================================================
+         DASHBOARD
+    ====================================================== -->
+
+    <section
+      class="admin-dashboard"
+      id="dashboardStats"
+    >
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          👥
+        </div>
+
+        <div>
+
+          <span>
+            Clientes
+          </span>
+
+          <strong id="statUsers">
+            —
+          </strong>
+
+          <small>
+            registrados
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          🛠️
+        </div>
+
+        <div>
+
+          <span>
+            Servicios
+          </span>
+
+          <strong id="statServices">
+            —
+          </strong>
+
+          <small>
+            totales
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          ⚡
+        </div>
+
+        <div>
+
+          <span>
+            Servicios activos
+          </span>
+
+          <strong id="statActive">
+            —
+          </strong>
+
+          <small>
+            publicados
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          📋
+        </div>
+
+        <div>
+
+          <span>
+            Solicitudes
+          </span>
+
+          <strong id="pendingQuotesCount">
+            0
+          </strong>
+
+          <small>
+            pendientes
+          </small>
+
+        </div>
+
+      </div>
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          💰
+        </div>
+
+        <div>
+
+          <span>
+            Presupuestos aceptados
+          </span>
+
+          <strong id="statAcceptedQuotes">
+            —
+          </strong>
+
+          <small>
+            aceptados
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          🔧
+        </div>
+
+        <div>
+
+          <span>
+            Trabajos en proceso
+          </span>
+
+          <strong id="statJobsInProgress">
+            —
+          </strong>
+
+          <small>
+            actualmente
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-dashboard-card">
+
+        <div class="admin-dashboard-icon">
+          ✅
+        </div>
+
+        <div>
+
+          <span>
+            Trabajos terminados
+          </span>
+
+          <strong id="statCompletedJobs">
+            —
+          </strong>
+
+          <small>
+            finalizados
+          </small>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- =====================================================
+         PRESUPUESTOS — SOLICITUDES
+    ====================================================== -->
+
+    <section
+      class="panel quote-requests-section"
+      id="quoteRequestsSection"
+    >
+
+      <div class="quote-section-header">
+
+        <div class="quote-section-title">
+
+          <span class="quote-section-icon">
+            📋
+          </span>
+
+          <div>
+
+            <span class="quote-section-label">
+              PRESUPUESTOS
+            </span>
+
+            <h2>
+              Solicitudes de presupuesto
+            </h2>
+
+            <p>
+              Revisá y prepará presupuestos para tus clientes.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="quote-pending-badge">
+
+          <span id="pendingQuotesBadge">0</span>
+
+          <small>
+            Pendientes
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="quoteRequestsLoading"
+        class="quote-state-box"
+      >
+
+        <div class="quote-loading-spinner"></div>
+
+        <p>
+          Cargando solicitudes...
+        </p>
+
+      </div>
+
+
+      <div
+        id="quoteRequestsEmpty"
+        class="quote-state-box quote-empty-state"
+        style="display:none;"
+      >
+
+        <div class="quote-empty-icon">
+          📋
+        </div>
+
+        <h3>
+          No hay solicitudes
+        </h3>
+
+        <p>
+          Cuando un cliente solicite un presupuesto,
+          aparecerá aquí.
+        </p>
+
+      </div>
+
+
+      <div
+        id="quoteRequestsList"
+        class="quote-requests-grid"
+      ></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         PRESUPUESTOS EMITIDOS
+    ====================================================== -->
+
+    <section
+      class="panel quote-list-section"
+      id="quotesSection"
+    >
+
+      <div class="panel-heading">
+
+        <div>
+
+          <span class="eyebrow">
+            PRESUPUESTOS
+          </span>
+
+          <h2>
+            Presupuestos emitidos
+          </h2>
+
+          <p class="muted">
+            Consultá los presupuestos guardados y sus totales.
+          </p>
+
+        </div>
+
+        <span
+          class="quote-list-icon"
+          aria-hidden="true"
+        >
+          💰
+        </span>
+
+      </div>
+
+
+      <div
+        id="quotesList"
+        class="quotes-list"
+      ></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MODAL — RESUMEN DE PRESUPUESTO
+    ====================================================== -->
+
+    <div
+      id="quoteSummaryModal"
+      class="quote-modal"
+      style="display:none;"
+    >
+
+      <div class="quote-modal-overlay"></div>
+
+      <div class="quote-modal-card">
+
+        <button
+          type="button"
+          class="quote-modal-close"
+          id="closeQuoteSummaryModal"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <div id="quoteSummaryDetail"></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         MODAL — VER SOLICITUD
+    ====================================================== -->
+
+    <div
+      id="quoteRequestModal"
+      class="quote-modal"
+      style="display:none;"
+    >
+
+      <div class="quote-modal-overlay"></div>
+
+      <div class="quote-modal-card">
+
+        <button
+          type="button"
+          class="quote-modal-close"
+          id="closeQuoteRequestModal"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <div id="quoteRequestDetail"></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         MODAL — CREAR PRESUPUESTO
+    ====================================================== -->
+
+    <div
+      id="createQuoteModal"
+      class="quote-modal"
+      style="display:none;"
+    >
+
+      <div class="quote-modal-overlay"></div>
+
+      <div class="quote-modal-card quote-builder-modal">
+
+        <button
+          type="button"
+          class="quote-modal-close"
+          id="closeCreateQuoteModal"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+
+        <div class="quote-builder-header">
+
+          <span class="quote-section-label">
+            NUEVO PRESUPUESTO
+          </span>
+
+          <h2 id="createQuoteModalTitle">
+            Crear presupuesto
+          </h2>
+
+          <p>
+            Prepará el presupuesto para tu cliente.
+          </p>
+
+        </div>
+
+
+        <form id="createQuoteForm">
+
+          <input
+            type="hidden"
+            id="quoteRequestId"
+          >
+
+
+          <div
+            id="quoteClientInfo"
+            class="quote-client-summary"
+          ></div>
+
+
+          <div class="quote-form-grid">
+
+            <div class="quote-form-group">
+
+              <label for="quoteIssueDate">
+                Fecha de emisión
+              </label>
+
+              <input
+                type="date"
+                id="quoteIssueDate"
+                required
+              >
+
+            </div>
+
+
+            <div class="quote-form-group">
+
+              <label for="quoteExpirationDate">
+                Fecha de vencimiento
+              </label>
+
+              <input
+                type="date"
+                id="quoteExpirationDate"
+              >
+
+            </div>
+
+          </div>
+
+
+          <div class="quote-items-header">
+
+            <div>
+
+              <span class="quote-section-label">
+                DETALLE
+              </span>
+
+              <h3>
+                Conceptos del presupuesto
+              </h3>
+
+            </div>
+
+
+            <button
+              type="button"
+              id="addQuoteItem"
+              class="quote-add-item"
+            >
+              ＋ Agregar concepto
+            </button>
+
+          </div>
+
+
+          <div
+            id="quoteItems"
+            class="quote-items"
+          ></div>
+
+
+          <div class="quote-totals">
+
+            <div class="quote-total-row">
+
+              <span>
+                Subtotal
+              </span>
+
+              <strong id="quoteSubtotal">
+                $0,00
+              </strong>
+
+            </div>
+
+
+            <div class="quote-discount-row">
+
+              <label for="quoteDiscount">
+                Descuento
+              </label>
+
+              <div class="quote-discount-input">
+
+                <span>
+                  $
+                </span>
+
+                <input
+                  type="number"
+                  id="quoteDiscount"
+                  min="0"
+                  step="0.01"
+                  value="0"
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="quote-total-final">
+
+              <span>
+                Total
+              </span>
+
+              <strong id="quoteTotal">
+                $0,00
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div class="quote-form-group">
+
+            <label for="quoteNotes">
+              Observaciones
+            </label>
+
+            <textarea
+              id="quoteNotes"
+              rows="4"
+              maxlength="2000"
+              placeholder="Condiciones, materiales, tiempos de trabajo, formas de pago, etc."
+            ></textarea>
+
+          </div>
+
+
+          <div class="quote-builder-actions">
+
+            <button
+              type="button"
+              class="btn btn-secondary"
+              id="cancelCreateQuote"
+              onclick="closeCreateQuoteModal()"
+            >
+              Cancelar
+            </button>
+
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              id="saveQuoteButton"
+            >
+              ⚡ Guardar presupuesto
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         SERVICIOS
+    ====================================================== -->
+
+    <section
+      class="admin-section"
+      id="servicesSection"
+    >
+
+      <div class="section-header">
+
+        <div>
+
+          <span class="section-label">
+            SERVICIOS
+          </span>
+
+          <h2>
+            🛠️ Gestión de servicios
+          </h2>
+
+          <p>
+            Administrá los servicios y precios publicados.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-grid">
+
+        <!-- FORMULARIO -->
+
+        <section class="panel">
+
+          <div class="panel-heading">
+
+            <div>
+
+              <span class="eyebrow">
+                CATÁLOGO
+              </span>
+
+              <h2 id="serviceFormTitle">
+                Agregar servicio
+              </h2>
+
+            </div>
+
+          </div>
+
+
+          <form id="serviceForm">
+
+            <input
+              type="hidden"
+              name="id"
+              id="serviceId"
+            >
+
+
+            <label>
+
+              Nombre del servicio
+
+              <input
+                name="title"
+                id="serviceTitle"
+                placeholder="Ej. Instalación eléctrica domiciliaria"
+                required
+                maxlength="120"
+              >
+
+            </label>
+
+
+            <label>
+
+              Descripción
+
+              <textarea
+                name="description"
+                id="serviceDescription"
+                placeholder="Descripción del servicio"
+                maxlength="1000"
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              Precio
+
+              <input
+                name="price"
+                id="servicePrice"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Precio (opcional)"
+              >
+
+            </label>
+
+
+            <div class="form-actions">
+
+              <button
+                type="submit"
+                class="btn"
+                id="serviceSubmit"
+              >
+                Agregar servicio
+              </button>
+
+
+              <button
+                type="button"
+                class="btn ghost"
+                id="cancelEdit"
+                hidden
+              >
+                Cancelar edición
+              </button>
+
+            </div>
+
+          </form>
+
+        </section>
+
+
+        <!-- LISTA -->
+
+        <section class="panel">
+
+          <div class="panel-heading">
+
+            <div>
+
+              <span class="eyebrow">
+                CATÁLOGO
+              </span>
+
+              <h2>
+                Servicios
+              </h2>
+
+            </div>
+
+          </div>
+
+
+          <div id="adminServices"></div>
+
+        </section>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         USUARIOS / CLIENTES
+    ====================================================== -->
+
+    <section
+      class="admin-section"
+      id="usersSection"
+    >
+
+      <div class="section-header">
+
+        <div>
+
+          <span class="section-label">
+            CLIENTES
+          </span>
+
+          <h2>
+            👥 Usuarios registrados
+          </h2>
+
+          <p>
+            Personas registradas en JR Electricidad.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <section class="panel">
+
+        <div class="table-wrap" id="users"></div>
+
+      </section>
+
+    </section>
+
+
+    <!-- =====================================================
+         GALERÍA
+    ====================================================== -->
+
+    <section
+      class="panel gallery-admin-panel"
+      id="gallerySection"
+    >
+
+      <div class="panel-heading">
+
+        <div>
+
+          <span class="eyebrow">
+            PORTFOLIO
+          </span>
+
+          <h2>
+            🖼️ Trabajos realizados
+          </h2>
+
+        </div>
+
+        <span class="gallery-admin-icon">
+          📸
+        </span>
+
+      </div>
+
+
+      <p class="muted">
+        Agregá fotos de instalaciones, reparaciones y trabajos realizados.
+      </p>
+
+
+      <form
+        id="galleryForm"
+        class="gallery-form"
+      >
+
+        <input
+          type="hidden"
+          id="galleryId"
+        >
+
+
+        <label>
+
+          Título del trabajo
+
+          <input
+            type="text"
+            id="galleryTitle"
+            placeholder="Ej. Instalación de tablero eléctrico"
+            maxlength="150"
+            required
+          >
+
+        </label>
+
+
+        <label>
+
+          Descripción
+
+          <textarea
+            id="galleryDescription"
+            placeholder="Contá brevemente qué trabajo se realizó."
+            maxlength="500"
+          ></textarea>
+
+        </label>
+
+
+        <label>
+
+          Imagen del trabajo
+
+          <input
+            type="file"
+            id="galleryImage"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+          >
+
+        </label>
+
+
+        <div
+          id="galleryPreview"
+          class="gallery-preview"
+        ></div>
+
+
+        <label class="gallery-active-label">
+
+          <input
+            type="checkbox"
+            id="galleryActive"
+            checked
+          >
+
+          Publicar este trabajo
+
+        </label>
+<label class="gallery-active-label">
+
+  <input
+    type="checkbox"
+    id="galleryFeatured"
+  >
+
+  ⭐ Marcar como trabajo destacado
+
+</label>
+
+        <div class="form-actions">
+
+          <button
+            type="submit"
+            class="btn"
+            id="gallerySubmit"
+          >
+            📸 Agregar trabajo
+          </button>
+
+
+          <button
+            type="button"
+            class="btn ghost"
+            id="galleryCancel"
+            hidden
+          >
+            Cancelar
+          </button>
+
+        </div>
+
+      </form>
+
+
+      <div
+        class="gallery-admin-list"
+        id="adminGallery"
+      ></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         TRABAJOS ACTIVOS
+    ====================================================== -->
+
+    <section
+      class="admin-section jobs-section"
+      id="jobsSection"
+    >
+
+      <div class="section-header">
+
+        <div>
+
+          <span class="section-label">
+            GESTIÓN
+          </span>
+
+          <h2>
+            🔧 Trabajos
+          </h2>
+
+          <p>
+            Seguimiento de trabajos aceptados, en proceso y cerrados.
+          </p>
+
+        </div>
+
+
+        <div class="jobs-history-actions">
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="showClosedJobs"
+          >
+            📚 Ver trabajos cerrados
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="showAllJobs"
+          >
+            📋 Todos los trabajos
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- FILTROS -->
+
+      <div class="jobs-filters">
+
+        <div class="jobs-filter-group">
+
+          <label for="jobsSearch">
+            Buscar
+          </label>
+
+          <input
+            type="text"
+            id="jobsSearch"
+            placeholder="Cliente, teléfono o Nº de presupuesto"
+          >
+
+        </div>
+
+
+        <div class="jobs-filter-group">
+
+          <label for="jobsStatusFilter">
+            Estado
+          </label>
+
+          <select id="jobsStatusFilter">
+
+            <option value="">
+              Todos los estados
+            </option>
+
+            <option value="pendiente_presupuesto">
+              🟡 Pendiente de presupuesto
+            </option>
+
+            <option value="presupuesto_enviado">
+              🔵 Presupuesto enviado
+            </option>
+
+            <option value="aceptado">
+              🟢 Aceptado / confirmado
+            </option>
+
+            <option value="en_proceso">
+              🔧 En proceso
+            </option>
+
+            <option value="rechazado">
+              🔴 Rechazado
+            </option>
+
+            <option value="cerrado">
+              ⚫ Cerrado
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="jobs-filter-group">
+
+          <label for="jobsDateFrom">
+            Desde
+          </label>
+
+          <input
+            type="date"
+            id="jobsDateFrom"
+          >
+
+        </div>
+
+
+        <div class="jobs-filter-group">
+
+          <label for="jobsDateTo">
+            Hasta
+          </label>
+
+          <input
+            type="date"
+            id="jobsDateTo"
+          >
+
+        </div>
+
+
+        <div class="jobs-filter-actions">
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="clearJobsFilters"
+          >
+            Limpiar
+          </button>
+
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="refreshJobs"
+          >
+            🔄 Actualizar
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- LISTA -->
+
+      <div class="jobs-container">
+
+        <div
+          id="jobsLoading"
+          class="admin-loading"
+          hidden
+        >
+          Cargando trabajos...
+        </div>
+
+
+        <div
+          id="jobsEmpty"
+          class="admin-empty"
+          hidden
+        >
+          No hay trabajos para mostrar.
+        </div>
+
+
+        <div
+          id="jobsList"
+          class="jobs-list"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         HISTORIAL
+    ====================================================== -->
+
+    <section
+      class="admin-section jobs-history-section"
+      id="jobsHistorySection"
+    >
+
+      <div class="section-header">
+
+        <div>
+
+          <span class="section-label">
+            HISTORIAL
+          </span>
+
+          <h2>
+            🗂️ Trabajos cerrados
+          </h2>
+
+          <p>
+            Historial de trabajos finalizados y cerrados.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="jobs-history-container">
+
+        <div
+          id="jobsHistoryLoading"
+          class="admin-loading"
+          hidden
+        >
+          Cargando historial...
+        </div>
+
+
+        <div
+          id="jobsHistoryEmpty"
+          class="admin-empty"
+          hidden
+        >
+          No hay trabajos cerrados.
+        </div>
+
+
+        <div
+          id="jobsHistoryList"
+          class="jobs-history-list"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MODAL DETALLE TRABAJO
+    ====================================================== -->
+
+    <div
+      id="jobDetailModal"
+      class="modal"
+      hidden
+    >
+
+      <div class="modal-content job-detail-modal">
+
+        <div class="modal-header">
+
+          <div>
+
+            <span class="section-label">
+              DETALLE
+            </span>
+
+            <h2 id="jobDetailTitle">
+              Trabajo
+            </h2>
+
+          </div>
+
+
+          <button
+            type="button"
+            class="modal-close"
+            id="closeJobDetail"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+
+        </div>
+
+
+        <div
+          id="jobDetailLoading"
+          class="admin-loading"
+          hidden
+        >
+          Cargando detalle...
+        </div>
+
+
+        <div
+          id="jobDetailError"
+          class="admin-error"
+          hidden
+        ></div>
+
+
+        <div
+          id="jobDetailContent"
+          hidden
+        >
+
+          <!-- ESTADO -->
+
+          <div class="job-detail-status">
+
+            <span>
+              Estado
+            </span>
+
+            <strong id="jobDetailStatus">
+              -
+            </strong>
+
+          </div>
+
+
+          <!-- CLIENTE -->
+
+          <div class="job-detail-section">
+
+            <span class="section-label">
+              CLIENTE
+            </span>
+
+            <div class="job-detail-grid">
+
+              <div>
+
+                <span>
+                  Nombre
+                </span>
+
+                <strong id="jobDetailClient">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Teléfono
+                </span>
+
+                <strong id="jobDetailPhone">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Email
+                </span>
+
+                <strong id="jobDetailEmail">
+                  -
+                </strong>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- TRABAJO -->
+
+          <div class="job-detail-section">
+
+            <span class="section-label">
+              TRABAJO
+            </span>
+
+            <div class="job-detail-grid">
+
+              <div>
+
+                <span>
+                  Servicio
+                </span>
+
+                <strong id="jobDetailService">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Presupuesto
+                </span>
+
+                <strong id="jobDetailQuote">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Fecha del presupuesto
+                </span>
+
+                <strong id="jobDetailIssueDate">
+                  -
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div class="job-detail-description">
+
+              <span>
+                Descripción
+              </span>
+
+              <p id="jobDetailDescription">
+                -
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <!-- CONCEPTOS -->
+
+          <div class="job-detail-section">
+
+            <span class="section-label">
+              CONCEPTOS
+            </span>
+
+            <div
+              id="jobDetailItems"
+              class="job-detail-items"
+            ></div>
+
+          </div>
+
+
+          <!-- TOTALES -->
+
+          <div class="job-detail-totals">
+
+            <div>
+
+              <span>
+                Subtotal
+              </span>
+
+              <strong id="jobDetailSubtotal">
+                $0,00
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Descuento
+              </span>
+
+              <strong id="jobDetailDiscount">
+                $0,00
+              </strong>
+
+            </div>
+
+
+            <div class="job-detail-total-final">
+
+              <span>
+                Total
+              </span>
+
+              <strong id="jobDetailTotal">
+                $0,00
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <!-- SEGUIMIENTO -->
+
+          <div class="job-detail-section">
+
+            <span class="section-label">
+              SEGUIMIENTO
+            </span>
+
+            <div class="job-detail-grid">
+
+              <div>
+
+                <span>
+                  Creado
+                </span>
+
+                <strong id="jobDetailCreated">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Inicio
+                </span>
+
+                <strong id="jobDetailStarted">
+                  -
+                </strong>
+
+              </div>
+
+
+              <div>
+
+                <span>
+                  Finalización
+                </span>
+
+                <strong id="jobDetailCompleted">
+                  -
+                </strong>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- OBSERVACIONES -->
+
+          <div
+            class="job-detail-section"
+            id="jobDetailNotesSection"
+          >
+
+            <span class="section-label">
+              OBSERVACIONES
+            </span>
+
+            <p id="jobDetailNotes">
+              -
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="modal-footer">
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="closeJobDetailButton"
+          >
+            Cerrar
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+<!-- =========================================================
+     CONFIGURACIÓN DE CUENTA
+========================================================= -->
+
+<section
+  id="settingsSection"
+  class="admin-section"
+>
+
+  <div class="admin-section-header">
+
+    <div>
+
+      <span class="admin-section-eyebrow">
+        CUENTA
+      </span>
+
+      <h2>
+        Configuración de cuenta
+      </h2>
+
+      <p>
+        Administrá tus datos personales y la seguridad de tu cuenta.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div class="settings-grid">
+
+
+    <!-- DATOS PERSONALES -->
+
+    <div class="panel settings-card">
+
+      <div class="settings-card-icon">
+        👤
+      </div>
+
+      <div class="settings-card-header">
+
+        <h3>
+          Datos personales
+        </h3>
+
+        <p>
+          Actualizá tu nombre y dirección de email.
+        </p>
+
+      </div>
+
+
+      <form id="profileSettingsForm">
+
+        <div class="form-group">
+
+          <label for="settingsName">
+            Nombre
+          </label>
+
+          <input
+            type="text"
+            id="settingsName"
+            autocomplete="name"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="settingsEmail">
+            Email
+          </label>
+
+          <input
+            type="email"
+            id="settingsEmail"
+            autocomplete="email"
+            required
+          >
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="btn"
+        >
+          💾 Guardar datos
+        </button>
+
+      </form>
+
+    </div>
+
+
+    <!-- CAMBIAR CONTRASEÑA -->
+
+    <div class="panel settings-card">
+
+      <div class="settings-card-icon">
+        🔐
+      </div>
+
+      <div class="settings-card-header">
+
+        <h3>
+          Cambiar contraseña
+        </h3>
+
+        <p>
+          Utilizá una contraseña segura de al menos 8 caracteres.
+        </p>
+
+      </div>
+
+
+      <form id="passwordSettingsForm">
+
+        <div class="form-group">
+
+          <label for="currentPassword">
+            Contraseña actual
+          </label>
+
+          <input
+            type="password"
+            id="currentPassword"
+            autocomplete="current-password"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="newPassword">
+            Nueva contraseña
+          </label>
+
+          <input
+            type="password"
+            id="newPassword"
+            minlength="8"
+            autocomplete="new-password"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="confirmPassword">
+            Repetir nueva contraseña
+          </label>
+
+          <input
+            type="password"
+            id="confirmPassword"
+            minlength="8"
+            autocomplete="new-password"
+            required
+          >
+
+        </div>
+
+
+        <button
+          type="submit"
+          class="btn"
+        >
+          🔐 Cambiar contraseña
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="settingsMessage"
+    class="settings-message"
+    style="display:none;"
+  ></div>
+
+</section>
+  </main>
+
+</div>
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script src="/js/admin.js"></script>
+
+</body>
+</html>
+

@@ -1,0 +1,28 @@
+{
+  "name": "jr-electricidad",
+  "version": "1.0.0",
+  "description": "Sitio web para empresa de electricidad con usuarios y panel administrador",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "prod": "start"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.4",
+    "nodemailer": "^10.0.10",
+    "pdfkit": "^0.20.2"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
+  },
+  "overrides": {}
+}
