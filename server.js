@@ -15,6 +15,7 @@ const multer = require("multer");
 const fs = require("fs");
 
 const app = express();
+app.disable("x-powered-by");
 const PORT = process.env.PORT || 3000;
 
 
@@ -1280,13 +1281,33 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
       });
     }
 
+    const cleanName = String(name).trim();
+    const cleanPhone = String(phone).trim();
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const cleanService = service ? String(service).trim() : null;
+    const cleanDescription = String(description).trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (cleanEmail && !emailRegex.test(cleanEmail)) {
+      return res.status(400).json({
+        error: "El email no es válido."
+      });
+    }
+
+    if (preferred_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(preferred_date))) {
+      return res.status(400).json({
+        error: "La fecha preferida no es válida."
+      });
+    }
+
     // Limitar tamaño de los datos
     if (
-      name.length > 150 ||
-      phone.length > 50 ||
-      (email && email.length > 150) ||
-      (service && service.length > 150) ||
-      description.length > 2000
+      cleanName.length > 150 ||
+      cleanPhone.length > 50 ||
+      (cleanEmail && cleanEmail.length > 150) ||
+      (cleanService && cleanService.length > 150) ||
+      cleanDescription.length > 2000
     ) {
       return res.status(400).json({
         error: "Uno de los campos supera el límite permitido."
@@ -1307,11 +1328,11 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
       `,
       [
-        name.trim(),
-        phone.trim(),
-        email ? email.trim() : null,
-        service ? service.trim() : null,
-        description.trim(),
+        cleanName,
+        cleanPhone,
+        cleanEmail,
+        cleanService,
+        cleanDescription,
         preferred_date || null
       ]
     );
@@ -2292,6 +2313,86 @@ app.get(
 
 
 // =========================================================
+// ADMIN - CLIENTES
+// =========================================================
+
+app.get(
+  "/api/admin/clients",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const search = String(req.query.search || "").trim();
+
+      let sql = `
+        SELECT
+          COALESCE(
+            MAX(NULLIF(TRIM(u.name), "")),
+            MAX(NULLIF(TRIM(qr.name), ""))
+          ) AS name,
+          COALESCE(
+            MAX(NULLIF(TRIM(u.email), "")),
+            MAX(NULLIF(TRIM(qr.email), ""))
+          ) AS email,
+          qr.phone,
+          COUNT(DISTINCT qr.id) AS requests,
+          COUNT(DISTINCT q.id) AS quotes,
+          MAX(qr.created_at) AS last_request,
+          MAX(COALESCE(q.updated_at, qr.created_at)) AS last_activity
+        FROM quote_requests qr
+        LEFT JOIN quotes q
+          ON q.quote_request_id = qr.id
+        LEFT JOIN users u
+          ON u.email = qr.email
+        WHERE 1=1
+      `;
+
+      const params = [];
+
+      if (search) {
+        sql += `
+          AND (
+            qr.name LIKE ?
+            OR qr.phone LIKE ?
+            OR qr.email LIKE ?
+            OR u.name LIKE ?
+            OR u.email LIKE ?
+          )
+        `;
+
+        const value = `%${search}%`;
+        params.push(value, value, value, value, value);
+      }
+
+      sql += `
+        GROUP BY
+          qr.phone,
+          COALESCE(NULLIF(LOWER(TRIM(qr.email)), ""), "")
+        ORDER BY last_activity DESC, name ASC
+      `;
+
+      const [rows] = await pool.query(sql, params);
+
+      res.json({
+        success: true,
+        clients: rows.map(client => ({
+          ...client,
+          requests: Number(client.requests || 0),
+          quotes: Number(client.quotes || 0)
+        }))
+      });
+
+    } catch (error) {
+      console.error("Error obteniendo clientes:", error);
+
+      res.status(500).json({
+        error: "No se pudieron obtener los clientes."
+      });
+    }
+  }
+);
+
+
+// =========================================================
 // ADMIN - ESTADÍSTICAS
 // =========================================================
 
@@ -3094,9 +3195,14 @@ app.put(
 
     try {
 
-      const role =
-        req.body.role;
+      const userId = Number(req.params.id);
+      const role = req.body.role;
 
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(400).json({
+          error: "ID de usuario inválido."
+        });
+      }
 
       if (
         !["user", "admin"]
@@ -3160,9 +3266,7 @@ app.put(
 
       // El cambio de rol invalida las sesiones existentes
       // para que el permiso efectivo coincida con el rol actual.
-      await invalidateUserSessions(
-        Number(req.params.id)
-      );
+      await invalidateUserSessions(userId);
 
       res.json({
         ok: true
@@ -3949,9 +4053,12 @@ function cleanQuoteItems(items) {
 
     if (
       !Number.isFinite(quantity) ||
-      quantity < 0 ||
+      quantity <= 0 ||
+      quantity > 1000000 ||
       !Number.isFinite(unitPrice) ||
-      unitPrice < 0
+      unitPrice < 0 ||
+      unitPrice > 1000000000 ||
+      description.length > 500
     ) {
       throw new Error(
         "Las cantidades y precios deben ser valores válidos."
@@ -6277,6 +6384,45 @@ app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
   } finally {
     connection.release();
   }
+});
+
+
+// =========================================================
+// PRODUCCIÓN - HEALTH CHECK
+// =========================================================
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({
+      ok: true,
+      service: "jr-electricidad",
+      environment: process.env.NODE_ENV || "development"
+    });
+  } catch (error) {
+    console.error("Health check MySQL:", error);
+    res.status(503).json({
+      ok: false,
+      service: "jr-electricidad"
+    });
+  }
+});
+
+
+// =========================================================
+// PRODUCCIÓN - 404
+// =========================================================
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      error: "Ruta no encontrada."
+    });
+  }
+
+  return res.status(404).sendFile(
+    path.join(__dirname, "public", "index.html")
+  );
 });
 
 
