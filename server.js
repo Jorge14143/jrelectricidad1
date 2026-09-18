@@ -1538,6 +1538,12 @@ app.post(
 
   } catch (error) {
 
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
+    }
+
     console.error(
       "Error guardando solicitud de presupuesto:",
       error
