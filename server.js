@@ -6365,6 +6365,60 @@ function pdfToBuffer(doc) {
 
 
 // =========================================================
+// PDF DE PRESUPUESTO — ADMIN
+// =========================================================
+
+app.get(
+  "/api/admin/quotes/:id/pdf",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          error: "ID de presupuesto inválido."
+        });
+      }
+
+      const quote = await getQuoteDetail(pool, id);
+
+      if (!quote) {
+        return res.status(404).json({
+          error: "Presupuesto no encontrado."
+        });
+      }
+
+      const doc = buildQuotePdf(quote);
+      const pdf = await pdfToBuffer(doc);
+
+      const filename =
+        quote.pdf_filename ||
+        `presupuesto-${quote.quote_number || id}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${String(filename).replace(/[^a-zA-Z0-9._-]/g, "_")}"`
+      );
+      res.setHeader("Content-Length", pdf.length);
+      res.send(pdf);
+
+    } catch (error) {
+      console.error(
+        "Error generando PDF del presupuesto:",
+        error
+      );
+
+      res.status(500).json({
+        error: "No se pudo generar el PDF del presupuesto."
+      });
+    }
+  }
+);
+
+
+// =========================================================
 // PRESUPUESTOS - ADMIN
 // =========================================================
 
