@@ -9943,3 +9943,45 @@ body.lightbox-open {
     font-size: 1.4rem;
   }
 }
+
+/* =========================================================
+   CONFIGURACIÓN DEL NEGOCIO
+========================================================= */
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+}
+
+.settings-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-field-full {
+  grid-column: 1 / -1;
+}
+
+.settings-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 110px;
+  resize: vertical;
+}
+
+.settings-card input,
+.settings-card textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 700px) {
+  .settings-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-field-full {
+    grid-column: auto;
+  }
+}
