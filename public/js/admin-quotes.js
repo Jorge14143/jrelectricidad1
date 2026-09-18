@@ -470,33 +470,6 @@ async function viewQuote(id) {
       return;
     }
 
-    const imageHtml = quote.image_url
-      ? `
-        <div class="quote-detail-block">
-          <div class="quote-detail-block-title">
-            <span class="quote-detail-block-icon">📷</span>
-            <div>
-              <span class="quote-detail-block-label">
-                FOTO ADJUNTA
-              </span>
-            </div>
-          </div>
-
-          <a
-            href="${escapeHtml(request.image_url)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src="${escapeHtml(request.image_url)}"
-              alt="Foto adjunta de la solicitud"
-              style="display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px;background:#080a0f;"
-            >
-          </a>
-        </div>
-      `
-      : "";
-
     detail.innerHTML = `
       <div class="quote-detail-modern">
 
@@ -1329,6 +1302,33 @@ async function openQuoteRequest(id) {
           );
       }
     }
+
+    const imageHtml = request.image_url
+      ? `
+        <div class="quote-detail-block">
+          <div class="quote-detail-block-title">
+            <span class="quote-detail-block-icon">📷</span>
+            <div>
+              <span class="quote-detail-block-label">
+                FOTO ADJUNTA
+              </span>
+            </div>
+          </div>
+
+          <a
+            href="${escapeHtml(request.image_url)}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src="${escapeHtml(request.image_url)}"
+              alt="Foto adjunta de la solicitud"
+              style="display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px;background:#080a0f;"
+            >
+          </a>
+        </div>
+      `
+      : "";
 
     detail.innerHTML = `
       <div class="quote-detail-modern">
