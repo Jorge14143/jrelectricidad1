@@ -44,6 +44,7 @@ if (closeCreateQuoteModalButton) {
 }
 
 
+setupDashboardAnalytics();
 setupSidebarMenus();
 setupClients();
 setupAdminNavigation();
