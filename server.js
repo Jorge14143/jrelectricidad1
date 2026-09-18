@@ -278,21 +278,35 @@ function requireAuth(req, res, next) {
 }
 
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
 
-  if (
-    !req.session.user ||
-    req.session.user.role !== "admin"
-  ) {
-
+  if (!req.session.user) {
     return res.status(403).json({
-      error:
-        "Acceso exclusivo para administradores."
+      error: "Acceso exclusivo para administradores."
     });
-
   }
 
-  next();
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, email, role FROM users WHERE id=? LIMIT 1",
+      [req.session.user.id]
+    );
+
+    if (!rows.length || rows[0].role !== "admin") {
+      await new Promise(resolve => req.session.destroy(() => resolve()));
+      return res.status(403).json({
+        error: "Acceso exclusivo para administradores."
+      });
+    }
+
+    req.session.user = cleanUser(rows[0]);
+    next();
+  } catch (error) {
+    console.error("Error verificando permisos de administrador:", error);
+    return res.status(500).json({
+      error: "No se pudieron verificar los permisos."
+    });
+  }
 }
 
 
