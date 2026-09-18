@@ -1,53 +1,13 @@
-    dropdown.addEventListener("click", function(event) {
+"use strict";
 
-      event.stopPropagation();
-
-    });
-
-
-    document
-      .getElementById("logout-btn")
-      .addEventListener("click", logoutUser);
-
-
-  } catch (error) {
-
-    console.error(
-      "Error obteniendo usuario:",
-      error
-    );
-
-  }
-}
-
-
-async function logoutUser() {
-
-  try {
-
-    await fetch("/api/logout", {
-      method: "POST"
-    });
-
-    window.location.href = "/";
-
-  } catch (error) {
-
-    console.error(
-      "Error cerrando sesión:",
-      error
-    );
-
-  }
-
-}
 async function loadGallery() {
   const gallery = document.getElementById("gallery");
-
   if (!gallery) return;
 
   try {
-    const response = await fetch("/api/gallery");
+    const response = await fetch("/api/gallery", {
+      headers: { Accept: "application/json" }
+    });
 
     if (!response.ok) {
       throw new Error("No se pudo cargar la galería.");
@@ -55,7 +15,7 @@ async function loadGallery() {
 
     const works = await response.json();
 
-    if (!works.length) {
+    if (!Array.isArray(works) || !works.length) {
       gallery.innerHTML = `
         <div class="gallery-empty">
           <span>⚡</span>
@@ -66,28 +26,23 @@ async function loadGallery() {
     }
 
     gallery.innerHTML = works.map(work => `
-      <article class="gallery-item">
+      <article class="gallery-item" tabindex="0" role="button"
+        aria-label="Ver trabajo: ${escapeHtml(work.title)}">
         <img
           src="${escapeHtml(work.image_url)}"
           alt="${escapeHtml(work.title)}"
           loading="lazy"
+          decoding="async"
         >
-
         <div class="gallery-info">
           ${work.featured ? '<span class="gallery-featured-label">⭐ TRABAJO DESTACADO</span>' : ""}
           <h3>${escapeHtml(work.title)}</h3>
-          ${
-            work.description
-              ? `<p>${escapeHtml(work.description)}</p>`
-              : ""
-          }
+          ${work.description ? `<p>${escapeHtml(work.description)}</p>` : ""}
         </div>
       </article>
     `).join("");
-
   } catch (error) {
     console.error("Error cargando galería:", error);
-
     gallery.innerHTML = `
       <div class="gallery-empty">
         <span>⚠️</span>
@@ -96,9 +51,6 @@ async function loadGallery() {
     `;
   }
 }
-// ================================
-// VISOR DE IMÁGENES - LIGHTBOX
-// ================================
 
 const lightbox = document.getElementById("lightbox");
 const lightboxImage = document.getElementById("lightboxImage");
@@ -107,20 +59,17 @@ const lightboxDescription = document.getElementById("lightboxDescription");
 const lightboxClose = document.getElementById("lightboxClose");
 
 function openLightbox(work) {
-  if (!lightbox) return;
+  if (!lightbox || !lightboxImage) return;
 
   lightboxImage.src = work.image_url;
   lightboxImage.alt = work.title || "Trabajo realizado";
-
-  lightboxTitle.textContent = work.title || "";
-
-  lightboxDescription.textContent =
-    work.description || "";
+  if (lightboxTitle) lightboxTitle.textContent = work.title || "";
+  if (lightboxDescription) lightboxDescription.textContent = work.description || "";
 
   lightbox.classList.add("active");
   lightbox.setAttribute("aria-hidden", "false");
-
   document.body.classList.add("lightbox-open");
+  lightboxClose?.focus();
 }
 
 function closeLightbox() {
@@ -128,54 +77,45 @@ function closeLightbox() {
 
   lightbox.classList.remove("active");
   lightbox.setAttribute("aria-hidden", "true");
-
   document.body.classList.remove("lightbox-open");
 
-  lightboxImage.src = "";
-}
-
-// Cerrar con botón
-if (lightboxClose) {
-  lightboxClose.addEventListener("click", closeLightbox);
-}
-
-// Cerrar haciendo clic en el fondo
-if (lightbox) {
-  lightbox.addEventListener("click", function (e) {
-    if (e.target === lightbox) {
-      closeLightbox();
-    }
-  });
-}
-
-// Cerrar con ESC
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    closeLightbox();
+  if (lightboxImage) {
+    lightboxImage.src = "";
   }
+}
+
+lightboxClose?.addEventListener("click", closeLightbox);
+
+lightbox?.addEventListener("click", event => {
+  if (event.target === lightbox) closeLightbox();
 });
 
-// Abrir imagen de la galería
-document.addEventListener("click", function (e) {
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeLightbox();
+});
 
-  const item = e.target.closest(".gallery-item");
-
+document.addEventListener("click", event => {
+  const item = event.target.closest(".gallery-item");
   if (!item) return;
 
   const image = item.querySelector("img");
-
   if (!image) return;
 
-  const title =
-    item.querySelector(".gallery-info h3")?.textContent || "";
-
-  const description =
-    item.querySelector(".gallery-info p")?.textContent || "";
-
   openLightbox({
-    image_url: image.src,
-    title: title,
-    description: description
+    image_url: image.currentSrc || image.src,
+    title: item.querySelector(".gallery-info h3")?.textContent || "",
+    description: item.querySelector(".gallery-info p")?.textContent || ""
   });
 });
-// ========================================
+
+document.addEventListener("keydown", event => {
+  if (!["Enter", " "].includes(event.key)) return;
+
+  const item = event.target.closest(".gallery-item");
+  if (!item) return;
+
+  event.preventDefault();
+  item.click();
+});
+
+loadGallery();
