@@ -3086,6 +3086,7 @@ app.delete(
 app.put(
   "/api/admin/users/:id/role",
   requireAdmin,
+  authLimiter,
   async (req, res) => {
 
     try {
