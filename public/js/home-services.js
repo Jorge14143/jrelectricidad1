@@ -69,6 +69,8 @@ async function loadServices() {
             ${icon}
           </div>
 
+          <small class="service-category">${escapeHtml(service.category || "")}</small>
+
           <h3>
             ${title}
           </h3>
