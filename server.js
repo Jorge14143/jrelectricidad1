@@ -6076,7 +6076,11 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
       UPDATE quotes
       SET status = 'aceptado'
       WHERE access_token = ?
-      AND status NOT IN ('aceptado', 'rechazado', 'cerrado')
+      AND status = 'enviado'
+      AND (
+        expiration_date IS NULL
+        OR expiration_date >= CURDATE()
+      )
       `,
       [req.params.token]
     );
@@ -6202,7 +6206,11 @@ app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
       UPDATE quotes
       SET status = 'rechazado'
       WHERE access_token = ?
-      AND status NOT IN ('aceptado', 'rechazado', 'cerrado')
+      AND status = 'enviado'
+      AND (
+        expiration_date IS NULL
+        OR expiration_date >= CURDATE()
+      )
       `,
       [req.params.token]
     );
