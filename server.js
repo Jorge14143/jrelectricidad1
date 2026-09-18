@@ -233,6 +233,23 @@ const authLimiter = rateLimit({
 
 });
 
+const adminMutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use((req, res, next) => {
+  if (
+    req.path.startsWith("/api/admin/") &&
+    ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)
+  ) {
+    return adminMutationLimiter(req, res, next);
+  }
+  next();
+});
+
 
 // =========================================================
 // AUTENTICACIÓN
@@ -1074,7 +1091,13 @@ app.post(
       }
 
 
-      if (password.length < 8) {
+      if (name.trim().length > 150 || email.trim().length > 190) {
+        return res.status(400).json({
+          error: "El nombre o correo supera el máximo permitido."
+        });
+      }
+
+      if (password.length < 8 || password.length > 200) {
 
         return res.status(400).json({
           error:
@@ -1189,6 +1212,12 @@ app.post(
 
       const password =
         req.body.password || "";
+
+      if (email.length > 190 || password.length > 200) {
+        return res.status(400).json({
+          error: "Credenciales inválidas."
+        });
+      }
 
 
       const [rows] =
@@ -3351,7 +3380,8 @@ app.post(
         price !== null &&
         (
           !Number.isFinite(price) ||
-          price < 0
+          price < 0 ||
+          price > 1000000000
         )
       ) {
 
