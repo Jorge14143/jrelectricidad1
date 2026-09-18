@@ -51,3 +51,5 @@ if (typeof setupJobsHistory === "function") {
 if (typeof setupQuoteRequestFilters === "function") {
   setupQuoteRequestFilters();
 }
+
+setupGalleryFilters();
