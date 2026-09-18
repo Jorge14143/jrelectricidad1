@@ -997,8 +997,8 @@ app.put(
       const name = String(req.body.name || "").trim();
       const email = String(req.body.email || "").trim().toLowerCase();
 
-      if (!name || name.length > 150) {
-        return res.status(400).json({ error: "El nombre es obligatorio y no puede superar 150 caracteres." });
+      if (!name || name.length > 100) {
+        return res.status(400).json({ error: "El nombre es obligatorio y no puede superar 100 caracteres." });
       }
 
       const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
@@ -1091,7 +1091,7 @@ app.post(
       }
 
 
-      if (name.trim().length > 150 || email.trim().length > 190) {
+      if (name.trim().length > 100 || email.trim().length > 190) {
         return res.status(400).json({
           error: "El nombre o correo supera el máximo permitido."
         });
@@ -3545,7 +3545,8 @@ app.put(
         price !== null &&
         (
           !Number.isFinite(price) ||
-          price < 0
+          price < 0 ||
+          price > 1000000000
         )
       ) {
 
