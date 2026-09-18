@@ -3155,6 +3155,11 @@ app.put(
 
       }
 
+      // El cambio de rol invalida las sesiones existentes
+      // para que el permiso efectivo coincida con el rol actual.
+      await invalidateUserSessions(
+        Number(req.params.id)
+      );
 
       res.json({
         ok: true
