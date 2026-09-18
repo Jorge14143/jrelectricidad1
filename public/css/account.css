@@ -1,0 +1,167 @@
+MI CUENTA
+========================= */
+
+.account-page {
+  min-height: calc(100vh - 150px);
+  display: grid;
+  place-items: center;
+  padding: 70px 20px;
+}
+
+.account-card {
+  width: min(620px, 100%);
+  padding: 40px;
+  background: linear-gradient(145deg,#121721,#0c0f15);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 20px 70px #0008;
+}
+
+.account-icon {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-radius: 18px;
+  background: rgba(255,196,0,.08);
+  border: 1px solid rgba(255,196,0,.20);
+  font-size: 34px;
+}
+
+.account-card h1 {
+  font-size: 42px;
+  margin: 10px 0;
+}
+
+.account-description {
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.account-data {
+  display: grid;
+  gap: 12px;
+}
+
+.account-field {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0d1118;
+}
+
+.account-field > span {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255,196,0,.08);
+  font-size: 21px;
+}
+
+.account-field small {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.account-field strong {
+  display: block;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.account-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.account-actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+
+  .account-card {
+    padding: 28px 20px;
+  }
+
+  .account-card h1 {
+    font-size: 34px;
+  }
+
+  .account-actions {
+    flex-direction: column;
+  }
+
+}
+
+/* =========================
+   CUENTA - SEGURIDAD
+========================= */
+
+.account-section-title {
+  margin-top: 25px;
+  margin-bottom: 5px;
+  padding-top: 10px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+}
+
+.account-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #0d1118;
+}
+
+.account-form label {
+  display: grid;
+  gap: 7px;
+  color: #cfd5df;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-form .btn {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.account-form-message {
+  min-height: 20px;
+  padding: 5px 2px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-message {
+  color: var(--muted);
+  margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+
+  .account-form {
+    padding: 16px;
+  }
+
+}
+
+/* =========================================================
+   
