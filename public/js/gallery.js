@@ -74,6 +74,7 @@ async function loadGallery() {
         >
 
         <div class="gallery-info">
+          ${work.featured ? '<span class="gallery-featured-label">⭐ TRABAJO DESTACADO</span>' : ""}
           <h3>${escapeHtml(work.title)}</h3>
           ${
             work.description
