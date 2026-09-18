@@ -106,7 +106,7 @@
     </div>
 
 
-    <a href="#usersSection" class="admin-nav-item">
+    <a href="#clientsSection" class="admin-nav-item">
       <span>👥</span>
       <span>Clientes</span>
     </a>
@@ -1115,7 +1115,56 @@
 
 
     <!-- =====================================================
-         USUARIOS / CLIENTES
+         CLIENTES
+    ====================================================== -->
+
+    <section
+      class="admin-section"
+      id="clientsSection"
+    >
+      <div class="section-header">
+        <div>
+          <span class="section-label">CLIENTES</span>
+          <h2>👥 Clientes</h2>
+          <p>Listado consolidado de personas que solicitaron presupuestos o contrataron servicios.</p>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="jobs-filters">
+          <div class="jobs-filter-group">
+            <label for="clientsSearch">Buscar</label>
+            <input
+              type="text"
+              id="clientsSearch"
+              placeholder="Nombre, teléfono o email"
+            >
+          </div>
+          <div class="jobs-filter-actions">
+            <button type="button" class="btn btn-secondary" id="clearClientsSearch">
+              Limpiar
+            </button>
+            <button type="button" class="btn btn-primary" id="refreshClients">
+              🔄 Actualizar
+            </button>
+          </div>
+        </div>
+
+        <div id="clientsLoading" class="admin-loading" hidden>
+          Cargando clientes...
+        </div>
+
+        <div id="clientsEmpty" class="admin-empty" hidden>
+          No hay clientes registrados todavía.
+        </div>
+
+        <div class="table-wrap" id="clients"></div>
+      </section>
+    </section>
+
+
+    <!-- =====================================================
+         USUARIOS
     ====================================================== -->
 
     <section
