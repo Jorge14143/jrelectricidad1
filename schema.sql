@@ -36,6 +36,7 @@ CREATE TABLE `admin_notifications` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_notification_quote` (`quote_id`),
+  KEY `idx_notifications_read_created` (`is_read`,`created_at`),
   CONSTRAINT `fk_notification_quote` FOREIGN KEY (`quote_id`) REFERENCES `quotes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
