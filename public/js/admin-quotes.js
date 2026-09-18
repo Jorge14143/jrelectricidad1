@@ -930,7 +930,23 @@ async function loadQuoteRequests() {
   }
 
   try {
-    const data = await api("/api/admin/quote-requests");
+    const params = new URLSearchParams();
+
+    const search = $("quoteRequestSearch")?.value.trim() || "";
+    const statusFilter = $("quoteRequestStatusFilter")?.value || "";
+    const dateFrom = $("quoteRequestDateFrom")?.value || "";
+    const dateTo = $("quoteRequestDateTo")?.value || "";
+
+    if (search) params.set("search", search);
+    if (statusFilter) params.set("status", statusFilter);
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+
+    const query = params.toString();
+    const data = await api(
+      "/api/admin/quote-requests" +
+      (query ? "?" + query : "")
+    );
 
     console.log("Solicitudes recibidas:", data);
 
@@ -1305,9 +1321,15 @@ async function openQuoteRequest(id) {
 
           </div>
 
-          <span class="quote-detail-status">
-            ${escapeHtml(status)}
-          </span>
+          <div class="quote-request-status-control">
+            <label for="quoteRequestStatus">Estado</label>
+            <select id="quoteRequestStatus">
+              <option value="pendiente" ${request.status === "pendiente" ? "selected" : ""}>Pendiente</option>
+              <option value="contactado" ${request.status === "contactado" ? "selected" : ""}>Contactado</option>
+              <option value="presupuestado" ${request.status === "presupuestado" ? "selected" : ""}>Presupuestado</option>
+              <option value="cerrado" ${request.status === "cerrado" ? "selected" : ""}>Cerrado</option>
+            </select>
+          </div>
 
         </div>
 
@@ -1536,6 +1558,41 @@ async function openQuoteRequest(id) {
 // CERRAR MODAL SOLICITUD
 // =========================================================
 
+async function updateQuoteRequestStatus(id, status) {
+  try {
+    await api(`/api/admin/quote-requests/${id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ status })
+    });
+
+    const request = quoteRequests.find(
+      item => Number(item.id) === Number(id)
+    );
+
+    if (request) {
+      request.status = status;
+    }
+
+    showMsg("Estado de la solicitud actualizado correctamente.");
+    await loadQuoteRequests();
+
+  } catch (error) {
+    console.error(
+      "Error actualizando estado de solicitud:",
+      error
+    );
+
+    showMsg(
+      "No se pudo actualizar el estado: " + error.message,
+      true
+    );
+  }
+}
+
+
 function closeQuoteRequestModal() {
   const modal =
     $("quoteRequestModal");
@@ -1552,6 +1609,41 @@ function closeQuoteRequestModal() {
     "none";
 }
 
+
+document.addEventListener("change", event => {
+  if (event.target.id === "quoteRequestStatus" && currentQuoteRequest) {
+    updateQuoteRequestStatus(
+      currentQuoteRequest.id,
+      event.target.value
+    );
+  }
+});
+
+function setupQuoteRequestFilters() {
+  const search = $("quoteRequestSearch");
+  const status = $("quoteRequestStatusFilter");
+  const dateFrom = $("quoteRequestDateFrom");
+  const dateTo = $("quoteRequestDateTo");
+  const refresh = $("refreshQuoteRequests");
+
+  const reload = () => loadQuoteRequests();
+
+  if (search) {
+    let timer;
+    search.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(reload, 250);
+    });
+  }
+
+  [status, dateFrom, dateTo].forEach(control => {
+    if (control) control.addEventListener("change", reload);
+  });
+
+  if (refresh) {
+    refresh.addEventListener("click", reload);
+  }
+}
 
 const closeQuoteRequestButton =
   $("closeQuoteRequestModal");
