@@ -10188,3 +10188,127 @@ body.lightbox-open {
   .users-toolbar,
   .gallery-admin-toolbar { grid-template-columns: 1fr; }
 }
+
+
+/* =========================================================
+   DASHBOARD ANALÍTICO
+========================================================= */
+.analytics-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  gap: 16px;
+  margin-bottom: 25px;
+}
+.admin-dashboard-panel {
+  min-width: 0;
+  padding: 20px;
+  background: linear-gradient(145deg,#11161f,#0c1016);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+}
+.admin-dashboard-panel .panel-heading {
+  margin-bottom: 18px;
+}
+#dashboardPeriod {
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid #303846;
+  border-radius: 9px;
+  background: #080b10;
+  color: var(--text);
+}
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+}
+.dashboard-kpis > div {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #0d1219;
+}
+.dashboard-kpis span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.dashboard-kpis strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 17px;
+}
+.dashboard-chart-wrap {
+  margin-top: 20px;
+}
+.dashboard-chart-title {
+  margin-bottom: 10px;
+  color: #cbd2dc;
+  font-size: 11px;
+  font-weight: 800;
+}
+.dashboard-monthly-chart {
+  min-height: 170px;
+  display: flex;
+  align-items: end;
+  gap: 9px;
+  padding: 15px 10px 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #0b0f15;
+}
+.dashboard-chart-column {
+  flex: 1;
+  height: 145px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 7px;
+}
+.dashboard-chart-bar {
+  width: min(28px,70%);
+  min-height: 8px;
+  border-radius: 7px 7px 2px 2px;
+  background: linear-gradient(180deg,var(--accent),var(--accent2));
+}
+.dashboard-chart-column small {
+  color: #788393;
+  font-size: 9px;
+}
+.dashboard-activity-list {
+  display: grid;
+  gap: 8px;
+}
+.dashboard-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #0d1219;
+}
+.dashboard-activity-item > span {
+  font-size: 17px;
+}
+.dashboard-activity-item strong {
+  display: block;
+  font-size: 11px;
+}
+.dashboard-activity-item small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+@media (max-width: 900px) {
+  .analytics-dashboard { grid-template-columns: 1fr; }
+}
+@media (max-width: 650px) {
+  .dashboard-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-dashboard-panel { padding: 15px; }
+}
+@media (max-width: 430px) {
+  .dashboard-kpis { grid-template-columns: 1fr; }
+}
