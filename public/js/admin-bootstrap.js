@@ -44,12 +44,24 @@ if (closeCreateQuoteModalButton) {
 }
 
 
-if (typeof setupJobsHistory === "function") {
-  setupJobsHistory();
-}
+setupSidebarMenus();
+setupClients();
+setupAdminNavigation();
 
-if (typeof setupQuoteRequestFilters === "function") {
-  setupQuoteRequestFilters();
-}
+setupSidebarNotifications();
+setupNotifications();
+loadNotifications();
 
+setupJobs();
+setupJobsHistory();
+
+loadQuoteRequests();
+setupQuoteRequestFilters();
+
+loadAdminUser();
+loadAccountSettings();
+setupAccountSettings();
+setupBusinessSettings();
+
+setupUsers();
 setupGalleryFilters();
