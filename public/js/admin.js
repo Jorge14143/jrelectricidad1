@@ -1588,6 +1588,11 @@ async function toggleGallery(id, active) {
       active ? "0" : "1"
     );
 
+    formData.append(
+      "featured",
+      item.featured ? "1" : "0"
+    );
+
     await api(
       `/api/admin/gallery/${id}`,
       {
