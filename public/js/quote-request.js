@@ -85,6 +85,3 @@ if (quoteForm) {
   });
 
 }
-loadGallery();
-
-loadUser();
