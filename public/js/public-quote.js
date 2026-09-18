@@ -169,6 +169,34 @@
 
         const quote = await response.json();
 
+        let businessSettings = {
+          business_name: "JR Electricidad",
+          phone: "",
+          email: ""
+        };
+
+        try {
+          const settingsResponse = await fetch("/api/settings", {
+            headers: { Accept: "application/json" }
+          });
+
+          if (settingsResponse.ok) {
+            const settingsData = await settingsResponse.json();
+
+            if (settingsData && settingsData.settings) {
+              businessSettings = {
+                ...businessSettings,
+                ...settingsData.settings
+              };
+            }
+          }
+        } catch (settingsError) {
+          console.warn(
+            "No se pudo cargar la configuración pública:",
+            settingsError
+          );
+        }
+
         if (!quote || !quote.id) {
           throw new Error(
             "El servidor no devolvió un presupuesto válido."
@@ -296,7 +324,7 @@
             <header class="quote-header">
 
               <div class="quote-brand">
-                ⚡ JR ELECTRICIDAD
+                ⚡ ${escapeHtml(businessSettings.business_name || "JR Electricidad")}
               </div>
 
               <div class="quote-subtitle">
