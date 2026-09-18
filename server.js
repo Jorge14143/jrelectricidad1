@@ -766,6 +766,156 @@ app.put(
 
 
 // =========================================================
+// CONFIGURACIÓN DEL NEGOCIO
+// =========================================================
+
+async function ensureBusinessSettingsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS business_settings (
+      id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+      business_name VARCHAR(150) NOT NULL DEFAULT 'JR Electricidad',
+      legal_name VARCHAR(180) DEFAULT '',
+      phone VARCHAR(50) DEFAULT '',
+      whatsapp VARCHAR(50) DEFAULT '',
+      email VARCHAR(190) DEFAULT '',
+      address VARCHAR(255) DEFAULT '',
+      city VARCHAR(120) DEFAULT '',
+      hours VARCHAR(255) DEFAULT '',
+      logo_url VARCHAR(500) DEFAULT '',
+      pdf_footer VARCHAR(500) DEFAULT '',
+      pdf_notes TEXT,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await pool.query(`
+    INSERT INTO business_settings
+      (id, business_name, phone, whatsapp, email, pdf_footer)
+    VALUES
+      (1, 'JR Electricidad', '3385684660', '3385684660',
+       'jorge9609@hotmail.com',
+       'JR Electricidad · Electricista Matriculado Cat. 3')
+    ON DUPLICATE KEY UPDATE id = id
+  `);
+}
+
+app.get(
+  "/api/admin/settings",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        "SELECT * FROM business_settings WHERE id=1 LIMIT 1"
+      );
+
+      res.json({
+        success: true,
+        settings: rows[0] || null
+      });
+    } catch (error) {
+      console.error("Error obteniendo configuración:", error);
+      res.status(500).json({
+        error: "No se pudo obtener la configuración."
+      });
+    }
+  }
+);
+
+app.put(
+  "/api/admin/settings",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const fields = {
+        business_name: String(req.body.business_name || "").trim(),
+        legal_name: String(req.body.legal_name || "").trim(),
+        phone: String(req.body.phone || "").trim(),
+        whatsapp: String(req.body.whatsapp || "").trim(),
+        email: String(req.body.email || "").trim().toLowerCase(),
+        address: String(req.body.address || "").trim(),
+        city: String(req.body.city || "").trim(),
+        hours: String(req.body.hours || "").trim(),
+        logo_url: String(req.body.logo_url || "").trim(),
+        pdf_footer: String(req.body.pdf_footer || "").trim(),
+        pdf_notes: String(req.body.pdf_notes || "").trim()
+      };
+
+      if (!fields.business_name) {
+        return res.status(400).json({
+          error: "El nombre comercial es obligatorio."
+        });
+      }
+
+      if (fields.email) {
+        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+        if (!emailRegex.test(fields.email)) {
+          return res.status(400).json({
+            error: "Ingresá un email válido."
+          });
+        }
+      }
+
+      const limits = {
+        business_name: 150,
+        legal_name: 180,
+        phone: 50,
+        whatsapp: 50,
+        email: 190,
+        address: 255,
+        city: 120,
+        hours: 255,
+        logo_url: 500,
+        pdf_footer: 500,
+        pdf_notes: 5000
+      };
+
+      for (const [key, max] of Object.entries(limits)) {
+        if (fields[key].length > max) {
+          return res.status(400).json({
+            error: `El campo ${key} supera el máximo permitido.`
+          });
+        }
+      }
+
+      await pool.query(
+        `
+        UPDATE business_settings
+        SET business_name=?, legal_name=?, phone=?, whatsapp=?,
+            email=?, address=?, city=?, hours=?, logo_url=?,
+            pdf_footer=?, pdf_notes=?
+        WHERE id=1
+        `,
+        [
+          fields.business_name,
+          fields.legal_name,
+          fields.phone,
+          fields.whatsapp,
+          fields.email,
+          fields.address,
+          fields.city,
+          fields.hours,
+          fields.logo_url,
+          fields.pdf_footer,
+          fields.pdf_notes
+        ]
+      );
+
+      res.json({
+        success: true,
+        message: "Configuración guardada correctamente."
+      });
+    } catch (error) {
+      console.error("Error guardando configuración:", error);
+      res.status(500).json({
+        error: "No se pudo guardar la configuración."
+      });
+    }
+  }
+);
+
+
+// =========================================================
 // USUARIO ACTUAL
 // =========================================================
 
@@ -3510,6 +3660,8 @@ app.get(
 // =========================================================
 
 async function start() {
+  await ensureBusinessSettingsTable();
+
 
   try {
 
