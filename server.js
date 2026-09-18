@@ -84,6 +84,51 @@ const upload = multer({
 
 
 // =========================================================
+async function validateUploadedImage(req, res, next) {
+  if (!req.file) return next();
+
+  try {
+    const header = Buffer.alloc(12);
+    const handle = await fs.promises.open(req.file.path, "r");
+    try {
+      await handle.read(header, 0, 12, 0);
+    } finally {
+      await handle.close();
+    }
+
+    const mime = req.file.mimetype;
+    let valid = false;
+
+    if (mime === "image/jpeg") {
+      valid = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    } else if (mime === "image/png") {
+      valid = header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    } else if (mime === "image/gif") {
+      const signature = header.subarray(0, 6).toString("ascii");
+      valid = signature === "GIF87a" || signature === "GIF89a";
+    } else if (mime === "image/webp") {
+      valid = header.subarray(0, 4).toString("ascii") === "RIFF" &&
+              header.subarray(8, 12).toString("ascii") === "WEBP";
+    }
+
+    if (!valid) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({
+        error: "El archivo no es una imagen válida del tipo indicado."
+      });
+    }
+
+    next();
+  } catch (error) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    console.error("Error validando imagen:", error.message);
+    return res.status(400).json({
+      error: "No se pudo validar la imagen."
+    });
+  }
+}
+
+
 // MYSQL
 // =========================================================
 
@@ -1404,6 +1449,7 @@ app.post(
   "/api/admin/gallery",
   requireAdmin,
   upload.single("image"),
+  validateUploadedImage,
   async (req, res) => {
 
     try {
@@ -1607,6 +1653,7 @@ app.put(
   "/api/admin/gallery/:id",
   requireAdmin,
   upload.single("image"),
+  validateUploadedImage,
   async (req, res) => {
 
     try {
