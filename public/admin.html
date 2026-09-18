@@ -1164,6 +1164,102 @@
 
 
     <!-- =====================================================
+         FICHA DEL CLIENTE
+    ====================================================== -->
+
+    <div
+      id="clientDetailModal"
+      class="modal"
+      hidden
+    >
+      <div class="modal-content job-detail-modal">
+
+        <div class="modal-header">
+          <div>
+            <span class="section-label">CLIENTE</span>
+            <h2 id="clientDetailTitle">Ficha del cliente</h2>
+          </div>
+
+          <button
+            type="button"
+            class="modal-close"
+            id="closeClientDetail"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="clientDetailLoading" class="admin-loading" hidden>
+          Cargando ficha...
+        </div>
+
+        <div id="clientDetailError" class="admin-error" hidden></div>
+
+        <div id="clientDetailContent" hidden>
+
+          <div class="job-detail-status">
+            <span>Contacto</span>
+            <strong id="clientDetailContact">-</strong>
+          </div>
+
+          <div class="job-detail-section">
+            <span class="section-label">RESUMEN</span>
+
+            <div class="job-detail-grid">
+              <div>
+                <span>Solicitudes</span>
+                <strong id="clientDetailRequests">0</strong>
+              </div>
+              <div>
+                <span>Presupuestos</span>
+                <strong id="clientDetailQuotes">0</strong>
+              </div>
+              <div>
+                <span>Trabajos</span>
+                <strong id="clientDetailJobs">0</strong>
+              </div>
+              <div>
+                <span>Trabajos cerrados</span>
+                <strong id="clientDetailCompletedJobs">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="job-detail-totals">
+            <div class="job-detail-total-final">
+              <span>Total presupuestado</span>
+              <strong id="clientDetailTotal">$0,00</strong>
+            </div>
+          </div>
+
+          <div class="job-detail-section">
+            <span class="section-label">SOLICITUDES</span>
+            <div id="clientDetailRequestsList"></div>
+          </div>
+
+          <div class="job-detail-section">
+            <span class="section-label">PRESUPUESTOS Y TRABAJOS</span>
+            <div id="clientDetailQuotesList"></div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="closeClientDetailButton"
+          >
+            Cerrar
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- =====================================================
          USUARIOS
     ====================================================== -->
 
