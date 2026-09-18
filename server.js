@@ -497,8 +497,7 @@ app.put(
         SET password_hash=?
         WHERE id=?
         `,
-        [
-          hash,
+        [          hash,
           req.session.user.id
         ]
       );
@@ -997,7 +996,6 @@ app.post(
 
         error:
           "No se pudo iniciar sesión."
-
       });
 
     }
@@ -1496,7 +1494,6 @@ app.post(
         });
 
       }
-
 
       if (title.length > 150) {
 
@@ -1998,7 +1995,6 @@ app.delete(
         ]
       );
 
-
       if (rows[0].image_url) {
 
         const imageFile =
@@ -2497,8 +2493,7 @@ app.get(
       );
 
       res.status(500).json({
-        error:
-          "No se pudieron obtener los datos de la cuenta."
+        error:          "No se pudieron obtener los datos de la cuenta."
       });
     }
   }
@@ -2688,10 +2683,16 @@ app.put(
         ]
       );
 
+      // Mantener esta sesión y cerrar todas las demás sesiones del administrador.
+      await invalidateUserSessions(
+        userId,
+        req.sessionID
+      );
+
       res.json({
         success: true,
         message:
-          "La contraseña fue cambiada correctamente."
+          "La contraseña fue cambiada correctamente. Las demás sesiones fueron cerradas."
       });
 
     } catch (e) {
@@ -2998,7 +2999,6 @@ app.put(
       if (!result.affectedRows) {
 
         return res.status(404).json({
-
           error:
             "Servicio no encontrado."
 
@@ -3197,14 +3197,15 @@ app.delete(
 
     try {
 
-      if (
-        Number(
-          req.params.id
-        ) ===
-        Number(
-          req.session.user.id
-        )
-      ) {
+      const userId = Number(req.params.id);
+
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(400).json({
+          error: "ID de usuario inválido."
+        });
+      }
+
+      if (userId === Number(req.session.user.id)) {
 
         return res.status(400).json({
 
@@ -3215,7 +3216,6 @@ app.delete(
 
       }
 
-
       const [result] =
         await pool.query(
           `
@@ -3223,10 +3223,9 @@ app.delete(
           WHERE id=?
           `,
           [
-            req.params.id
+            userId
           ]
         );
-
 
       if (!result.affectedRows) {
 
@@ -3239,11 +3238,12 @@ app.delete(
 
       }
 
+      // El usuario eliminado no puede conservar sesiones válidas.
+      await invalidateUserSessions(userId);
 
       res.json({
         ok: true
       });
-
 
     } catch (e) {
 
@@ -3497,8 +3497,7 @@ app.get("/api/admin/jobs-history", requireAdmin, async (req, res) => {
         searchValue,
         searchValue,
         searchValue
-      );
-    }
+      );    }
 
     // Fecha desde
     if (date_from) {
@@ -3998,7 +3997,6 @@ async function getQuoteDetail(db, id) {
       q.total,
       q.pdf_filename,
       q.created_at,
-
       qr.name,
       qr.phone,
       qr.email,
@@ -4497,8 +4495,7 @@ function buildQuotePdf(quote) {
 
   doc.roundedRect(
     margin,
-    clientBoxY,
-    contentWidth,
+    clientBoxY,    contentWidth,
     clientBoxH,
     7
   ).fill(DARK);
@@ -4998,7 +4995,6 @@ function buildQuotePdf(quote) {
         align: "right"
       }
     );
-
     y += 21;
   }
 
@@ -5497,8 +5493,7 @@ function buildQuotePdf(quote) {
     }
   }
 
-  // =========================================================
-  // PIE FINAL
+  // =========================================================  // PIE FINAL
   // =========================================================
 
   drawFooter();
@@ -5998,7 +5993,6 @@ app.get(
       `);
 
       res.json(rows);
-
     } catch (error) {
 
       console.error(
