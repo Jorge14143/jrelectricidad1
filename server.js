@@ -905,7 +905,7 @@ app.put(
       }
 
       if (fields.email) {
-        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(fields.email)) {
           return res.status(400).json({
             error: "Ingresá un email válido."
@@ -1015,7 +1015,7 @@ app.put(
         return res.status(400).json({ error: "El nombre es obligatorio y no puede superar 100 caracteres." });
       }
 
-      const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email) || email.length > 190) {
         return res.status(400).json({ error: "Ingresá un email válido." });
       }
