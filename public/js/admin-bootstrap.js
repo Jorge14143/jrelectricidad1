@@ -31,3 +31,14 @@ if (typeof load === "function") {
 // =========================================================
 // CARGAR SOLICITUDES AL INICIAR
 // =========================================================
+
+
+const closeCreateQuoteModalButton =
+  document.getElementById("closeCreateQuoteModalBtn");
+
+if (closeCreateQuoteModalButton) {
+  closeCreateQuoteModalButton.addEventListener(
+    "click",
+    closeCreateQuoteModal
+  );
+}
