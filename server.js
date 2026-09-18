@@ -4304,7 +4304,7 @@ app.get(
       }
 
       if (date_from) {
-        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(date_from))) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_from))) {
           return res.status(400).json({
             error: "La fecha desde no es válida."
           });
@@ -4315,7 +4315,7 @@ app.get(
       }
 
       if (date_to) {
-        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(date_to))) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_to))) {
           return res.status(400).json({
             error: "La fecha hasta no es válida."
           });
