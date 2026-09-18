@@ -1438,7 +1438,12 @@ app.post(
 // SOLICITUDES DE PRESUPUESTO - PÚBLICA
 // ========================================
 
-app.post("/api/quote-requests", authLimiter, async (req, res) => {
+app.post(
+  "/api/quote-requests",
+  authLimiter,
+  upload.single("image"),
+  validateUploadedImage,
+  async (req, res) => {
   try {
     const {
       name,
@@ -1462,6 +1467,12 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
     const cleanService = service ? String(service).trim() : null;
     const cleanDescription = String(description).trim();
 
+    let imageUrl = null;
+
+    if (req.file) {
+      imageUrl = "/uploads/" + req.file.filename;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (cleanEmail && !emailRegex.test(cleanEmail)) {
@@ -1484,6 +1495,11 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
       (cleanService && cleanService.length > 150) ||
       cleanDescription.length > 2000
     ) {
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+      }
       return res.status(400).json({
         error: "Uno de los campos supera el límite permitido."
       });
@@ -1498,9 +1514,10 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
         email,
         service,
         description,
-        preferred_date
+        preferred_date,
+        image_url
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
         cleanName,
@@ -1508,7 +1525,8 @@ app.post("/api/quote-requests", authLimiter, async (req, res) => {
         cleanEmail,
         cleanService,
         cleanDescription,
-        preferred_date || null
+        preferred_date || null,
+        imageUrl
       ]
     );
 
