@@ -490,7 +490,7 @@ async function moveGallery(id, direction) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        targetId: Number(target.id)
+        direction
       })
     });
 
