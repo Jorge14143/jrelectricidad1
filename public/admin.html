@@ -966,7 +966,6 @@
               type="button"
               class="btn btn-secondary"
               id="cancelCreateQuote"
-              id="closeCreateQuoteModalBtn"
             >
               Cancelar
             </button>
@@ -1078,6 +1077,40 @@
               ></textarea>
 
             </label>
+
+
+            <div class="form-row">
+
+              <label>
+
+                Categoría
+
+                <input
+                  name="category"
+                  id="serviceCategory"
+                  placeholder="Ej. Instalaciones"
+                  maxlength="100"
+                >
+
+              </label>
+
+              <label>
+
+                Orden
+
+                <input
+                  name="sort_order"
+                  id="serviceOrder"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="1"
+                  placeholder="Automático"
+                >
+
+              </label>
+
+            </div>
 
 
             <label>
