@@ -2,6 +2,74 @@
 // CARGAR PANEL
 // =========================================================
 
+let dashboardStats = null;
+
+function formatDashboardMoney(value) {
+  return Number(value || 0).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 2
+  });
+}
+
+function renderDashboardAnalytics(data) {
+  dashboardStats = data;
+  const set = (id, value) => {
+    const el = $(id);
+    if (el) el.textContent = value;
+  };
+  set("dashRequests", data.totalRequests ?? 0);
+  set("dashSentQuotes", data.sentQuotes ?? 0);
+  set("dashRejectedQuotes", data.rejectedQuotes ?? 0);
+  set("dashAcceptedAmount", formatDashboardMoney(data.acceptedAmount));
+  set("dashPeriodQuotes", data.period?.quotes ?? 0);
+  set("dashPeriodJobs", data.period?.jobs ?? 0);
+
+  const chart = $("dashboardMonthlyChart");
+  if (chart) {
+    const rows = Array.isArray(data.monthly) ? data.monthly : [];
+    const max = Math.max(1, ...rows.map(x => Number(x.quotes || 0)));
+    chart.innerHTML = rows.length
+      ? rows.map(x => {
+          const value = Number(x.quotes || 0);
+          const height = Math.max(8, Math.round((value / max) * 100));
+          const label = String(x.month || "").slice(5);
+          return `<div class="dashboard-chart-column" title="${value} presupuestos">
+            <div class="dashboard-chart-bar" style="height:${height}%"></div>
+            <small>${h(label)}</small>
+          </div>`;
+        }).join("")
+      : `<p class="muted">Todavía no hay datos mensuales.</p>`;
+  }
+
+  const activity = $("dashboardRecentActivity");
+  if (activity) {
+    const rows = Array.isArray(data.recentActivity) ? data.recentActivity : [];
+    activity.innerHTML = rows.length
+      ? rows.map(item => `<div class="dashboard-activity-item">
+          <span>📋</span>
+          <div><strong>${h(item.title || "Solicitud")}</strong><small>${h(item.detail || "Sin servicio")} · ${item.date ? new Date(item.date).toLocaleDateString("es-AR") : "-"}</small></div>
+        </div>`).join("")
+      : `<p class="muted">No hay actividad reciente.</p>`;
+  }
+}
+
+async function loadDashboardAnalytics() {
+  const period = Number($("dashboardPeriod")?.value || 30);
+  try {
+    const data = await api("/api/admin/stats?days=" + period);
+    renderDashboardAnalytics(data);
+  } catch (error) {
+    console.error("Error cargando analítica:", error);
+    showMsg(error.message, true);
+  }
+}
+
+function setupDashboardAnalytics() {
+  $("dashboardPeriod")?.addEventListener("change", loadDashboardAnalytics);
+  loadDashboardAnalytics();
+}
+
 let adminUsersData = [];
 
 async function loadUsers() {
