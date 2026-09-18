@@ -6,6 +6,7 @@ function setupAdminNavigation() {
 
   const sections = [
     "dashboardStats",
+    "dashboardAnalytics",
     "quoteRequestsSection",
     "quotesSection",
     "jobsSection",
@@ -30,7 +31,7 @@ function setupAdminNavigation() {
       if (!section) return;
 
       section.style.display =
-        id === targetId ? "" : "none";
+        (id === targetId || (targetId === "dashboardStats" && id === "dashboardAnalytics")) ? "" : "none";
     });
 
     // La bienvenida solamente aparece en Dashboard
