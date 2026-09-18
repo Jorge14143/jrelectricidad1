@@ -769,6 +769,16 @@ app.put(
 // CONFIGURACIÓN DEL NEGOCIO
 // =========================================================
 
+async function ensureServiceColumns() {
+  await pool.query("ALTER TABLE services ADD COLUMN category VARCHAR(100) NOT NULL DEFAULT '' AFTER description").catch(error => {
+    if (!/Duplicate column name/i.test(error.message)) throw error;
+  });
+  await pool.query("ALTER TABLE services ADD COLUMN sort_order INT NOT NULL DEFAULT 0 AFTER active").catch(error => {
+    if (!/Duplicate column name/i.test(error.message)) throw error;
+  });
+  await pool.query("UPDATE services SET sort_order=id WHERE sort_order=0");
+}
+
 async function ensureBusinessSettingsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS business_settings (
@@ -2486,10 +2496,12 @@ app.get(
             id,
             title,
             description,
-            price
+            price,
+            category,
+            sort_order
           FROM services
           WHERE active=1
-          ORDER BY id DESC
+          ORDER BY sort_order ASC, id ASC
           `
         );
 
@@ -3198,9 +3210,11 @@ app.get(
             title,
             description,
             price,
-            active
+            active,
+            category,
+            sort_order
           FROM services
-          ORDER BY id DESC
+          ORDER BY sort_order ASC, id ASC
           `
         );
 
@@ -3243,6 +3257,11 @@ app.post(
           req.body.description || ""
         ).trim();
 
+      const category = String(req.body.category || "").trim();
+      const rawOrder =
+        req.body.sort_order === "" || req.body.sort_order == null
+          ? null
+          : Number(req.body.sort_order);
 
       const rawPrice =
         req.body.price;
@@ -3292,6 +3311,18 @@ app.post(
       }
 
 
+      if (category.length > 100) {
+        return res.status(400).json({
+          error: "La categoría es demasiado larga."
+        });
+      }
+
+      if (rawOrder !== null && (!Number.isInteger(rawOrder) || rawOrder < 0 || rawOrder > 1000000)) {
+        return res.status(400).json({
+          error: "El orden no es válido."
+        });
+      }
+
       if (
         price !== null &&
         (
@@ -3316,19 +3347,25 @@ app.post(
         (
           title,
           description,
-          price
+          price,
+          category,
+          sort_order
         )
         VALUES
         (
           ?,
           ?,
-          ?
+          ?,
+          ?,
+          COALESCE(?, 0)
         )
         `,
         [
           title,
           description,
-          price
+          price,
+          category,
+          rawOrder
         ]
       );
 
@@ -3362,6 +3399,11 @@ app.put(
 
     try {
 
+      const serviceId = Number(req.params.id);
+      if (!Number.isInteger(serviceId) || serviceId <= 0) {
+        return res.status(400).json({ error: "ID de servicio inválido." });
+      }
+
       const title =
         String(
           req.body.title || ""
@@ -3373,6 +3415,11 @@ app.put(
           req.body.description || ""
         ).trim();
 
+      const category = String(req.body.category || "").trim();
+      const rawOrder =
+        req.body.sort_order === "" || req.body.sort_order == null
+          ? null
+          : Number(req.body.sort_order);
 
       const rawPrice =
         req.body.price;
@@ -3428,6 +3475,18 @@ app.put(
       }
 
 
+      if (category.length > 100) {
+        return res.status(400).json({
+          error: "La categoría es demasiado larga."
+        });
+      }
+
+      if (rawOrder !== null && (!Number.isInteger(rawOrder) || rawOrder < 0 || rawOrder > 1000000)) {
+        return res.status(400).json({
+          error: "El orden no es válido."
+        });
+      }
+
       if (
         price !== null &&
         (
@@ -3454,7 +3513,9 @@ app.put(
             title=?,
             description=?,
             price=?,
-            active=?
+            active=?,
+            category=?,
+            sort_order=COALESCE(?, sort_order)
           WHERE id=?
           `,
           [
@@ -3462,7 +3523,9 @@ app.put(
             description,
             price,
             active,
-            req.params.id
+            category,
+            rawOrder,
+            serviceId
           ]
         );
 
@@ -3507,15 +3570,18 @@ app.delete(
 
     try {
 
+      const serviceId = Number(req.params.id);
+      if (!Number.isInteger(serviceId) || serviceId <= 0) {
+        return res.status(400).json({ error: "ID de servicio inválido." });
+      }
+
       const [result] =
         await pool.query(
           `
           DELETE FROM services
           WHERE id=?
           `,
-          [
-            req.params.id
-          ]
+          [serviceId]
         );
 
 
@@ -3552,6 +3618,65 @@ app.delete(
   }
 );
 
+
+// =========================================================
+// ADMIN - ORDENAR SERVICIOS
+// =========================================================
+app.put(
+  "/api/admin/services/:id/order",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const direction = req.body.direction;
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ error: "ID de servicio inválido." });
+      }
+
+      if (direction !== "up" && direction !== "down") {
+        return res.status(400).json({ error: "Dirección inválida." });
+      }
+
+      const [[current]] = await pool.query(
+        "SELECT id, sort_order FROM services WHERE id=? LIMIT 1",
+        [id]
+      );
+
+      if (!current) {
+        return res.status(404).json({ error: "Servicio no encontrado." });
+      }
+
+      const comparison = direction === "up" ? "<" : ">";
+      const orderDirection = direction === "up" ? "DESC" : "ASC";
+
+      const [neighbors] = await pool.query(
+        `SELECT id, sort_order FROM services
+         WHERE sort_order ${comparison} ?
+         ORDER BY sort_order ${orderDirection}, id ${orderDirection}
+         LIMIT 1`,
+        [current.sort_order]
+      );
+
+      if (!neighbors.length) {
+        return res.json({
+          ok: true,
+          message: direction === "up" ? "Ya está primero." : "Ya está último."
+        });
+      }
+
+      const neighbor = neighbors[0];
+
+      await pool.query("UPDATE services SET sort_order=? WHERE id=?", [neighbor.sort_order, current.id]);
+      await pool.query("UPDATE services SET sort_order=? WHERE id=?", [current.sort_order, neighbor.id]);
+
+      res.json({ ok: true, message: "Orden de servicios actualizado." });
+    } catch (error) {
+      console.error("Error ordenando servicios:", error);
+      res.status(500).json({ error: "No se pudo cambiar el orden." });
+    }
+  }
+);
 
 // =========================================================
 // ADMIN - CAMBIAR ROL
@@ -3763,6 +3888,7 @@ app.get(
 
 async function start() {
   await ensureBusinessSettingsTable();
+  await ensureServiceColumns();
 
 
   try {
