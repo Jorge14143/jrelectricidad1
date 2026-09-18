@@ -1710,6 +1710,48 @@
       </div>
 
 
+      <div class="history-toolbar">
+        <input
+          type="search"
+          id="jobsHistorySearch"
+          placeholder="Buscar cliente, teléfono o presupuesto..."
+          autocomplete="off"
+        >
+
+        <input
+          type="date"
+          id="jobsHistoryDateFrom"
+          title="Desde"
+        >
+
+        <input
+          type="date"
+          id="jobsHistoryDateTo"
+          title="Hasta"
+        >
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="clearJobsHistoryFilters"
+        >
+          Limpiar
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          id="refreshJobsHistory"
+        >
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <div class="history-summary">
+        <div><span>Trabajos</span><strong id="historyCount">0</strong></div>
+        <div><span>Total</span><strong id="historyTotal">$0,00</strong></div>
+      </div>
+
       <div class="jobs-history-container">
 
         <div
