@@ -261,7 +261,7 @@
               <button
                 type="button"
                 class="quote-reject-btn"
-                onclick="respondQuote('reject')"
+                data-action="reject"
               >
                 ✕ Rechazar presupuesto
               </button>
@@ -269,7 +269,7 @@
               <button
                 type="button"
                 class="quote-accept-btn"
-                onclick="respondQuote('accept')"
+                data-action="accept"
               >
                 ✓ Aceptar presupuesto
               </button>
@@ -672,3 +672,10 @@
     */
 
     loadQuote();
+
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-action]");
+  if (!button) return;
+  respondQuote(button.dataset.action);
+});
