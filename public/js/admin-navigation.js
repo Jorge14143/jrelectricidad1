@@ -144,22 +144,6 @@ function setupSidebarMenus() {
 
 }
 
-setupSidebarMenus();
-setupClients();
-
-// Inicializar navegación
-setupAdminNavigation();
-
-loadQuoteRequests();
-setupSidebarNotifications();
-setupNotifications();
-loadNotifications();
-setupJobs();
-setupJobsHistory();
-loadAdminUser();
-loadAccountSettings();
-setupAccountSettings();
-setupBusinessSettings();
 
 
 async function loadBusinessSettings() {
