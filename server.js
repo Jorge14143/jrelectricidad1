@@ -1652,13 +1652,23 @@ app.post(
       ]
     );
 
-    await pool.query(
-      `
-      INSERT INTO admin_notifications (type, quote_id, message)
-      VALUES ('quote_request_created', NULL, ?)
-      `,
-      [`Nueva solicitud de presupuesto de ${cleanName}.`]
-    );
+    // La solicitud ya fue guardada correctamente. La notificación
+    // administrativa no debe hacer fallar el envío al cliente si su
+    // tabla/estructura presenta un problema puntual.
+    try {
+      await pool.query(
+        `
+        INSERT INTO admin_notifications (type, quote_id, message)
+        VALUES ('quote_request_created', NULL, ?)
+        `,
+        [`Nueva solicitud de presupuesto de ${cleanName}.`]
+      );
+    } catch (notificationError) {
+      console.error(
+        "Solicitud guardada, pero no se pudo crear la notificación:",
+        notificationError
+      );
+    }
 
     res.status(201).json({
       success: true,
