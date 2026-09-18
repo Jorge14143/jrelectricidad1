@@ -28,28 +28,28 @@ function notificationTime(value) {
 
 
 function notificationIcon(type) {
-  if (type === "quote_accepted") {
-    return "🟢";
-  }
-
-  if (type === "quote_rejected") {
-    return "🔴";
-  }
-
-  return "🔔";
+  const icons = {
+    quote_accepted: "🟢",
+    quote_rejected: "🔴",
+    quote_request_created: "📋",
+    quote_request_status: "🔄",
+    job_started: "🔧",
+    job_closed: "✅"
+  };
+  return icons[type] || "🔔";
 }
 
 
 function notificationTitle(type) {
-  if (type === "quote_accepted") {
-    return "Presupuesto aceptado";
-  }
-
-  if (type === "quote_rejected") {
-    return "Presupuesto rechazado";
-  }
-
-  return "Notificación";
+  const titles = {
+    quote_accepted: "Presupuesto aceptado",
+    quote_rejected: "Presupuesto rechazado",
+    quote_request_created: "Nueva solicitud",
+    quote_request_status: "Estado de solicitud actualizado",
+    job_started: "Trabajo iniciado",
+    job_closed: "Trabajo cerrado"
+  };
+  return titles[type] || "Notificación";
 }
 
 
@@ -132,7 +132,7 @@ function renderNotifications(data) {
               <button
                 class="notification-read-button"
                 type="button"
-                onclick="markNotificationRead(${Number(notification.id)})"
+                data-notification-read
                 title="Marcar como leída"
               >
                 ✓
@@ -223,6 +223,17 @@ async function markAllNotificationsRead() {
 
 
 function setupNotifications() {
+  const list = $("notificationsList");
+
+  list?.addEventListener("click", event => {
+    const button = event.target.closest("[data-notification-read]");
+    if (!button) return;
+    const item = button.closest("[data-notification-id]");
+    if (!item) return;
+    markNotificationRead(Number(item.dataset.notificationId));
+  });
+
+
   const button = $("notificationsButton");
   const panel = $("notificationsPanel");
   const markAll = $("markAllNotificationsRead");
