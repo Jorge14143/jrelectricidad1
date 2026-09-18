@@ -1562,6 +1562,30 @@
       </form>
 
 
+      <div class="gallery-toolbar">
+        <input
+          type="search"
+          id="gallerySearch"
+          placeholder="Buscar trabajo..."
+          autocomplete="off"
+        >
+
+        <select id="galleryStatusFilter" aria-label="Filtrar galería">
+          <option value="">Todos</option>
+          <option value="active">Publicados</option>
+          <option value="inactive">Ocultos</option>
+          <option value="featured">Destacados</option>
+        </select>
+
+        <button type="button" class="btn btn-secondary" id="clearGalleryFilters">
+          Limpiar
+        </button>
+
+        <button type="button" class="btn btn-primary" id="refreshGallery">
+          🔄 Actualizar
+        </button>
+      </div>
+
       <div
         class="gallery-admin-list"
         id="adminGallery"
