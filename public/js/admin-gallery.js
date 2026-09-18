@@ -1,3 +1,34 @@
+let adminGalleryData = [];
+
+async function loadGallery() {
+  const container = $("adminGallery");
+  if (!container) return;
+  try {
+    adminGalleryData = await api("/api/admin/gallery");
+    renderAdminGallery();
+  } catch (e) { console.error("Error cargando galería:", e); showMsg("No se pudo cargar la galería: " + e.message, true); }
+}
+
+function renderAdminGallery() {
+  const container = $("adminGallery");
+  if (!container) return;
+  const search = ($("gallerySearch")?.value || "").trim().toLowerCase();
+  const filter = $("galleryStatusFilter")?.value || "";
+  const items = adminGalleryData.filter(x => {
+    const text = (String(x.title || "") + " " + String(x.description || "")).toLowerCase();
+    return (!search || text.includes(search)) && (!filter || (filter === "active" && Number(x.active) === 1) || (filter === "inactive" && Number(x.active) === 0) || (filter === "featured" && Number(x.featured) === 1));
+  });
+  if (!items.length) { container.innerHTML = '<p class="muted gallery-empty">No hay trabajos que coincidan con los filtros.</p>'; return; }
+  container.innerHTML = items.map(x => `<article class="gallery-admin-item ${x.active ? "" : "inactive"}"><div class="gallery-admin-image"><img src="${h(x.image_url)}" alt="${h(x.title)}" loading="lazy"></div><div class="gallery-admin-info"><div class="gallery-admin-title"><h3>${h(x.title)}</h3><span class="status ${x.active ? "on" : "off"}">${x.active ? "Publicado" : "Oculto"}</span></div><p>${h(x.description || "Sin descripción")}</p><div class="gallery-admin-badges">${x.featured ? '<span class="gallery-featured-badge">⭐ Destacado</span>' : ""}<small class="muted">${h(x.image_url || "")}</small></div><div class="row-actions"><button class="btn tiny ghost" onclick="moveGallery(${x.id}, 'up')">⬆️</button><button class="btn tiny ghost" onclick="moveGallery(${x.id}, 'down')">⬇️</button><button class="btn tiny" onclick='editGallery(${JSON.stringify(x)})'>Editar</button><button class="btn tiny ghost" onclick="toggleGallery(${x.id}, ${x.active ? 1 : 0})">${x.active ? "Ocultar" : "Publicar"}</button><button class="btn tiny danger" onclick="deleteGallery(${x.id}, '${h(x.title)}')">Eliminar</button></div></div></article>`).join("");
+}
+
+function setupGalleryFilters() {
+  $("gallerySearch")?.addEventListener("input", renderAdminGallery);
+  $("galleryStatusFilter")?.addEventListener("change", renderAdminGallery);
+  $("clearGalleryFilters")?.addEventListener("click", () => { $("gallerySearch").value = ""; $("galleryStatusFilter").value = ""; renderAdminGallery(); });
+  $("refreshGallery")?.addEventListener("click", loadGallery);
+}
+
 // =========================================================
 // GALERÍA - CARGAR
 // =========================================================
