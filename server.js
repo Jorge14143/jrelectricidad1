@@ -310,9 +310,11 @@ async function invalidateUserSessions(userId, keepSessionId = null) {
   const pattern = '%"user":{"id":' + Number(userId) + ',%';
   if (keepSessionId) {
     await pool.query(`DELETE FROM sessions WHERE session_id <> ? AND data LIKE ?`, [keepSessionId, pattern]);
+    await pool.query("DELETE FROM active_sessions WHERE user_id=? AND session_id<>?", [userId, keepSessionId]).catch(() => {});
     return;
   }
   await pool.query(`DELETE FROM sessions WHERE data LIKE ?`, [pattern]);
+  await pool.query("DELETE FROM active_sessions WHERE user_id=?", [userId]).catch(() => {});
 }
 
 async function isLoginLocked(email, ip) {
