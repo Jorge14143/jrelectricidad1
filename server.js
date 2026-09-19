@@ -621,13 +621,9 @@ app.put(
       }
 
 
-      if (newPassword.length < 8 || newPassword.length > 200) {
-
-        return res.status(400).json({
-          error:
-            "La nueva contraseña debe tener entre 8 y 200 caracteres."
-        });
-
+      const passwordError = validatePassword(newPassword);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
       }
 
 
@@ -1282,13 +1278,9 @@ app.post(
         });
       }
 
-      if (password.length < 8 || password.length > 200) {
-
-        return res.status(400).json({
-          error:
-            "La contraseña debe tener al menos 8 caracteres."
-        });
-
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
       }
 
 
@@ -1347,6 +1339,7 @@ app.post(
       await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
       req.session.user = registeredUser;
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+      await registerActiveSession(req, result.insertId);
       await writeAudit(req, "register", "user", result.insertId);
 
       res.json({
@@ -1659,8 +1652,8 @@ app.post(
         typeof token !== "string" ||
         !password ||
         typeof password !== "string" ||
-        password.length < 8 ||
-        password.length > 200
+        password.length < PASSWORD_MIN ||
+        password.length > PASSWORD_MAX
       ) {
         return res.status(400).json({
           error: "Token o contraseña inválidos."
@@ -4076,6 +4069,206 @@ app.delete(
   }
 );
 
+
+
+// =========================================================
+// V2 — SESIONES ACTIVAS
+// =========================================================
+
+app.get("/api/account/sessions", requireAuth, async (req, res) => {
+  try {
+    await registerActiveSession(req, req.session.user.id);
+    const [rows] = await pool.query(
+      `SELECT id, ip_address, user_agent, created_at, last_seen_at,
+              session_id = ? AS current_session
+       FROM active_sessions
+       WHERE user_id=?
+       ORDER BY last_seen_at DESC`,
+      [req.sessionID, req.session.user.id]
+    );
+
+    res.json({
+      success: true,
+      sessions: rows.map(row => ({
+        id: row.id,
+        ip_address: row.ip_address,
+        user_agent: row.user_agent,
+        created_at: row.created_at,
+        last_seen_at: row.last_seen_at,
+        current: Boolean(row.current_session)
+      }))
+    });
+  } catch (error) {
+    logError("Error listando sesiones", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudieron obtener las sesiones." });
+  }
+});
+
+app.delete("/api/account/sessions/:id", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, error: "Sesión inválida." });
+
+    const [rows] = await pool.query(
+      "SELECT session_id, user_id FROM active_sessions WHERE id=? AND user_id=? LIMIT 1",
+      [id, req.session.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ success: false, error: "Sesión no encontrada." });
+    if (rows[0].session_id === req.sessionID) {
+      return res.status(400).json({ success: false, error: "No podés cerrar la sesión actual desde este listado." });
+    }
+
+    await pool.query("DELETE FROM sessions WHERE session_id=?", [rows[0].session_id]);
+    await pool.query("DELETE FROM active_sessions WHERE id=?", [id]);
+    await writeAudit(req, "session_revoked", "session", id);
+    res.json({ success: true, message: "Sesión cerrada correctamente." });
+  } catch (error) {
+    logError("Error revocando sesión", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudo cerrar la sesión." });
+  }
+});
+
+app.post("/api/account/sessions/revoke-others", requireAuth, async (req, res) => {
+  try {
+    await removeAllActiveSessions(req.session.user.id, req.sessionID);
+    await pool.query(
+      "DELETE FROM sessions WHERE session_id <> ? AND data LIKE ?",
+      [req.sessionID, '%"user":{"id":' + Number(req.session.user.id) + ',%']
+    );
+    await writeAudit(req, "sessions_revoked_others", "user", req.session.user.id);
+    res.json({ success: true, message: "Las demás sesiones fueron cerradas." });
+  } catch (error) {
+    logError("Error cerrando sesiones", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudieron cerrar las demás sesiones." });
+  }
+});
+
+// =========================================================
+// V2 — 2FA TOTP PARA ADMIN
+// =========================================================
+
+app.get("/api/account/2fa/status", requireAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT role, totp_enabled FROM users WHERE id=? LIMIT 1", [req.session.user.id]);
+    res.json({ success: true, enabled: Boolean(rows[0]?.totp_enabled), required: rows[0]?.role === "admin" });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "No se pudo consultar 2FA." });
+  }
+});
+
+app.post("/api/account/2fa/setup", requireAuth, authLimiter, async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || "");
+    const [rows] = await pool.query("SELECT password_hash, role, totp_enabled FROM users WHERE id=? LIMIT 1", [req.session.user.id]);
+    if (!rows.length) return res.status(404).json({ success: false, error: "Usuario no encontrado." });
+    if (rows[0].role !== "admin") return res.status(403).json({ success: false, error: "2FA está reservado para administradores." });
+    if (rows[0].totp_enabled) return res.status(400).json({ success: false, error: "2FA ya está habilitado." });
+    if (!await bcrypt.compare(currentPassword, rows[0].password_hash)) return res.status(401).json({ success: false, error: "La contraseña actual es incorrecta." });
+
+    const secret = generateTotpSecret();
+    const encrypted = encryptSecret(secret, process.env.SESSION_SECRET);
+    await pool.query("UPDATE users SET totp_secret=? WHERE id=?", [encrypted, req.session.user.id]);
+
+    const issuer = "JR Electricidad";
+    const label = `${issuer}:${req.session.user.email}`;
+    const otpauth = `otpauth://totp/${encodeURIComponent(label)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+
+    res.json({ success: true, secret, otpauth_uri: otpauth });
+  } catch (error) {
+    logError("Error preparando 2FA", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudo preparar 2FA." });
+  }
+});
+
+app.post("/api/account/2fa/enable", requireAuth, authLimiter, async (req, res) => {
+  try {
+    const code = String(req.body.code || "");
+    const [rows] = await pool.query("SELECT totp_secret, totp_enabled, role FROM users WHERE id=? LIMIT 1", [req.session.user.id]);
+    if (!rows.length || rows[0].role !== "admin") return res.status(403).json({ success: false, error: "Acceso no autorizado." });
+    if (rows[0].totp_enabled) return res.status(400).json({ success: false, error: "2FA ya está habilitado." });
+    if (!rows[0].totp_secret) return res.status(400).json({ success: false, error: "Primero generá la configuración de 2FA." });
+
+    const secret = decryptSecret(rows[0].totp_secret, process.env.SESSION_SECRET);
+    if (!verifyTotp(secret, code)) return res.status(401).json({ success: false, error: "Código 2FA inválido." });
+
+    const backupCodes = generateBackupCodes();
+    await pool.query("DELETE FROM mfa_backup_codes WHERE user_id=?", [req.session.user.id]);
+    for (const backup of backupCodes) {
+      await pool.query("INSERT INTO mfa_backup_codes (user_id, code_hash) VALUES (?, ?)", [req.session.user.id, hashBackupCode(backup)]);
+    }
+    await pool.query("UPDATE users SET totp_enabled=1 WHERE id=?", [req.session.user.id]);
+    await writeAudit(req, "2fa_enabled", "user", req.session.user.id);
+
+    res.json({ success: true, message: "2FA habilitado correctamente.", backup_codes: backupCodes });
+  } catch (error) {
+    logError("Error habilitando 2FA", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudo habilitar 2FA." });
+  }
+});
+
+app.post("/api/account/2fa/disable", requireAuth, authLimiter, async (req, res) => {
+  try {
+    const password = String(req.body.password || "");
+    const code = String(req.body.code || "");
+    const [rows] = await pool.query("SELECT password_hash, totp_secret, totp_enabled, role FROM users WHERE id=? LIMIT 1", [req.session.user.id]);
+    if (!rows.length || rows[0].role !== "admin") return res.status(403).json({ success: false, error: "Acceso no autorizado." });
+    if (!rows[0].totp_enabled) return res.status(400).json({ success: false, error: "2FA no está habilitado." });
+    if (!await bcrypt.compare(password, rows[0].password_hash)) return res.status(401).json({ success: false, error: "La contraseña actual es incorrecta." });
+
+    const secret = decryptSecret(rows[0].totp_secret, process.env.SESSION_SECRET);
+    if (!verifyTotp(secret, code)) return res.status(401).json({ success: false, error: "Código 2FA inválido." });
+
+    await pool.query("UPDATE users SET totp_enabled=0, totp_secret=NULL WHERE id=?", [req.session.user.id]);
+    await pool.query("DELETE FROM mfa_backup_codes WHERE user_id=?", [req.session.user.id]);
+    await writeAudit(req, "2fa_disabled", "user", req.session.user.id);
+    res.json({ success: true, message: "2FA deshabilitado correctamente." });
+  } catch (error) {
+    logError("Error deshabilitando 2FA", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudo deshabilitar 2FA." });
+  }
+});
+
+app.post("/api/login/2fa", authLimiter, async (req, res) => {
+  try {
+    const pending = req.session.pending2fa;
+    if (!pending || Date.now() - pending.createdAt > 5 * 60 * 1000) {
+      return res.status(401).json({ success: false, error: "El desafío 2FA venció. Iniciá sesión nuevamente." });
+    }
+
+    const code = String(req.body.code || "").trim();
+    const [rows] = await pool.query("SELECT id,name,email,role,totp_secret,totp_enabled FROM users WHERE id=? LIMIT 1", [pending.userId]);
+    if (!rows.length || rows[0].role !== "admin" || !rows[0].totp_enabled) {
+      return res.status(401).json({ success: false, error: "Desafío 2FA inválido." });
+    }
+
+    const secret = decryptSecret(rows[0].totp_secret, process.env.SESSION_SECRET);
+    let valid = verifyTotp(secret, code);
+    if (!valid && code) {
+      const hash = hashBackupCode(code);
+      const [codes] = await pool.query("SELECT id FROM mfa_backup_codes WHERE user_id=? AND code_hash=? AND used_at IS NULL LIMIT 1", [pending.userId, hash]);
+      if (codes.length) {
+        await pool.query("UPDATE mfa_backup_codes SET used_at=NOW() WHERE id=?", [codes[0].id]);
+        valid = true;
+      }
+    }
+
+    if (!valid) {
+      await writeAudit(req, "2fa_failed", "user", pending.userId);
+      return res.status(401).json({ success: false, error: "Código 2FA inválido." });
+    }
+
+    const user = { id: rows[0].id, name: rows[0].name, email: rows[0].email, role: rows[0].role };
+    await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
+    req.session.user = user;
+    await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+    await registerActiveSession(req, user.id);
+    await writeAudit(req, "login", "user", user.id, { mfa: true });
+    res.json({ success: true, ok: true, user: cleanUser(user) });
+  } catch (error) {
+    logError("Error verificando 2FA", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ success: false, error: "No se pudo verificar 2FA." });
+  }
+});
 
 // =========================================================
 // PANEL DE ADMINISTRACIÓN
