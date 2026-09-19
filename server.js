@@ -4374,6 +4374,11 @@ async function start() {
   await ensureServiceColumns();
   await ensureNotificationSchema();
 
+  await pool.query(
+    "DELETE FROM active_sessions WHERE last_seen_at < DATE_SUB(NOW(), INTERVAL 8 HOUR)"
+  ).catch(error => {
+    logError("No se pudieron limpiar sesiones activas vencidas", { error: error.message });
+  });
 
   try {
 
