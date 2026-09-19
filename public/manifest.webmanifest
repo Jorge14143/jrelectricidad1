@@ -1,0 +1,14 @@
+{
+  "name": "JR Electricidad",
+  "short_name": "JR Electricidad",
+  "description": "Electricista Matriculado Cat. 3 — instalaciones, reparaciones y mantenimiento.",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080a0f",
+  "theme_color": "#ffc400",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
