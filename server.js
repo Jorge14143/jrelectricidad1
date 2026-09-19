@@ -1114,6 +1114,81 @@ app.put(
 
 
 // =========================================================
+// CUENTA DEL CLIENTE — RESUMEN V3
+// =========================================================
+
+app.get("/api/account/dashboard", requireAuth, async (req, res) => {
+  try {
+    const userId = Number(req.session.user.id);
+    const userEmail = String(req.session.user.email || "").trim().toLowerCase();
+
+    const [requests] = await pool.query(`
+      SELECT id, service, description, preferred_date, status, created_at
+      FROM quote_requests
+      WHERE user_id = ? OR (user_id IS NULL AND LOWER(COALESCE(email,'')) = ?)
+      ORDER BY created_at DESC, id DESC LIMIT 50
+    `, [userId, userEmail]);
+
+    const [quotes] = await pool.query(`
+      SELECT q.id, q.quote_number, q.issue_date, q.expiration_date, q.status,
+             q.subtotal, q.discount, q.total, q.pdf_filename, q.access_token,
+             qr.service, qr.description, qr.id AS quote_request_id
+      FROM quotes q
+      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
+      WHERE qr.user_id = ? OR (qr.user_id IS NULL AND LOWER(COALESCE(qr.email,'')) = ?)
+      ORDER BY q.created_at DESC, q.id DESC LIMIT 50
+    `, [userId, userEmail]);
+
+    const [jobs] = await pool.query(`
+      SELECT j.id, j.status, j.started_at, j.completed_at,
+             q.id AS quote_id, q.quote_number, q.total,
+             qr.service, qr.description
+      FROM jobs j
+      INNER JOIN quotes q ON q.id = j.quote_id
+      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
+      WHERE qr.user_id = ? OR (qr.user_id IS NULL AND LOWER(COALESCE(qr.email,'')) = ?)
+      ORDER BY COALESCE(j.updated_at,j.created_at) DESC, j.id DESC LIMIT 50
+    `, [userId, userEmail]);
+
+    const [invoices] = await pool.query(`
+      SELECT si.id, si.invoice_number, si.issue_date, si.due_date, si.total, si.status,
+             q.quote_number, COALESCE(SUM(sp.amount),0) AS paid_amount
+      FROM service_invoices si
+      INNER JOIN quotes q ON q.id = si.quote_id
+      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
+      LEFT JOIN service_payments sp ON sp.invoice_id = si.id
+      WHERE qr.user_id = ? OR (qr.user_id IS NULL AND LOWER(COALESCE(qr.email,'')) = ?)
+      GROUP BY si.id, si.invoice_number, si.issue_date, si.due_date, si.total, si.status, q.quote_number
+      ORDER BY si.issue_date DESC, si.id DESC LIMIT 50
+    `, [userId, userEmail]);
+
+    const [reviews] = await pool.query(`
+      SELECT r.id, r.quote_id, r.rating, r.comment, r.status, r.created_at,
+             q.quote_number, qr.service
+      FROM customer_reviews r
+      INNER JOIN quotes q ON q.id = r.quote_id
+      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
+      WHERE r.user_id = ?
+      ORDER BY r.created_at DESC, r.id DESC LIMIT 30
+    `, [userId]);
+
+    const summary = {
+      requests: requests.length,
+      quotes: quotes.length,
+      activeJobs: jobs.filter(j => !["cerrado","rechazado"].includes(j.status)).length,
+      completedJobs: jobs.filter(j => j.status === "cerrado").length,
+      invoices: invoices.length,
+      pendingBalance: invoices.reduce((sum, item) => sum + Math.max(0, Number(item.total || 0) - Number(item.paid_amount || 0)), 0)
+    };
+
+    res.json({ success: true, summary, requests, quotes, jobs, invoices, reviews });
+  } catch (error) {
+    console.error("Error obteniendo panel de cuenta:", error);
+    res.status(500).json({ error: "No se pudo cargar la información de tu cuenta." });
+  }
+});
+
+// =========================================================
 // USUARIO ACTUAL
 // =========================================================
 
