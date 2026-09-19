@@ -4998,7 +4998,6 @@ app.get("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
         qr.email AS client_email,
         qr.service AS requested_service,
         qr.description AS work_description,        qr.preferred_date,        qr.image_url
-
       FROM jobs j
 
       INNER JOIN quotes q
@@ -8766,11 +8765,7 @@ app.post("/api/public/quotes/:token/reject",authLimiter,async(req,res)=>{
   return processPublicQuoteDecision(req,res,"rechazado");
 });
 
-app.get("/presupuesto/:token",(req,res)=>{
-  const token=publicQuoteToken(req);
-  if(!token) return res.status(404).send("Presupuesto no encontrado.");
-  res.sendFile(path.join(__dirname,"public","presupuesto.html"));
-});
+
 
 // =========================================================
 // PRODUCCIÓN - HEALTH CHECK
