@@ -15,6 +15,7 @@ const multer = require("multer");
 const fs = require("fs");
 const registerFinanceRoutes = require("./finance-routes");
 const registerMaterialRoutes = require("./materials-routes");
+const registerWhatsappRoutes = require("./whatsapp-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -331,6 +332,7 @@ function cleanUser(user) {
 
 registerFinanceRoutes({ app, pool, requireAdmin });
 registerMaterialRoutes({ app, pool, requireAdmin });
+registerWhatsappRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
