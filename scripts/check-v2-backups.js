@@ -18,8 +18,8 @@ const checks = [
   ["endpoint limpieza", read("server.js").includes('app.post("/api/admin/backups/cleanup"')],
   ["mysqldump seguro por spawn", read("lib/backups.js").includes("spawn(executable")],
   ["MYSQL_PWD", read("lib/backups.js").includes("MYSQL_PWD")],
-  ["SHA-256", read("lib/backups.js").includes("createHash("sha256")"),
-  ["directorio fuera de public", read("lib/backups.js").includes("storage", "backups")],
+  ["SHA-256", read("lib/backups.js").includes('createHash("sha256")'),
+  ["directorio fuera de public", read("lib/backups.js").includes('storage", "backups')],
   ["scripts package", read("package.json").includes('"backup:v2"') && read("package.json").includes('"test:v2-backups"')]
 ];
 const failed = checks.filter(([, ok]) => !ok);
