@@ -553,6 +553,10 @@
           <div><span>Facturación aceptada</span><strong id="dashAcceptedAmount">—</strong></div>
           <div><span>Presupuestos del período</span><strong id="dashPeriodQuotes">—</strong></div>
           <div><span>Trabajos del período</span><strong id="dashPeriodJobs">—</strong></div>
+          <div><span>Clientes nuevos</span><strong id="dashNewClients">—</strong></div>
+          <div><span>Galería publicada</span><strong id="dashGalleryPublished">—</strong></div>
+          <div><span>Trabajos destacados</span><strong id="dashGalleryFeatured">—</strong></div>
+          <div><span>Conversión de solicitudes</span><strong id="dashConversion">—</strong></div>
         </div>
         <div class="dashboard-chart-wrap">
           <div class="dashboard-chart-title">Presupuestos por mes</div>
@@ -568,6 +572,50 @@
           </div>
         </div>
         <div id="dashboardRecentActivity" class="dashboard-activity-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel dashboard-wide-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">PIPELINE</span>
+            <h2>Solicitudes por etapa</h2>
+            <p class="muted">Dónde están concentradas las solicitudes actuales.</p>
+          </div>
+        </div>
+        <div id="dashboardRequestPipeline" class="dashboard-pipeline"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">AGENDA</span>
+            <h2>Próximos trabajos</h2>
+            <p class="muted">Trabajos programados y próximos a ejecutarse.</p>
+          </div>
+        </div>
+        <div id="dashboardUpcomingJobs" class="dashboard-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">SERVICIOS</span>
+            <h2>Servicios más solicitados</h2>
+            <p class="muted">Demanda registrada en solicitudes.</p>
+          </div>
+        </div>
+        <div id="dashboardTopServices" class="dashboard-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">TRABAJOS</span>
+            <h2>Estado de trabajos</h2>
+            <p class="muted">Distribución actual por estado.</p>
+          </div>
+        </div>
+        <div id="dashboardJobStatuses" class="dashboard-list"></div>
       </div>
     </section>
 
