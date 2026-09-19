@@ -250,7 +250,7 @@ function registerMaterialRoutes({ app, pool, requireAdmin }) {
         if(row.notes){doc.fontSize(8).fillColor("#666").text(`Nota: ${row.notes}`,45,y,{width:500});doc.fillColor("#000");y+=16;}
       }
       doc.moveDown();
-      doc.fontSize(8).fillColor("#666").text("Documento técnico para planificación y ejecución del servicio. No representa una venta de materiales.");
+      doc.fontSize(8).fillColor("#666").text("Documento técnico para planificación y ejecución del servicio. No incluye valores comerciales ni constituye un comprobante comercial.");
       doc.end();
     } catch(error) {
       console.error("Material PDF:",error);
