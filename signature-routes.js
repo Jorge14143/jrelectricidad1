@@ -121,6 +121,17 @@ function registerSignatureRoutes({ app, pool, requireAdmin, requireAuth }) {
            ON DUPLICATE KEY UPDATE status='aceptado'`,
           [quote.id]
         );
+        await connection.query(
+          `INSERT INTO admin_notifications (type,quote_id,message)
+           VALUES ('quote_accepted',?,?)`,
+          [quote.id, "El cliente " + signerName + " aceptó y firmó el presupuesto " + quote.quote_number + "."]
+        );
+        if (app.locals.ensureServiceInvoice) {
+          await app.locals.ensureServiceInvoice(connection, quote.id, {
+            issueDate: new Date().toISOString().slice(0,10),
+            notes: "Generado automáticamente al aceptar el presupuesto mediante firma digital."
+          });
+        }
       }
 
       await connection.commit();
