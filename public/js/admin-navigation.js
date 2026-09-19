@@ -15,11 +15,16 @@ function setupAdminNavigation() {
     "usersSection",
     "servicesSection",
     "gallerySection",
+    "reviewsSection",
     "materialsSection",
     "evidenceSection",
     "whatsappSection",
     "emailSection",
     "signaturesSection",
+    "notificationSettingsSection",
+    "configurationV3Section",
+    "securityV3Section",
+    "automationV3Section",
     "settingsSection"
   ];
 
