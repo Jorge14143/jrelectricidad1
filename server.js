@@ -3171,202 +3171,228 @@ app.get(
 
 
 // =========================================================
-// ADMIN - CLIENTES
+// ADMIN - CLIENTES V2
 // =========================================================
 
-app.get(
-  "/api/admin/clients",
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const search = String(req.query.search || "").trim();
+function cleanClientInput(body) {
+  return {
+    name: String(body.name || "").trim(),
+    phone: String(body.phone || "").trim(),
+    whatsapp: String(body.whatsapp || "").trim(),
+    email: normalizeEmail(body.email),
+    address: String(body.address || "").trim(),
+    locality: String(body.locality || "").trim(),
+    notes: String(body.notes || "").trim()
+  };
+}
 
-      let sql = `
-        SELECT
-          COALESCE(
-            MAX(NULLIF(TRIM(u.name), "")),
-            MAX(NULLIF(TRIM(qr.name), ""))
-          ) AS name,
-          COALESCE(
-            MAX(NULLIF(TRIM(u.email), "")),
-            MAX(NULLIF(TRIM(qr.email), ""))
-          ) AS email,
-          qr.phone,
-          COUNT(DISTINCT qr.id) AS requests,
-          COUNT(DISTINCT q.id) AS quotes,
-          MAX(qr.created_at) AS last_request,
-          MAX(COALESCE(q.updated_at, qr.created_at)) AS last_activity
-        FROM quote_requests qr
-        LEFT JOIN quotes q
-          ON q.quote_request_id = qr.id
-        LEFT JOIN users u
-          ON u.email = qr.email
-        WHERE 1=1
-      `;
+function validateClientInput(client) {
+  if (!client.name || client.name.length > 150) return "El nombre es obligatorio y no puede superar 150 caracteres.";
+  if (!client.phone || client.phone.length > 50) return "El teléfono es obligatorio y no puede superar 50 caracteres.";
+  if (client.whatsapp.length > 50) return "El WhatsApp no puede superar 50 caracteres.";
+  if (client.email && !validEmail(client.email)) return "El email del cliente no es válido.";
+  if (client.address.length > 255) return "La dirección no puede superar 255 caracteres.";
+  if (client.locality.length > 120) return "La localidad no puede superar 120 caracteres.";
+  if (client.notes.length > 5000) return "Las notas no pueden superar 5000 caracteres.";
+  return null;
+}
 
-      const params = [];
+app.get("/api/admin/clients", requireAdmin, async (req, res) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const locality = String(req.query.locality || "").trim();
+    const params = [];
+    let sql = `
+      SELECT
+        c.id, c.user_id, c.name, c.phone, c.whatsapp, c.email,
+        c.address, c.locality, c.notes, c.created_at, c.updated_at,
+        COUNT(DISTINCT qr.id) AS requests,
+        COUNT(DISTINCT q.id) AS quotes,
+        COUNT(DISTINCT j.id) AS jobs,
+        MAX(COALESCE(j.updated_at, q.updated_at, qr.created_at, c.updated_at)) AS last_activity
+      FROM clients c
+      LEFT JOIN quote_requests qr ON qr.client_id=c.id
+      LEFT JOIN quotes q ON q.quote_request_id=qr.id
+      LEFT JOIN jobs j ON j.quote_id=q.id
+      WHERE 1=1
+    `;
 
-      if (search) {
-        sql += `
-          AND (
-            qr.name LIKE ?
-            OR qr.phone LIKE ?
-            OR qr.email LIKE ?
-            OR u.name LIKE ?
-            OR u.email LIKE ?
-          )
-        `;
-
-        const value = `%${search}%`;
-        params.push(value, value, value, value, value);
-      }
-
-      sql += `
-        GROUP BY
-          qr.phone,
-          COALESCE(NULLIF(LOWER(TRIM(qr.email)), ""), "")
-        ORDER BY last_activity DESC, name ASC
-      `;
-
-      const [rows] = await pool.query(sql, params);
-
-      res.json({
-        success: true,
-        clients: rows.map(client => ({
-          ...client,
-          requests: Number(client.requests || 0),
-          quotes: Number(client.quotes || 0)
-        }))
-      });
-
-    } catch (error) {
-      console.error("Error obteniendo clientes:", error);
-
-      res.status(500).json({
-        error: "No se pudieron obtener los clientes."
-      });
+    if (search) {
+      sql += ` AND (c.name LIKE ? OR c.phone LIKE ? OR c.whatsapp LIKE ? OR c.email LIKE ? OR c.address LIKE ? OR c.locality LIKE ?) `;
+      const v = `%${search}%`;
+      params.push(v,v,v,v,v,v);
     }
-  }
-);
-
-
-// =========================================================
-// ADMIN - CLIENTE: FICHA DETALLADA
-// =========================================================
-
-app.get(
-  "/api/admin/clients/detail",
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const phone = String(req.query.phone || "").trim();
-      const email = String(req.query.email || "").trim().toLowerCase();
-
-      if (!phone) {
-        return res.status(400).json({
-          error: "El teléfono del cliente es obligatorio."
-        });
-      }
-
-      const [requests] = await pool.query(
-        `
-        SELECT
-          id,
-          name,
-          phone,
-          email,
-          service,
-          description,
-          preferred_date,
-          image_url,
-          status,
-          created_at
-        FROM quote_requests
-        WHERE phone = ?
-          AND (
-            (? = "" AND (email IS NULL OR email = ""))
-            OR (? <> "" AND LOWER(COALESCE(email, "")) = ?)
-          )
-        ORDER BY created_at DESC
-        `,
-        [phone, email, email, email]
-      );
-
-      if (!requests.length) {
-        return res.status(404).json({
-          error: "No se encontró el cliente."
-        });
-      }
-
-      const [quotes] = await pool.query(
-        `
-        SELECT
-          q.id,
-          q.quote_number,
-          q.issue_date,
-          q.expiration_date,
-          q.status,
-          q.subtotal,
-          q.discount,
-          q.total,
-          q.created_at,
-          q.updated_at,
-          j.id AS job_id,
-          j.status AS job_status,
-          j.started_at,
-          j.completed_at
-        FROM quotes q
-        INNER JOIN quote_requests qr
-          ON qr.id = q.quote_request_id
-        LEFT JOIN jobs j
-          ON j.quote_id = q.id
-        WHERE qr.phone = ?
-          AND (
-            (? = "" AND (qr.email IS NULL OR qr.email = ""))
-            OR (? <> "" AND LOWER(COALESCE(qr.email, "")) = ?)
-          )
-        ORDER BY q.created_at DESC
-        `,
-        [phone, email, email, email]
-      );
-
-      const client = {
-        name: requests[0].name || "Sin nombre",
-        phone: requests[0].phone || phone,
-        email: requests[0].email || email || "",
-        requests: requests.length,
-        quotes: quotes.length,
-        totalQuoted: quotes.reduce(
-          (sum, quote) => sum + Number(quote.total || 0),
-          0
-        ),
-        totalJobs: quotes.filter(quote => quote.job_id).length,
-        completedJobs: quotes.filter(
-          quote => quote.job_status === "cerrado"
-        ).length,
-        lastActivity: requests.reduce((latest, item) => {
-          const value = new Date(item.created_at).getTime();
-          return value > latest ? value : latest;
-        }, 0)
-      };
-
-      res.json({
-        success: true,
-        client,
-        requests,
-        quotes
-      });
-
-    } catch (error) {
-      console.error("Error obteniendo ficha del cliente:", error);
-
-      res.status(500).json({
-        error: "No se pudo obtener la ficha del cliente."
-      });
+    if (locality) {
+      sql += " AND c.locality LIKE ?";
+      params.push(`%${locality}%`);
     }
-  }
-);
 
+    sql += `
+      GROUP BY c.id
+      ORDER BY last_activity DESC, c.name ASC
+    `;
+
+    const [rows] = await pool.query(sql, params);
+    res.json({
+      success: true,
+      clients: rows.map(c => ({
+        ...c,
+        requests: Number(c.requests || 0),
+        quotes: Number(c.quotes || 0),
+        jobs: Number(c.jobs || 0)
+      }))
+    });
+  } catch (error) {
+    logError("Error obteniendo clientes", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudieron obtener los clientes." });
+  }
+});
+
+app.post("/api/admin/clients", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    const client = cleanClientInput(req.body);
+    const validationError = validateClientInput(client);
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    const [existing] = await pool.query("SELECT id FROM clients WHERE phone=? LIMIT 1", [client.phone]);
+    if (existing.length) return res.status(409).json({ error: "Ya existe un cliente con ese teléfono." });
+
+    const [result] = await pool.query(
+      `INSERT INTO clients (name,phone,whatsapp,email,address,locality,notes)
+       VALUES (?,?,?,?,?,?,?)`,
+      [client.name,client.phone,client.whatsapp||null,client.email||null,client.address||null,client.locality||null,client.notes||null]
+    );
+    await writeAudit(req, "client_created", "client", result.insertId);
+    res.status(201).json({ success:true, client:{ id:result.insertId, ...client } });
+  } catch (error) {
+    logError("Error creando cliente", { requestId:req.requestId, error:error.message });
+    res.status(500).json({ error:"No se pudo crear el cliente." });
+  }
+});
+
+app.get("/api/admin/clients/:id", requireAdmin, async (req, res) => {
+  try {
+    const id=Number(req.params.id);
+    if (!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
+    const [rows]=await pool.query("SELECT * FROM clients WHERE id=? LIMIT 1",[id]);
+    if (!rows.length) return res.status(404).json({error:"Cliente no encontrado."});
+    res.json({success:true,client:rows[0]});
+  } catch(error) {
+    logError("Error obteniendo cliente",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el cliente."});
+  }
+});
+
+app.put("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    const id=Number(req.params.id);
+    if (!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
+    const client=cleanClientInput(req.body);
+    const validationError=validateClientInput(client);
+    if (validationError) return res.status(400).json({error:validationError});
+
+    const [existing]=await pool.query("SELECT id FROM clients WHERE phone=? AND id<>? LIMIT 1",[client.phone,id]);
+    if(existing.length) return res.status(409).json({error:"Ya existe otro cliente con ese teléfono."});
+
+    const [result]=await pool.query(
+      `UPDATE clients SET name=?,phone=?,whatsapp=?,email=?,address=?,locality=?,notes=? WHERE id=?`,
+      [client.name,client.phone,client.whatsapp||null,client.email||null,client.address||null,client.locality||null,client.notes||null,id]
+    );
+    if(!result.affectedRows) return res.status(404).json({error:"Cliente no encontrado."});
+    await writeAudit(req,"client_updated","client",id);
+    const [rows]=await pool.query("SELECT * FROM clients WHERE id=? LIMIT 1",[id]);
+    res.json({success:true,message:"Cliente actualizado correctamente.",client:rows[0]});
+  } catch(error) {
+    logError("Error actualizando cliente",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar el cliente."});
+  }
+});
+
+app.delete("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    const id=Number(req.params.id);
+    if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
+    const [result]=await pool.query("DELETE FROM clients WHERE id=?",[id]);
+    if(!result.affectedRows) return res.status(404).json({error:"Cliente no encontrado."});
+    await writeAudit(req,"client_deleted","client",id);
+    res.json({success:true,message:"Cliente eliminado correctamente."});
+  } catch(error) {
+    logError("Error eliminando cliente",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo eliminar el cliente."});
+  }
+});
+
+app.get("/api/admin/clients/:id/history", requireAdmin, async (req, res) => {
+  try {
+    const id=Number(req.params.id);
+    if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
+
+    const [clientRows]=await pool.query("SELECT * FROM clients WHERE id=? LIMIT 1",[id]);
+    if(!clientRows.length) return res.status(404).json({error:"Cliente no encontrado."});
+
+    const [requests]=await pool.query(
+      `SELECT id,name,phone,email,service,description,preferred_date,image_url,status,created_at
+       FROM quote_requests WHERE client_id=? ORDER BY created_at DESC`,[id]
+    );
+    const [quotes]=await pool.query(
+      `SELECT q.id,q.quote_number,q.issue_date,q.expiration_date,q.status,q.subtotal,q.discount,q.total,
+              q.created_at,q.updated_at,j.id AS job_id,j.status AS job_status,j.started_at,j.completed_at
+       FROM quotes q
+       INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       LEFT JOIN jobs j ON j.quote_id=q.id
+       WHERE qr.client_id=? ORDER BY q.created_at DESC`,[id]
+    );
+    const [jobs]=await pool.query(
+      `SELECT j.id,j.quote_id,j.status,j.started_at,j.completed_at,j.created_at,j.updated_at,
+              q.quote_number, q.total,
+              qr.service,qr.description
+       FROM jobs j
+       INNER JOIN quotes q ON q.id=j.quote_id
+       INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       WHERE qr.client_id=? ORDER BY j.created_at DESC`,[id]
+    );
+
+    res.json({
+      success:true,
+      client:clientRows[0],
+      requests,quotes,jobs,
+      summary:{
+        requests:requests.length,
+        quotes:quotes.length,
+        jobs:jobs.length,
+        completedJobs:jobs.filter(j=>j.status==="cerrado").length,
+        totalQuoted:quotes.reduce((sum,q)=>sum+Number(q.total||0),0)
+      }
+    });
+  } catch(error) {
+    logError("Error obteniendo historial del cliente",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el historial del cliente."});
+  }
+});
+
+// Compatibilidad V1: ficha por teléfono/email.
+app.get("/api/admin/clients/detail", requireAdmin, async (req,res)=>{
+  try {
+    const phone=String(req.query.phone||"").trim();
+    const email=normalizeEmail(req.query.email);
+    if(!phone) return res.status(400).json({error:"El teléfono del cliente es obligatorio."});
+    const [rows]=await pool.query("SELECT id FROM clients WHERE phone=? LIMIT 1",[phone]);
+    if(!rows.length) return res.status(404).json({error:"No se encontró el cliente."});
+    const id=rows[0].id;
+    const [clientRows]=await pool.query("SELECT * FROM clients WHERE id=? LIMIT 1",[id]);
+    const [requests]=await pool.query("SELECT id,name,phone,email,service,description,preferred_date,image_url,status,created_at FROM quote_requests WHERE client_id=? ORDER BY created_at DESC",[id]);
+    const [quotes]=await pool.query(
+      `SELECT q.id,q.quote_number,q.issue_date,q.expiration_date,q.status,q.subtotal,q.discount,q.total,q.created_at,q.updated_at,
+              j.id AS job_id,j.status AS job_status,j.started_at,j.completed_at
+       FROM quotes q INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       LEFT JOIN jobs j ON j.quote_id=q.id WHERE qr.client_id=? ORDER BY q.created_at DESC`,[id]
+    );
+    res.json({success:true,client:clientRows[0],requests,quotes});
+  } catch(error) {
+    logError("Error obteniendo ficha compatible del cliente",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener la ficha del cliente."});
+  }
+});
 
 // =========================================================
 // ADMIN - ESTADÍSTICAS
