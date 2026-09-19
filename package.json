@@ -1,13 +1,15 @@
 {
   "name": "jr-electricidad",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Sitio web para empresa de electricidad con usuarios y panel administrador",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "prod": "node server.js",
-    "test": "node scripts/check-project.js"
+    "test": "node scripts/check-project.js",
+    "test:v2": "node scripts/check-project.js && node scripts/check-v2-foundation.js",
+    "migrate": "node scripts/run-migrations.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
