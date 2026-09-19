@@ -1212,6 +1212,134 @@ app.get(
 
 
 // =========================================================
+// AUDITORÍA ADMIN — FASE 17
+// =========================================================
+
+app.get("/api/admin/audit", requireAdmin, async (req, res) => {
+  try {
+    const page = Math.min(Math.max(Number(req.query.page) || 1, 1), 100000);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+    const offset = (page - 1) * limit;
+    const action = String(req.query.action || "").trim().slice(0, 100);
+    const entityType = String(req.query.entity_type || "").trim().slice(0, 100);
+    const actor = String(req.query.actor || "").trim().slice(0, 190);
+    const q = String(req.query.q || "").trim().replace(/\s+/g, " ").slice(0, 100);
+    const dateFrom = String(req.query.date_from || "").trim();
+    const dateTo = String(req.query.date_to || "").trim();
+
+    const where = [];
+    const params = [];
+
+    if (action) { where.push("a.action=?"); params.push(action); }
+    if (entityType) { where.push("a.entity_type=?"); params.push(entityType); }
+    if (actor) {
+      where.push("(u.name LIKE ? OR u.email LIKE ?)");
+      params.push("%" + actor + "%", "%" + actor + "%");
+    }
+    if (q) {
+      where.push("(a.action LIKE ? OR a.entity_type LIKE ? OR a.entity_id LIKE ? OR a.request_id LIKE ? OR a.ip_address LIKE ? OR a.user_agent LIKE ? OR CAST(a.metadata AS CHAR) LIKE ?)");
+      const t = "%" + q + "%";
+      params.push(t, t, t, t, t, t, t);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) { where.push("a.created_at >= ?"); params.push(dateFrom + " 00:00:00"); }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { where.push("a.created_at < DATE_ADD(?, INTERVAL 1 DAY)"); params.push(dateTo); }
+
+    const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+
+    const [[countRow]] = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM audit_log a
+       LEFT JOIN users u ON u.id=a.actor_user_id
+       ${whereSql}`,
+      params
+    );
+
+    const [rows] = await pool.query(
+      `SELECT a.id, a.actor_user_id, u.name AS actor_name, u.email AS actor_email,
+              a.action, a.entity_type, a.entity_id, a.ip_address,
+              a.user_agent, a.request_id, a.metadata, a.created_at
+       FROM audit_log a
+       LEFT JOIN users u ON u.id=a.actor_user_id
+       ${whereSql}
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const actions = await pool.query(
+      "SELECT DISTINCT action FROM audit_log ORDER BY action ASC LIMIT 500"
+    );
+    const entityTypes = await pool.query(
+      "SELECT DISTINCT entity_type FROM audit_log WHERE entity_type IS NOT NULL AND entity_type<>'' ORDER BY entity_type ASC LIMIT 200"
+    );
+
+    res.json({
+      success: true,
+      page,
+      limit,
+      total: Number(countRow.total || 0),
+      total_pages: Math.ceil(Number(countRow.total || 0) / limit),
+      filters: {
+        actions: actions[0].map(row => row.action),
+        entity_types: entityTypes[0].map(row => row.entity_type)
+      },
+      audit: rows.map(row => ({
+        ...row,
+        metadata: (() => {
+          try { return row.metadata ? JSON.parse(row.metadata) : null; } catch { return null; }
+        })()
+      }))
+    });
+  } catch (error) {
+    logError("Error obteniendo auditoría administrativa", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo obtener la auditoría." });
+  }
+});
+
+app.get("/api/admin/audit/export", requireAdmin, async (req, res) => {
+  try {
+    const action = String(req.query.action || "").trim().slice(0, 100);
+    const entityType = String(req.query.entity_type || "").trim().slice(0, 100);
+    const dateFrom = String(req.query.date_from || "").trim();
+    const dateTo = String(req.query.date_to || "").trim();
+    const where = [];
+    const params = [];
+    if (action) { where.push("a.action=?"); params.push(action); }
+    if (entityType) { where.push("a.entity_type=?"); params.push(entityType); }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) { where.push("a.created_at >= ?"); params.push(dateFrom + " 00:00:00"); }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { where.push("a.created_at < DATE_ADD(?, INTERVAL 1 DAY)"); params.push(dateTo); }
+
+    const [rows] = await pool.query(
+      `SELECT a.id, a.created_at, u.name AS actor_name, u.email AS actor_email,
+              a.action, a.entity_type, a.entity_id, a.ip_address, a.request_id,
+              a.user_agent, a.metadata
+       FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id
+       ${where.length ? "WHERE " + where.join(" AND ") : ""}
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 10000`,
+      params
+    );
+
+    const csvCell = value => {
+      const text = value == null ? "" : typeof value === "string" ? value : JSON.stringify(value);
+      return '"' + String(text).replace(/"/g, '""').replace(/[\r\n]+/g, " ") + '"';
+    };
+    const header = ["id","created_at","actor_name","actor_email","action","entity_type","entity_id","ip_address","request_id","user_agent","metadata"];
+    const lines = [header.join(",")];
+    for (const row of rows) {
+      lines.push(header.map(key => csvCell(row[key])).join(","));
+    }
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="jr-electricidad-auditoria.csv"');
+    res.send("\uFEFF" + lines.join("\n"));
+  } catch (error) {
+    logError("Error exportando auditoría", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo exportar la auditoría." });
+  }
+});
+
+// =========================================================
 // BÚSQUEDA GLOBAL ADMIN — FASE 15
 // =========================================================
 
