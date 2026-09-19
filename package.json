@@ -7,7 +7,11 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "prod": "node server.js",
-    "test": "node scripts/check-project.js && node scripts/qa-v3.js"
+    "test": "node scripts/check-project.js && node scripts/qa-v3.js",
+    "backup": "node scripts/backup-db.js",
+    "restore": "node scripts/restore-db.js",
+    "health": "node scripts/monitor-health.js",
+    "prod:preflight": "node scripts/production-preflight.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
