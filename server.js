@@ -361,6 +361,7 @@ registerNotificationRoutes({ app, pool, requireAdmin });
 registerConfigurationRoutes({ app, pool, requireAdmin });
 registerSecurityRoutes({ app, pool, requireAdmin, cleanUser, authLimiter });
 registerAutomationRoutes({ app, pool, requireAdmin });
+registerEvidenceRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
