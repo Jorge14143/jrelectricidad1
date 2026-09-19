@@ -22,7 +22,7 @@ function validTotp(secret,code){
 }
 function makeSecret(){return base32Encode(crypto.randomBytes(20));}
 
-module.exports=function registerSecurityRoutes({app,pool,requireAdmin,cleanUser}){
+module.exports=function registerSecurityRoutes({app,pool,requireAdmin,cleanUser,authLimiter}){
  app.get("/api/admin/security",requireAdmin,async(req,res)=>{
   try{const [r]=await pool.query("SELECT two_factor_enabled FROM admin_security WHERE id=1");res.json({success:true,twoFactorEnabled:Boolean(r[0]?.two_factor_enabled)});}
   catch(e){res.status(500).json({error:"No se pudo obtener la configuración de seguridad."});}
@@ -56,7 +56,7 @@ module.exports=function registerSecurityRoutes({app,pool,requireAdmin,cleanUser}
    res.json({success:true,message:"2FA desactivado."});
   }catch(e){res.status(500).json({error:"No se pudo desactivar 2FA."});}
  });
- app.post("/api/login/2fa",async(req,res)=>{
+ app.post("/api/login/2fa",authLimiter,async(req,res)=>{
   try{
    const pending=req.session.pending2fa;if(!pending?.userId)return res.status(401).json({error:"La sesión de autenticación expiró."});
    const [r]=await pool.query("SELECT id,name,email,role,created_at FROM users WHERE id=? LIMIT 1",[pending.userId]);
@@ -68,6 +68,19 @@ module.exports=function registerSecurityRoutes({app,pool,requireAdmin,cleanUser}
    await new Promise((resolve,reject)=>req.session.save(err=>err?reject(err):resolve()));
    res.json({ok:true,user});
   }catch(e){res.status(500).json({error:"No se pudo completar el inicio de sesión."});}
+ });
+ 
+ app.get("/api/admin/security/sessions",requireAdmin,async(req,res)=>{
+  try{
+   const userId=Number(req.session.user.id);
+   const pattern='%"user":{"id":'+userId+',%';
+   const [rows]=await pool.query("SELECT session_id,expires,data FROM sessions WHERE data LIKE ? ORDER BY expires DESC",[pattern]);
+   res.json({success:true,sessions:rows.map(x=>({session_id:x.session_id,expires:x.expires,current:x.session_id===req.sessionID}))});
+  }catch(e){res.status(500).json({error:"No se pudieron obtener las sesiones."});}
+ });
+ app.delete("/api/admin/security/sessions/:id",requireAdmin,async(req,res)=>{
+  try{const id=String(req.params.id);if(!id||id===req.sessionID)return res.status(400).json({error:"No podés cerrar la sesión actual desde este listado."});const [r]=await pool.query("DELETE FROM sessions WHERE session_id=?",[id]);if(!r.affectedRows)return res.status(404).json({error:"Sesión no encontrada."});res.json({success:true,message:"Sesión cerrada."});}
+  catch(e){res.status(500).json({error:"No se pudo cerrar la sesión."});}
  });
  app.get("/api/admin/security/audit",requireAdmin,async(req,res)=>{
   try{
