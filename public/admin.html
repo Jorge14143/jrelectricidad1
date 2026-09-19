@@ -157,7 +157,12 @@
       SISTEMA
     </div>
 
-   <a href="#auditSection" class="admin-nav-item">
+   <a href="#backupsSection" class="admin-nav-item">
+      <span class="admin-nav-icon">💾</span>
+      <span>Backups</span>
+    </a>
+
+    <a href="#auditSection" class="admin-nav-item">
   <span>🛡️</span>
   <span>Auditoría</span>
 </a>
@@ -2457,6 +2462,47 @@
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
 
+<section id="backupsSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">SEGURIDAD</span>
+      <h2>Backups</h2>
+      <p class="muted">Copias de seguridad de la base de datos, almacenamiento privado y retención automática.</p>
+    </div>
+  </div>
+
+  <div class="backup-grid">
+    <div class="panel backup-create-card">
+      <div class="backup-icon">💾</div>
+      <h3>Backup de base de datos</h3>
+      <p class="muted">Generá una copia completa mediante <code>mysqldump</code>. El archivo queda fuera de <code>public/</code>.</p>
+      <div class="backup-meta">
+        <span>Retención: <strong id="backupRetentionDays">30 días</strong></span>
+        <span>Disponibles: <strong id="backupTotal">0</strong></span>
+      </div>
+      <div class="backup-actions">
+        <button id="createBackupButton" type="button" class="btn">💾 Crear backup ahora</button>
+        <button id="cleanupBackupsButton" type="button" class="btn btn-secondary">🧹 Limpiar antiguos</button>
+      </div>
+      <p id="backupStatus" class="backup-status" aria-live="polite"></p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">HISTORIAL</span>
+          <h3>Copias disponibles</h3>
+          <p class="muted">Cada backup incluye tamaño y SHA-256 para verificar integridad.</p>
+        </div>
+        <button id="refreshBackupsButton" type="button" class="btn btn-secondary">↻ Actualizar</button>
+      </div>
+      <div id="backupsList" class="backups-list">
+        <div class="backup-empty">Cargando backups...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section
   id="settingsSection"
   class="admin-section"
@@ -2791,7 +2837,8 @@
 <script src="/js/admin-gallery.js"></script>
 <script src="/js/admin-quotes.js"></script>
 <script src="/js/admin-jobs.js"></script>
-<script src="/js/admin-navigation.js"></script>\n<script src="/js/admin-documents.js"></script>
+<script src="/js/admin-navigation.js"></script>
+<script src="/js/admin-backups.js"></script>\n<script src="/js/admin-documents.js"></script>
 <script src="/js/admin-search.js"></script>
 <script src="/js/admin-audit.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
