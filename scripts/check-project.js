@@ -32,6 +32,7 @@ const required = [
   "public/js/admin-services.js",
   "public/js/admin-users.js",
   "public/js/finanzas.js",
+  "public/css/finanzas.css",
   "public/js/gallery.js",
   "public/js/home-services.js",
   "public/js/public-quote.js",
