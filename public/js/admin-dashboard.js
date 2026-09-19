@@ -24,6 +24,13 @@ function renderDashboardAnalytics(data) {
   set("dashAcceptedAmount", formatDashboardMoney(data.acceptedAmount));
   set("dashPeriodQuotes", data.period?.quotes ?? 0);
   set("dashPeriodJobs", data.period?.jobs ?? 0);
+  set("dashNewClients", data.clients?.newClients ?? 0);
+  set("dashGalleryPublished", data.gallery?.published ?? 0);
+  set("dashGalleryFeatured", data.gallery?.featured ?? 0);
+
+  const totalPipeline = Object.values(data.requestPipeline || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  const acceptedPipeline = Number(data.requestPipeline?.accepted || 0);
+  set("dashConversion", totalPipeline ? Math.round((acceptedPipeline / totalPipeline) * 100) + "%" : "0%");
 
   const chart = $("dashboardMonthlyChart");
   if (chart) {
@@ -40,6 +47,76 @@ function renderDashboardAnalytics(data) {
           </div>`;
         }).join("")
       : `<p class="muted">Todavía no hay datos mensuales.</p>`;
+  }
+
+  const pipeline = $("dashboardRequestPipeline");
+  if (pipeline) {
+    const stages = [
+      ["pending","Pendientes",data.requestPipeline?.pending],
+      ["review","En revisión",data.requestPipeline?.review],
+      ["quoting","Presupuestando",data.requestPipeline?.quoting],
+      ["quoted","Presupuestadas",data.requestPipeline?.quoted],
+      ["accepted","Aceptadas",data.requestPipeline?.accepted]
+    ];
+    const maxPipeline = Math.max(1, ...stages.map(x => Number(x[2] || 0)));
+    pipeline.innerHTML = stages.map(([key,label,value]) => {
+      const n = Number(value || 0);
+      return `<div class="dashboard-pipeline-item">
+        <div class="dashboard-pipeline-head"><span>${h(label)}</span><strong>${n}</strong></div>
+        <div class="dashboard-progress"><span style="width:${Math.max(0,Math.round((n/maxPipeline)*100))}%"></span></div>
+      </div>`;
+    }).join("");
+  }
+
+  const upcoming = $("dashboardUpcomingJobs");
+  if (upcoming) {
+    const rows = Array.isArray(data.upcomingJobs) ? data.upcomingJobs : [];
+    upcoming.innerHTML = rows.length ? rows.map(job => `
+      <div class="dashboard-list-item">
+        <div class="dashboard-list-icon">🔧</div>
+        <div>
+          <strong>#${Number(job.id)} · ${h(job.clientName || "Sin cliente")}</strong>
+          <small>${job.scheduledAt ? new Date(job.scheduledAt).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"}) : "Sin fecha"} · ${h(job.technicianName || "Sin técnico")}</small>
+          ${job.location ? `<small>📍 ${h(job.location)}</small>` : ""}
+        </div>
+        <span class="dashboard-status">${h(job.status || "")}</span>
+      </div>
+    `).join("") : `<p class="muted">No hay trabajos próximos.</p>`;
+  }
+
+  const services = $("dashboardTopServices");
+  if (services) {
+    const rows = Array.isArray(data.topServices) ? data.topServices : [];
+    const max = Math.max(1, ...rows.map(x => Number(x.requests || 0)));
+    services.innerHTML = rows.length ? rows.map(item => `
+      <div class="dashboard-list-item dashboard-service-item">
+        <div>
+          <strong>${h(item.service)}</strong>
+          <small>${Number(item.requests || 0)} solicitudes · ${Number(item.accepted || 0)} aceptadas</small>
+        </div>
+        <div class="dashboard-service-bar"><span style="width:${Math.max(4,Math.round((Number(item.requests || 0)/max)*100))}%"></span></div>
+      </div>
+    `).join("") : `<p class="muted">No hay solicitudes todavía.</p>`;
+  }
+
+  const jobStatuses = $("dashboardJobStatuses");
+  if (jobStatuses) {
+    const rows = Array.isArray(data.jobStatusSummary) ? data.jobStatusSummary : [];
+    const labels = {
+      pendiente_presupuesto:"Pendiente de presupuesto",
+      presupuesto_enviado:"Presupuesto enviado",
+      aceptado:"Aceptado",
+      programado:"Programado",
+      en_proceso:"En proceso",
+      pausado:"Pausado",
+      finalizado:"Finalizado",
+      cerrado:"Cerrado",
+      rechazado:"Rechazado",
+      cancelado:"Cancelado"
+    };
+    jobStatuses.innerHTML = rows.length ? rows.map(item => `
+      <div class="dashboard-status-row"><span>${h(labels[item.status] || item.status)}</span><strong>${Number(item.total || 0)}</strong></div>
+    `).join("") : `<p class="muted">No hay trabajos registrados.</p>`;
   }
 
   const activity = $("dashboardRecentActivity");
