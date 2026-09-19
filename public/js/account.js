@@ -56,6 +56,43 @@ function updateServiceProgress(data) {
   setText("account-next-step", messages[current] || messages[0]);
 }
 
+
+function initAccountNavigation() {
+  const links = document.querySelectorAll(".account-menu a[data-account-view]");
+  const views = document.querySelectorAll(".account-view");
+
+  function showView(id, updateHash = true) {
+    const target = document.getElementById(id);
+    if (!target) return;
+
+    views.forEach(function(view) {
+      view.classList.toggle("active", view.id === id);
+    });
+
+    links.forEach(function(link) {
+      link.classList.toggle("active", link.dataset.accountView === id);
+    });
+
+    if (updateHash) history.replaceState(null, "", "#" + id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  links.forEach(function(link) {
+    link.addEventListener("click", function(event) {
+      event.preventDefault();
+      showView(link.dataset.accountView);
+    });
+  });
+
+  const initial = window.location.hash.replace("#", "");
+  showView(initial && document.getElementById(initial) ? initial : "servicio", false);
+
+  window.addEventListener("hashchange", function() {
+    const id = window.location.hash.replace("#", "");
+    if (id && document.getElementById(id)) showView(id, false);
+  });
+}
+
 async function loadAccountDashboard() {
   try {
     const response = await fetch("/api/account/dashboard", { credentials: "same-origin" });
@@ -209,4 +246,5 @@ passwordForm?.addEventListener("submit", async event => {
   } catch(error) { message.textContent = "❌ " + error.message; }
 });
 
+initAccountNavigation();
 loadAccount();
