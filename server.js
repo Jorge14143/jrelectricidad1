@@ -8019,6 +8019,49 @@ app.post("/api/admin/notifications/archive-all", requireAdmin, async (req,res) =
 });
 
 // =========================================================
+// V2 — EMAIL / ESTADO DE ENTREGA
+// =========================================================
+
+app.get("/api/admin/email/status", requireAdmin, async (req,res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT status,COUNT(*) AS total,MAX(created_at) AS last_created,MAX(sent_at) AS last_sent
+       FROM email_outbox GROUP BY status ORDER BY status`
+    );
+    res.json({
+      success:true,
+      smtp_configured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.MAIL_FROM),
+      statuses: rows
+    });
+  } catch(error) {
+    logError("Error obteniendo estado de email",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el estado del email."});
+  }
+});
+
+app.get("/api/admin/email/outbox", requireAdmin, async (req,res) => {
+  try {
+    const limit=Math.min(Math.max(Number(req.query.limit)||50,1),100);
+    const status=String(req.query.status||"").trim();
+    const params=[];
+    let sql=`SELECT id,to_email,subject,template,status,attempts,max_attempts,next_attempt_at,sent_at,last_error,provider_message_id,request_id,created_at,updated_at
+              FROM email_outbox WHERE 1=1`;
+    if(status){
+      const allowed=["queued","sending","sent","failed","skipped"];
+      if(!allowed.includes(status)) return res.status(400).json({error:"Estado de email inválido."});
+      sql+=" AND status=?";
+      params.push(status);
+    }
+    sql+=" ORDER BY id DESC LIMIT "+limit;
+    const [rows]=await pool.query(sql,params);
+    res.json({success:true,emails:rows});
+  } catch(error) {
+    logError("Error obteniendo cola de email",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener la cola de email."});
+  }
+});
+
+// =========================================================
 // V2 — ACEPTACIÓN DIGITAL DE PRESUPUESTOS
 // =========================================================
 
