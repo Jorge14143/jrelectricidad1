@@ -218,10 +218,31 @@
       <p>La confianza se construye con trabajo claro, atención directa y resultados cuidados.</p>
     </div>
 
-    <div class="testimonial-grid-v3">
-      <article><span class="quote-mark-v3">“</span><h3>Trabajo claro</h3><p>Presupuesto, explicación y alcance del trabajo comunicados de forma simple.</p><div>★★★★★</div></article>
-      <article><span class="quote-mark-v3">“</span><h3>Atención directa</h3><p>Contacto personalizado para coordinar cada detalle antes y durante el servicio.</p><div>★★★★★</div></article>
-      <article><span class="quote-mark-v3">“</span><h3>Terminaciones cuidadas</h3><p>Orden, seguridad y revisión final como parte de cada trabajo realizado.</p><div>★★★★★</div></article>
+    <div id="reviewsList" class="testimonial-grid-v3" aria-live="polite">
+      <div class="reviews-empty-v3">Todavía no hay reseñas de clientes.</div>
+    </div>
+    <div id="reviewPanel" class="review-panel-v3" hidden>
+      <div class="review-panel-copy-v3">
+        <span class="eyebrow-v3">TU EXPERIENCIA</span>
+        <h3>¿Cómo fue tu trabajo?</h3>
+        <p>Podés calificar un trabajo solamente cuando esté cerrado y figure en tu cuenta.</p>
+      </div>
+      <form id="reviewForm" class="review-form-v3">
+        <label>Trabajo
+          <select id="reviewJob" name="quote_id" required></select>
+        </label>
+        <label>Calificación
+          <span id="reviewStars" class="review-stars-v3" role="radiogroup" aria-label="Calificación de 1 a 5 estrellas"></span>
+        </label>
+        <label>Comentario
+          <textarea id="reviewComment" name="comment" maxlength="1000" rows="4" placeholder="Contanos cómo fue tu experiencia..." required></textarea>
+        </label>
+        <button class="primary-button-v3" type="submit">Enviar reseña <span>→</span></button>
+        <div id="reviewMessage" class="review-message-v3" role="alert"></div>
+      </form>
+    </div>
+    <div id="reviewLoginHint" class="reviews-login-v3">
+      Iniciá sesión para ver si tenés trabajos disponibles para calificar.
     </div>
   </div>
 </section>
@@ -376,6 +397,7 @@
 </script>
 
 <script src="/js/home-services.js"></script>
+<script src="/js/home-reviews.js"></script>
 <script src="/js/user-menu.js"></script>
 <script src="/js/gallery.js"></script>
 <script src="/js/quote-request.js"></script>
