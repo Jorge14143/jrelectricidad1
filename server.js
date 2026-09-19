@@ -4486,6 +4486,40 @@ app.put("/api/admin/jobs/:id(\\d+)",requireAdmin,adminMutationLimiter,async(req,
       [fields.assigned_user_id,fields.scheduled_at,fields.internal_notes,fields.execution_notes,fields.location,id]);
     await recordJobHistory(req,id,"job_updated",current.status,current.status,{changes:fields});
     await writeAudit(req,"job_updated","job",id,fields);
+
+    if (String(current.assigned_user_id || "") !== String(fields.assigned_user_id || "")) {
+      if (fields.assigned_user_id) {
+        await createJobNotification(
+          "job_assigned",
+          current.quote_id,
+          `El trabajo #${id} fue asignado a tu usuario.`,
+          id,
+          fields.assigned_user_id,
+          "high"
+        );
+      } else {
+        await createJobNotification(
+          "job_status_changed",
+          current.quote_id,
+          `El trabajo #${id} quedó sin técnico asignado.`,
+          id,
+          null,
+          "normal"
+        );
+      }
+    }
+
+    if (String(current.scheduled_at || "") !== String(fields.scheduled_at || "") && fields.scheduled_at) {
+      await createJobNotification(
+        "job_scheduled",
+        current.quote_id,
+        `El trabajo #${id} fue programado para ${new Date(fields.scheduled_at).toLocaleString("es-AR")}.`,
+        id,
+        fields.assigned_user_id || null,
+        "high"
+      );
+    }
+
     res.json({success:true,message:"Trabajo actualizado correctamente."});
   }catch(error){
     logError("Error actualizando trabajo",{requestId:req.requestId,error:error.message});
@@ -7946,20 +7980,36 @@ app.get("/api/admin/quotes/:id(\\d+)/history", requireAdmin, async (req,res)=>{
 });
 
 // =====================================================
-// NOTIFICACIONES DEL ADMINISTRADOR
+// NOTIFICACIONES DEL ADMINISTRADOR — V2
 // =====================================================
 
 app.get("/api/admin/notifications", requireAdmin, async (req,res) => {
   try {
+    const limitRaw = Number(req.query.limit || 50);
+    const limit = Math.min(Math.max(Number.isInteger(limitRaw) ? limitRaw : 50, 1), 100);
+    const includeArchived = String(req.query.archived || "") === "1";
+    const recipient = Number(req.session.user.id);
+
     const [rows] = await pool.query(
-      `SELECT id,type,quote_id,message,is_read,created_at
+      `SELECT id,user_id,type,quote_id,entity_type,entity_id,message,link_url,priority,
+              is_read,read_at,archived_at,created_at
        FROM admin_notifications
-       ORDER BY is_read ASC,created_at DESC
-       LIMIT 50`
+       WHERE (user_id IS NULL OR user_id=?)
+         AND (?=1 OR archived_at IS NULL)
+       ORDER BY is_read ASC, created_at DESC, id DESC
+       LIMIT ${limit}`,
+      [recipient, includeArchived ? 1 : 0]
     );
+
     const [countRows] = await pool.query(
-      "SELECT COUNT(*) AS unread FROM admin_notifications WHERE is_read=0"
+      `SELECT COUNT(*) AS unread
+       FROM admin_notifications
+       WHERE (user_id IS NULL OR user_id=?)
+         AND is_read=0
+         AND archived_at IS NULL`,
+      [recipient]
     );
+
     res.json({
       success:true,
       notifications:rows,
@@ -7975,7 +8025,12 @@ app.post("/api/admin/notifications/:id/read", requireAdmin, async (req,res) => {
   try {
     const id=Number(req.params.id);
     if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de notificación inválido."});
-    const [result]=await pool.query("UPDATE admin_notifications SET is_read=1 WHERE id=?",[id]);
+    const [result]=await pool.query(
+      `UPDATE admin_notifications
+       SET is_read=1,read_at=COALESCE(read_at,NOW())
+       WHERE id=? AND (user_id IS NULL OR user_id=?) AND archived_at IS NULL`,
+      [id,Number(req.session.user.id)]
+    );
     if(!result.affectedRows) return res.status(404).json({error:"Notificación no encontrada."});
     res.json({success:true,message:"Notificación marcada como leída."});
   } catch(error) {
@@ -7986,11 +8041,50 @@ app.post("/api/admin/notifications/:id/read", requireAdmin, async (req,res) => {
 
 app.post("/api/admin/notifications/read-all", requireAdmin, async (req,res) => {
   try {
-    await pool.query("UPDATE admin_notifications SET is_read=1 WHERE is_read=0");
+    await pool.query(
+      `UPDATE admin_notifications
+       SET is_read=1,read_at=COALESCE(read_at,NOW())
+       WHERE (user_id IS NULL OR user_id=?)
+         AND is_read=0 AND archived_at IS NULL`,
+      [Number(req.session.user.id)]
+    );
     res.json({success:true,message:"Todas las notificaciones fueron marcadas como leídas."});
   } catch(error) {
     logError("Error marcando notificaciones",{requestId:req.requestId,error:error.message});
     res.status(500).json({error:"No se pudieron marcar las notificaciones como leídas."});
+  }
+});
+
+app.post("/api/admin/notifications/:id/archive", requireAdmin, async (req,res) => {
+  try {
+    const id=Number(req.params.id);
+    if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de notificación inválido."});
+    const [result]=await pool.query(
+      `UPDATE admin_notifications
+       SET archived_at=NOW(),is_read=1,read_at=COALESCE(read_at,NOW())
+       WHERE id=? AND (user_id IS NULL OR user_id=?) AND archived_at IS NULL`,
+      [id,Number(req.session.user.id)]
+    );
+    if(!result.affectedRows) return res.status(404).json({error:"Notificación no encontrada."});
+    res.json({success:true,message:"Notificación archivada."});
+  } catch(error) {
+    logError("Error archivando notificación",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo archivar la notificación."});
+  }
+});
+
+app.post("/api/admin/notifications/archive-all", requireAdmin, async (req,res) => {
+  try {
+    await pool.query(
+      `UPDATE admin_notifications
+       SET archived_at=NOW(),is_read=1,read_at=COALESCE(read_at,NOW())
+       WHERE (user_id IS NULL OR user_id=?) AND archived_at IS NULL`,
+      [Number(req.session.user.id)]
+    );
+    res.json({success:true,message:"Todas las notificaciones fueron archivadas."});
+  } catch(error) {
+    logError("Error archivando notificaciones",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron archivar las notificaciones."});
   }
 });
 
