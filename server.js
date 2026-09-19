@@ -4997,8 +4997,7 @@ app.get("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
         qr.phone AS client_phone,
         qr.email AS client_email,
         qr.service AS requested_service,
-        qr.description AS work_description,        qr.preferred_date,
-        qr.image_url
+        qr.description AS work_description,        qr.preferred_date,        qr.image_url
 
       FROM jobs j
 
@@ -8532,91 +8531,52 @@ app.get("/api/admin/quotes/:id(\\d+)/history", requireAdmin, async (req,res)=>{
 // NOTIFICACIONES DEL ADMINISTRADOR
 // =====================================================
 
-app.get(
-  "/api/admin/notifications",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const [rows] = await pool.query(
-        `
-        SELECT
-          id,
-          type,
-          quote_id,
-          message,
-          is_read,
-          created_at
-        FROM admin_notifications
-        ORDER BY
-          is_read ASC,
-          created_at DESC
-        LIMIT 50
-        `
-      );
-
-      const [countRows] = await pool.query(
-        `
-        SELECT COUNT(*) AS unread
-        FROM admin_notifications
-        WHERE is_read = 0
-        `
-      );
-
-      res.json({
-        success: true,
-        notifications: rows,
-        unread: Number(countRows[0].unread || 0)
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Error obteniendo notificaciones:",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "No se pudieron obtener las notificaciones."
-      });
-
-    }
-
+app.get("/api/admin/notifications", requireAdmin, async (req,res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id,type,quote_id,message,is_read,created_at
+       FROM admin_notifications
+       ORDER BY is_read ASC,created_at DESC
+       LIMIT 50`
+    );
+    const [countRows] = await pool.query(
+      "SELECT COUNT(*) AS unread FROM admin_notifications WHERE is_read=0"
+    );
+    res.json({
+      success:true,
+      notifications:rows,
+      unread:Number(countRows[0]?.unread || 0)
+    });
+  } catch(error) {
+    logError("Error obteniendo notificaciones",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron obtener las notificaciones."});
   }
-);
+});
 
+app.post("/api/admin/notifications/:id/read", requireAdmin, async (req,res) => {
+  try {
+    const id=Number(req.params.id);
+    if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de notificación inválido."});
+    const [result]=await pool.query("UPDATE admin_notifications SET is_read=1 WHERE id=?",[id]);
+    if(!result.affectedRows) return res.status(404).json({error:"Notificación no encontrada."});
+    res.json({success:true,message:"Notificación marcada como leída."});
+  } catch(error) {
+    logError("Error marcando notificación",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar la notificación."});
+  }
+});
 
-// =====================================================
-// MARCAR UNA NOTIFICACIÓN COMO LEÍDA
-// =====================================================
+app.post("/api/admin/notifications/read-all", requireAdmin, async (req,res) => {
+  try {
+    await pool.query("UPDATE admin_notifications SET is_read=1 WHERE is_read=0");
+    res.json({success:true,message:"Todas las notificaciones fueron marcadas como leídas."});
+  } catch(error) {
+    logError("Error marcando notificaciones",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron marcar las notificaciones como leídas."});
+  }
+});
 
-app.post(
-  "/api/admin/notifications/:id/read",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const notificationId = Number(req.params.id);
-
-      if (
-        !Number.isInteger(notificationId) ||
-        notificationId <= 0
-      ) {
-
-        return res.status(400).json({
-          error: "ID de notificación inválido."
-        });
-
-      }
-
-      const [result] = await pool.query(
-        `
-        UPDATE admin_notifications
-        SET is_read = 1
-  // =========================================================
+// =========================================================
 // V2 — ACEPTACIÓN DIGITAL DE PRESUPUESTOS
 // =========================================================
 
@@ -8624,119 +8584,106 @@ const ACCEPTANCE_CONSENT_TEXT =
   "Declaro que revisé el presupuesto, sus conceptos, importes y condiciones, y autorizo a JR Electricidad a registrar digitalmente mi decisión.";
 
 function validatePublicCustomer(body) {
-  const name = String(body?.name || "").trim().replace(/\s+/g, " ");
+  const name = String(body?.name || "").trim().replace(/\s+/g," ");
   const email = String(body?.email || "").trim().toLowerCase();
   const phone = String(body?.phone || "").trim();
   const note = String(body?.note || "").trim();
-  const signatureName = String(body?.signatureName || "").trim().replace(/\s+/g, " ");
-
-  if (name.length < 2 || name.length > 150) return { error:"Ingresá un nombre válido." };
-  if (!validEmail(email) || email.length > 190) return { error:"Ingresá un email válido." };
-  if (phone.length < 6 || phone.length > 50) return { error:"Ingresá un teléfono válido." };
-  if (note.length > 2000) return { error:"La observación no puede superar 2000 caracteres." };
-  if (signatureName.length < 2 || signatureName.length > 150) return { error:"Ingresá tu nombre como firma digital." };
-  return { name, email, phone, note, signatureName };
+  const signatureName = String(body?.signatureName || "").trim().replace(/\s+/g," ");
+  if(name.length<2||name.length>150) return {error:"Ingresá un nombre válido."};
+  if(!validEmail(email)) return {error:"Ingresá un email válido."};
+  if(phone.length<6||phone.length>50) return {error:"Ingresá un teléfono válido."};
+  if(note.length>2000) return {error:"La observación no puede superar 2000 caracteres."};
+  if(signatureName.length<2||signatureName.length>150) return {error:"Ingresá tu nombre como firma digital."};
+  return {name,email,phone,note,signatureName};
 }
 
 function publicQuoteToken(req) {
-  const token = String(req.params.token || "").trim();
+  const token=String(req.params.token||"").trim();
   return /^[A-Za-z0-9_-]{24,200}$/.test(token) ? token : null;
 }
 
-async function sendAcceptanceEmail({ to, quoteNumber, decision, customerName }) {
-  if (!to || !process.env.SMTP_HOST || !process.env.SMTP_USER ||
-      !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) return false;
-
+async function sendAcceptanceEmail({to,quoteNumber,decision,customerName}) {
+  if(!to||!process.env.SMTP_HOST||!process.env.SMTP_USER||!process.env.SMTP_PASSWORD||!process.env.MAIL_FROM) return false;
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
-      auth: { user:process.env.SMTP_USER, pass:process.env.SMTP_PASSWORD }
+    const transporter=nodemailer.createTransport({
+      host:process.env.SMTP_HOST,
+      port:Number(process.env.SMTP_PORT||465),
+      secure:String(process.env.SMTP_SECURE).toLowerCase()==="true",
+      auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}
     });
-    const accepted = decision === "aceptado";
+    const accepted=decision==="aceptado";
     await transporter.sendMail({
-      from: process.env.MAIL_FROM,
+      from:process.env.MAIL_FROM,
       to,
-      subject: `${accepted ? "Aceptación" : "Rechazo"} de presupuesto ${quoteNumber} - JR Electricidad`,
-      html: `<div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
+      subject:`${accepted?"Aceptación":"Rechazo"} de presupuesto ${quoteNumber} - JR Electricidad`,
+      html:`<div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
         <h2>JR Electricidad ⚡</h2>
-        <p>Hola ${String(customerName || "").replace(/[&<>"']/g, "")},</p>
-        <p>Registramos correctamente tu <strong>${accepted ? "aceptación" : "rechazo"}</strong> del presupuesto <strong>${String(quoteNumber || "").replace(/[&<>"']/g, "")}</strong>.</p>
+        <p>Hola ${String(customerName||"").replace(/[&<>"']/g,"")},</p>
+        <p>Registramos correctamente tu <strong>${accepted?"aceptación":"rechazo"}</strong> del presupuesto <strong>${String(quoteNumber||"").replace(/[&<>"']/g,"")}</strong>.</p>
         <p>Fecha: ${new Date().toLocaleString("es-AR")}</p>
         <p>Este correo es una constancia de la operación registrada.</p>
       </div>`
     });
     return true;
-  } catch (error) {
-    logError("No se pudo enviar confirmación de aceptación", { error:error.message, quoteNumber });
+  } catch(error) {
+    logError("No se pudo enviar confirmación de aceptación",{requestId:null,error:error.message,quoteNumber});
     return false;
   }
 }
 
-async function processPublicQuoteDecision(req, res, decision) {
-  const token = publicQuoteToken(req);
-  if (!token) return res.status(404).json({ error:"Presupuesto no encontrado o enlace inválido." });
-
-  const customer = validatePublicCustomer(req.body || {});
-  if (customer.error) return res.status(400).json({ error:customer.error });
-
-  if (decision === "aceptado" && req.body?.consent !== true) {
-    return res.status(400).json({ error:"Debés aceptar la constancia digital antes de confirmar." });
+async function processPublicQuoteDecision(req,res,decision) {
+  const token=publicQuoteToken(req);
+  if(!token) return res.status(404).json({error:"Presupuesto no encontrado o enlace inválido."});
+  const customer=validatePublicCustomer(req.body||{});
+  if(customer.error) return res.status(400).json({error:customer.error});
+  if(decision==="aceptado"&&req.body?.consent!==true) {
+    return res.status(400).json({error:"Debés aceptar la constancia digital antes de confirmar."});
   }
 
-  const connection = await pool.getConnection();
+  const connection=await pool.getConnection();
   try {
     await connection.beginTransaction();
-
-    const [rows] = await connection.query(
-      `SELECT q.*, qr.name AS client_name, qr.email AS client_email, qr.phone AS client_phone
+    const [rows]=await connection.query(
+      `SELECT q.*,qr.name AS client_name,qr.email AS client_email,qr.phone AS client_phone
        FROM quotes q
        INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
        WHERE q.access_token=? LIMIT 1 FOR UPDATE`,
       [token]
     );
-
-    if (!rows.length) {
+    if(!rows.length) {
       await connection.rollback();
-      return res.status(404).json({ error:"Presupuesto no encontrado o enlace inválido." });
+      return res.status(404).json({error:"Presupuesto no encontrado o enlace inválido."});
     }
 
-    const quote = rows[0];
-    if (["cerrado","vencido"].includes(quote.status) ||
-        (quote.expiration_date && new Date(quote.expiration_date).getTime() < Date.now() - 86400000)) {
+    const quote=rows[0];
+    if(["cerrado","vencido"].includes(quote.status) ||
+       (quote.expiration_date && new Date(quote.expiration_date).getTime() < new Date().setHours(0,0,0,0))) {
       await connection.rollback();
-      return res.status(409).json({ error:"Este presupuesto está vencido o cerrado y ya no admite una decisión." });
+      return res.status(409).json({error:"Este presupuesto está vencido o cerrado y ya no admite una decisión."});
+    }
+    if(quote.status===decision) {
+      await connection.rollback();
+      return res.json({success:true,status:decision,already_decided:true,message:`El presupuesto ya figura como ${decision}.`});
+    }
+    if(quote.status!=="enviado") {
+      await connection.rollback();
+      return res.status(409).json({error:"Este presupuesto no está disponible para una nueva decisión."});
     }
 
-    if (quote.status === decision) {
-      await connection.rollback();
-      return res.json({ success:true, status:decision, already_decided:true, message:`El presupuesto ya figura como ${decision}.` });
-    }
+    const ip=req.ip||null;
+    const userAgent=String(req.get("user-agent")||"").slice(0,512)||null;
 
-    if (quote.status !== "enviado") {
-      await connection.rollback();
-      return res.status(409).json({ error:"Este presupuesto no está disponible para una nueva decisión." });
-    }
-
-    const ip = req.ip || null;
-    const userAgent = String(req.get("user-agent") || "").slice(0,512) || null;
-
-    await connection.query(
+    const [insertResult]=await connection.query(
       `INSERT INTO quote_acceptances
-       (quote_id, decision, customer_name, customer_email, customer_phone,
-        customer_note, consent_text, signature_name, ip_address, user_agent)
+       (quote_id,decision,customer_name,customer_email,customer_phone,customer_note,consent_text,signature_name,ip_address,user_agent)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [quote.id, decision, customer.name, customer.email, customer.phone,
-       customer.note || null, decision === "aceptado" ? ACCEPTANCE_CONSENT_TEXT : null,
-       customer.signatureName, ip, userAgent]
+      [quote.id,decision,customer.name,customer.email,customer.phone,customer.note||null,
+       decision==="aceptado"?ACCEPTANCE_CONSENT_TEXT:null,customer.signatureName,ip,userAgent]
     );
 
-    if (decision === "aceptado") {
+    if(decision==="aceptado") {
       await connection.query(
-        `UPDATE quotes
-         SET status='aceptado', accepted_at=NOW()
-         WHERE id=?`,
+        "UPDATE quotes SET status='aceptado',accepted_at=NOW() WHERE id=?",
         [quote.id]
       );
       await connection.query(
@@ -8745,49 +8692,48 @@ async function processPublicQuoteDecision(req, res, decision) {
       );
       await connection.query(
         `INSERT INTO jobs (quote_id,status) VALUES (?, 'aceptado')
-         ON DUPLICATE KEY UPDATE status='aceptado', updated_at=CURRENT_TIMESTAMP`,
+         ON DUPLICATE KEY UPDATE status='aceptado',updated_at=CURRENT_TIMESTAMP`,
         [quote.id]
       );
     } else {
       await connection.query(
-        "UPDATE quotes SET status='rechazado', rejected_at=NOW() WHERE id=?",
+        "UPDATE quotes SET status='rechazado',rejected_at=NOW() WHERE id=?",
         [quote.id]
       );
     }
 
     await connection.query(
-      `INSERT INTO quote_history
-       (quote_id, action, old_status, new_status, metadata)
-       VALUES (?, 'customer_decision', 'enviado', ?, ?)`,
-      [quote.id, decision, JSON.stringify({
+      `INSERT INTO quote_history (quote_id,action,old_status,new_status,metadata)
+       VALUES (?,'customer_decision','enviado',?,?)`,
+      [quote.id,decision,JSON.stringify({
         source:"public",
-        acceptance_id: null,
+        acceptance_id:insertResult.insertId,
         customer_name:customer.name,
         customer_email:customer.email,
-        consent:decision === "aceptado"
+        consent:decision==="aceptado"
       })]
     );
 
     await connection.query(
-      `INSERT INTO admin_notifications (type, quote_id, message)
-       VALUES (?, ?, ?)`,
+      `INSERT INTO admin_notifications (type,quote_id,message)
+       VALUES (?,?,?)`,
       [
-        decision === "aceptado" ? "quote_accepted" : "quote_rejected",
+        decision==="aceptado"?"quote_accepted":"quote_rejected",
         quote.id,
-        `El cliente ${quote.client_name} registró ${decision === "aceptado" ? "la aceptación" : "el rechazo"} del presupuesto ${quote.quote_number}.`
+        `El cliente ${quote.client_name} registró ${decision==="aceptado"?"la aceptación":"el rechazo"} del presupuesto ${quote.quote_number}.`
       ]
     );
 
     await connection.commit();
 
-    const emailSent = await sendAcceptanceEmail({
-      to: customer.email,
+    const emailSent=await sendAcceptanceEmail({
+      to:customer.email,
       quoteNumber:quote.quote_number,
       decision,
       customerName:customer.name
     });
 
-    await writeAudit(req, `quote_${decision}_public`, "quote", quote.id, {
+    await writeAudit(req,`quote_${decision}_public`,"quote",quote.id,{
       customer_name:customer.name,
       customer_email:customer.email,
       ip,
@@ -8799,108 +8745,32 @@ async function processPublicQuoteDecision(req, res, decision) {
       success:true,
       status:decision,
       email_sent:emailSent,
-      message:decision === "aceptado"
-        ? "Presupuesto aceptado. Se registró tu aceptación y se creó el trabajo."
-        : "Presupuesto rechazado. Se registró tu decisión correctamente."
+      message:decision==="aceptado"
+        ?"Presupuesto aceptado. Se registró tu aceptación y se creó el trabajo."
+        :"Presupuesto rechazado. Se registró tu decisión correctamente."
     });
-  } catch (error) {
-    await connection.rollback().catch(() => {});
-    logError("Error procesando decisión pública del presupuesto", { requestId:req.requestId, error:error.message });
-    res.status(500).json({ error:"No se pudo registrar la decisión del presupuesto." });
+  } catch(error) {
+    await connection.rollback().catch(()=>{});
+    logError("Error procesando decisión pública del presupuesto",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo registrar la decisión del presupuesto."});
   } finally {
     connection.release();
   }
 }
 
-app.post("/api/public/quotes/:token/accept", authLimiter, async (req,res) => {
+app.post("/api/public/quotes/:token/accept",authLimiter,async(req,res)=>{
   return processPublicQuoteDecision(req,res,"aceptado");
 });
 
-app.post("/api/public/quotes/:token/reject", authLimiter, async (req,res) => {
+app.post("/api/public/quotes/:token/reject",authLimiter,async(req,res)=>{
   return processPublicQuoteDecision(req,res,"rechazado");
 });
 
-// Página pública del presupuesto.
-app.get("/presupuesto/:token", (req,res) => {
-  const token = publicQuoteToken(req);
-  if (!token) return res.status(404).send("Presupuesto no encontrado.");
+app.get("/presupuesto/:token",(req,res)=>{
+  const token=publicQuoteToken(req);
+  if(!token) return res.status(404).send("Presupuesto no encontrado.");
   res.sendFile(path.join(__dirname,"public","presupuesto.html"));
 });
-
-M quotes q
-      INNER JOIN quote_requests qr
-        ON qr.id = q.quote_request_id
-      WHERE q.access_token = ?
-      LIMIT 1
-      `,
-      [req.params.token]
-    );
-
-    if (!quoteRows.length) {
-      await connection.rollback();
-      return res.status(404).json({
-        error: "Presupuesto no encontrado."
-      });
-    }
-
-    const quote = quoteRows[0];
-
-    await connection.query(
-      `
-      INSERT INTO jobs
-      (
-        quote_id,
-        status
-      )
-      VALUES (?, 'rechazado')
-      ON DUPLICATE KEY UPDATE
-        status = 'rechazado'
-      `,
-      [quote.id]
-    );
-
-    await connection.query(
-      `
-      INSERT INTO admin_notifications
-      (
-        type,
-        quote_id,
-        message
-      )
-      VALUES (?, ?, ?)
-      `,
-      [
-        "quote_rejected",
-        quote.id,
-        `El cliente ${quote.client_name} rechazó el presupuesto ${quote.quote_number}.`
-      ]
-    );
-
-    await connection.commit();
-
-    res.json({
-      success: true,
-      status: "rechazado",
-      message: "Presupuesto rechazado correctamente."
-    });
-
-  } catch (error) {
-    await connection.rollback().catch(() => {});
-
-    console.error(
-      "Error rechazando presupuesto:",
-      error
-    );
-
-    res.status(500).json({
-      error:
-        "No se pudo rechazar el presupuesto."
-    });
-  } finally {
-    connection.release();
-  }
-});
-
 
 // =========================================================
 // PRODUCCIÓN - HEALTH CHECK
