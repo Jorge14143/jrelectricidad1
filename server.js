@@ -226,6 +226,21 @@ app.use(
 
 
 // =========================================================
+// AUDITORÍA DE SEGURIDAD V3
+// =========================================================
+app.use((req,res,next)=>{
+  if (!req.path.startsWith("/api/admin/") || !["POST","PUT","PATCH","DELETE"].includes(req.method)) return next();
+  res.on("finish",()=>{
+    const user=req.session?.user;
+    pool.query(
+      "INSERT INTO security_audit_log (user_id,action,method,path,status_code,ip_address,user_agent,details) VALUES (?,?,?,?,?,?,?,?)",
+      [user?.id||null,req.method+" "+req.path,req.method,req.path,res.statusCode,req.ip||null,String(req.get("user-agent")||"").slice(0,500),null]
+    ).catch(error=>console.error("Auditoría de seguridad:",error.message));
+  });
+  next();
+});
+
+// =========================================================
 // RATE LIMIT
 // =========================================================
 
