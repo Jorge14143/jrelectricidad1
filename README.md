@@ -119,3 +119,17 @@ Agenda y Turnos V3 implementados al 100% estructuralmente: disponibilidad, agend
 - Documentación: `docs/V3-BLOCK-D.md`
 
 **Nota:** la migración 019 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
+
+
+## V3.0 — Bloque E completado
+
+Presupuestos V3 implementados al 100% estructuralmente: cálculo, descuentos/impuestos, plantillas, versionado, envío, aceptación cliente, historial, PDF e integración portal/admin.
+
+- Administración: `/presupuestos-v3.html`
+- Cliente: `/portal.html`
+- API: `/api/v3/admin/quotes` y `/api/v3/client/quotes`
+- Migración: `migrations/020_v3_quotes.sql`
+- Checker: `npm run test:v3-quotes`
+- Documentación: `docs/V3-BLOCK-E.md`
+
+**Nota:** la migración 020 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
