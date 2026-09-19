@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const required = [
   "server.js",
   "finance-routes.js",
+  "materials-routes.js",
   "schema.sql",
   "public/index.html",
   "public/admin.html",
@@ -26,6 +27,7 @@ const required = [
   "public/js/admin-dashboard.js",
   "public/js/admin-gallery.js",
   "public/js/admin-jobs.js",
+  "public/js/admin-materials.js",
   "public/js/admin-navigation.js",
   "public/js/admin-notifications.js",
   "public/js/admin-quotes.js",
@@ -33,6 +35,7 @@ const required = [
   "public/js/admin-users.js",
   "public/js/finanzas.js",
   "public/css/finanzas.css",
+  "public/css/materials.css",
   "public/js/gallery.js",
   "public/js/home-services.js",
   "public/js/public-quote.js",
