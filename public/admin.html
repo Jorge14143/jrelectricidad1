@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/css/whatsapp.css">
   <link rel="stylesheet" href="/css/email.css">
   <link rel="stylesheet" href="/css/signatures.css">
+  <link rel="stylesheet" href="/css/dashboard-v3.css">
 </head>
 
 <body class="admin-page">
@@ -600,6 +601,72 @@
       </div>
     </section>
 
+
+    <!-- =====================================================
+         DASHBOARD V3
+    ====================================================== -->
+    <section class="dashboard-v3" id="dashboardV3">
+      <div class="dashboard-v3-header">
+        <div class="dashboard-v3-title">
+          <span class="eyebrow">DASHBOARD V3</span>
+          <h2>Centro de control de JR Electricidad</h2>
+          <p class="muted">Resumen operativo, clientes, presupuestos, trabajos y finanzas de servicios.</p>
+        </div>
+        <div class="dashboard-v3-actions">
+          <select id="dashboardV3Period" aria-label="Período financiero">
+            <option value="3">Últimos 3 meses</option>
+            <option value="6" selected>Últimos 6 meses</option>
+            <option value="12">Últimos 12 meses</option>
+          </select>
+          <button type="button" class="btn tiny" id="dashboardV3Refresh">🔄 Actualizar</button>
+        </div>
+      </div>
+
+      <div id="dashboardV3Error" class="notice error" hidden></div>
+
+      <div class="v3-kpis">
+        <div class="v3-kpi"><span>Clientes</span><strong id="v3Clients">—</strong><small>registrados</small></div>
+        <div class="v3-kpi"><span>Presupuestos pendientes</span><strong id="v3PendingQuotes">—</strong><small>por gestionar</small></div>
+        <div class="v3-kpi"><span>Presupuestos aceptados</span><strong id="v3AcceptedQuotes">—</strong><small>servicios aceptados</small></div>
+        <div class="v3-kpi"><span>Trabajos activos</span><strong id="v3ActiveJobs">—</strong><small>aceptados o en proceso</small></div>
+        <div class="v3-kpi accent"><span>Resultado cobrado</span><strong id="v3Net">—</strong><small>cobros − gastos</small></div>
+      </div>
+
+      <div class="v3-finance">
+        <div class="v3-panel">
+          <div class="v3-panel-head">
+            <div><span class="eyebrow">FINANZAS DE SERVICIOS</span><h3>Facturación, cobros y gastos</h3><p class="muted">Solo servicios aceptados y su registro financiero.</p></div>
+          </div>
+          <div class="v3-finance-summary">
+            <div><span>Facturado</span><strong id="v3Invoiced">—</strong></div>
+            <div><span>Cobrado</span><strong id="v3Collected">—</strong></div>
+            <div><span>Pendiente de cobro</span><strong id="v3Receivable">—</strong></div>
+          </div>
+          <div class="v3-chart" id="dashboardV3FinanceChart"></div>
+        </div>
+        <div class="v3-panel">
+          <div class="v3-panel-head"><div><span class="eyebrow">ACCESO RÁPIDO</span><h3>Gestión diaria</h3></div></div>
+          <div class="v3-quick-actions">
+            <a href="#quoteRequestsSection">📋 Presupuestos</a>
+            <a href="#jobsSection">🔧 Trabajos</a>
+            <a href="#clientsSection">👥 Clientes</a>
+            <a href="/finanzas.html">💰 Finanzas</a>
+            <a href="#materialsSection">🧰 Materiales</a>
+            <a href="#emailSection">✉️ Email</a>
+            <a href="#whatsappSection">💬 WhatsApp</a>
+            <a href="#settingsSection">⚙️ Configuración</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="v3-panels-grid">
+        <div class="v3-panel"><div class="v3-panel-head"><div><span class="eyebrow">PRESUPUESTOS</span><h3>Últimos presupuestos</h3></div></div><div id="dashboardV3Quotes" class="v3-list"></div></div>
+        <div class="v3-panel"><div class="v3-panel-head"><div><span class="eyebrow">TRABAJOS</span><h3>Actividad de trabajos</h3></div></div><div id="dashboardV3Jobs" class="v3-list"></div></div>
+        <div class="v3-panel"><div class="v3-panel-head"><div><span class="eyebrow">CLIENTES</span><h3>Clientes recientes</h3></div></div><div id="dashboardV3Clients" class="v3-list"></div></div>
+        <div class="v3-panel"><div class="v3-panel-head"><div><span class="eyebrow">AGENDA</span><h3>Próximas fechas solicitadas</h3></div></div><div id="dashboardV3Agenda" class="v3-list"></div></div>
+        <div class="v3-panel" style="grid-column:1/-1"><div class="v3-panel-head"><div><span class="eyebrow">ACTIVIDAD</span><h3>Actividad reciente</h3></div></div><div id="dashboardV3Activity" class="v3-list"></div></div>
+      </div>
+    </section>
 
     <!-- =====================================================
          PRESUPUESTOS — SOLICITUDES
@@ -2785,6 +2852,7 @@
 <script src="/js/admin-core.js"></script>
 <script src="/js/admin-notifications.js"></script>
 <script src="/js/admin-dashboard.js"></script>
+<script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
 <script src="/js/admin-users.js"></script>
 <script src="/js/admin-gallery.js"></script>
