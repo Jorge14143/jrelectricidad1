@@ -2433,7 +2433,7 @@ app.put("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, uplo
       "UPDATE gallery SET title=?,description=?,image_url=?,alt_text=?,category=?,active=?,featured=?,client_id=?,job_id=?,quote_id=? WHERE id=?",
       [title,description,imageUrl,altText,category,active,featured,clientId,jobId,quoteId,id]
     );
-    if(req.file&&existing.image_url!==imageUrl)await deleteGalleryFile(existing.image_url);
+    if(req.file&&existing.image_url!==imageUrl&&!existing.source_job_attachment_id)await deleteGalleryFile(existing.image_url);
     await writeAudit(req,"gallery_updated","gallery",id,{category,featured,jobId,quoteId,clientId});
     res.json({ok:true,message:"Trabajo actualizado correctamente."});
   }catch(error){
@@ -2446,10 +2446,10 @@ app.put("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, uplo
 app.delete("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req,res)=>{
   try{
     const id=Number(req.params.id);
-    const [[existing]]=await pool.query("SELECT image_url FROM gallery WHERE id=? LIMIT 1",[id]);
+    const [[existing]]=await pool.query("SELECT image_url,source_job_attachment_id FROM gallery WHERE id=? LIMIT 1",[id]);
     if(!existing)return res.status(404).json({error:"Trabajo no encontrado."});
     await pool.query("DELETE FROM gallery WHERE id=?",[id]);
-    await deleteGalleryFile(existing.image_url);
+    if(!existing.source_job_attachment_id)await deleteGalleryFile(existing.image_url);
     await writeAudit(req,"gallery_deleted","gallery",id);
     res.json({ok:true,message:"Trabajo eliminado correctamente."});
   }catch(error){
@@ -4455,6 +4455,15 @@ app.delete("/api/admin/jobs/:id(\\d+)/attachments/:attachmentId(\\d+)",requireAd
     if(!jobId||!attachmentId)return res.status(400).json({error:"ID inválido."});
     const [rows]=await pool.query("SELECT * FROM job_attachments WHERE id=? AND job_id=? LIMIT 1",[attachmentId,jobId]);
     if(!rows.length)return res.status(404).json({error:"Archivo no encontrado."});
+    const [[publishedGallery]]=await pool.query(
+      "SELECT id FROM gallery WHERE source_job_attachment_id=? LIMIT 1",
+      [attachmentId]
+    );
+    if(publishedGallery){
+      return res.status(409).json({
+        error:"Esta evidencia está publicada en la galería. Eliminá primero la publicación de galería."
+      });
+    }
     await pool.query("DELETE FROM job_attachments WHERE id=?",[attachmentId]);
     if(rows[0].stored_name)fs.unlink(path.join(uploadsDir,rows[0].stored_name),()=>{});
     await recordJobHistory(req,jobId,"attachment_deleted",null,null,{attachment_id:attachmentId});
