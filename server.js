@@ -16,7 +16,7 @@ const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
 const { runMigrations } = require("./lib/migrations");
 const { configureEmailService, queueEmail } = require("./lib/email");
-const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");
+const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");\nconst { createDocumentStorage, DOCUMENT_TYPES, ALLOWED_DOCUMENT_MIMES, MAX_DOCUMENT_SIZE, normalizeDocumentType, safeDocumentName, documentFileName, sha256File, validateDocumentSignature } = require("./lib/documents");
 const {
   PASSWORD_MIN,
   PASSWORD_MAX,
@@ -81,6 +81,27 @@ const storage = multer.diskStorage({
 
 });
 
+
+
+// =========================================================
+// V2 — ALMACENAMIENTO PRIVADO DE DOCUMENTOS
+// =========================================================
+
+const documentsDir = createDocumentStorage(path.join(__dirname, "storage", "documents"));
+
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, documentsDir),
+    filename: (req, file, cb) => cb(null, documentFileName(file.originalname))
+  }),
+  limits: { fileSize: MAX_DOCUMENT_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_DOCUMENT_MIMES.has(file.mimetype)) {
+      return cb(new Error("Tipo de documento no permitido."));
+    }
+    cb(null, true);
+  }
+});
 
 const upload = multer({
 
@@ -8442,6 +8463,332 @@ app.post("/api/public/quotes/:token/reject",authLimiter,async(req,res)=>{
 });
 
 
+
+
+// =========================================================
+// FASE 14 — GESTIÓN CENTRALIZADA DE DOCUMENTOS
+// =========================================================
+
+function validateDocumentEntityId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function documentAbsolutePath(storedName) {
+  const base = path.resolve(documentsDir);
+  const target = path.resolve(base, String(storedName || ""));
+  if (target !== base && !target.startsWith(base + path.sep)) {
+    return null;
+  }
+  return target;
+}
+
+async function createStoredDocument({
+  title,
+  description = null,
+  documentType,
+  clientId = null,
+  quoteRequestId = null,
+  quoteId = null,
+  jobId = null,
+  originalName,
+  mimeType,
+  filePath,
+  createdByUserId
+}) {
+  const type = normalizeDocumentType(documentType);
+  if (!type) throw new Error("Tipo de documento inválido.");
+  const stat = await fs.promises.stat(filePath);
+  if (stat.size > MAX_DOCUMENT_SIZE) throw new Error("El documento supera los 10 MB.");
+  const handle = await fs.promises.open(filePath, "r");
+  const header = Buffer.alloc(16);
+  try { await handle.read(header, 0, 16, 0); } finally { await handle.close(); }
+  if (!validateDocumentSignature(header, mimeType)) {
+    throw new Error("La firma del archivo no coincide con su tipo.");
+  }
+
+  const safeName = safeDocumentName(originalName);
+  const storedName = path.basename(filePath);
+  const sha256 = await sha256File(filePath);
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const [docResult] = await connection.query(
+      `INSERT INTO documents
+        (document_type,title,description,client_id,quote_request_id,quote_id,job_id,created_by_user_id,current_version)
+       VALUES (?,?,?,?,?,?,?,?,1)`,
+      [
+        type,
+        String(title || safeName).trim().slice(0,255) || safeName,
+        description ? String(description).trim().slice(0,10000) : null,
+        clientId, quoteRequestId, quoteId, jobId, createdByUserId || null
+      ]
+    );
+    const documentId = Number(docResult.insertId);
+    await connection.query(
+      `INSERT INTO document_versions
+        (document_id,version_number,original_name,stored_name,storage_path,mime_type,size_bytes,sha256,created_by_user_id)
+       VALUES (1,1,?,?,?,?,?,?,?)`,
+      [documentId, safeName, storedName, "documents/" + storedName, mimeType, stat.size, sha256, createdByUserId || null]
+    );
+    await connection.commit();
+    return { documentId, version: 1, sha256, sizeBytes: stat.size };
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function createDocumentVersion(documentId, file, userId) {
+  const id = validateDocumentEntityId(documentId);
+  if (!id) throw new Error("ID de documento inválido.");
+  const stat = await fs.promises.stat(file.path);
+  if (stat.size > MAX_DOCUMENT_SIZE) throw new Error("El documento supera los 10 MB.");
+  const handle = await fs.promises.open(file.path, "r");
+  const header = Buffer.alloc(16);
+  try { await handle.read(header, 0, 16, 0); } finally { await handle.close(); }
+  if (!validateDocumentSignature(header, file.mimetype)) throw new Error("La firma del archivo no coincide con su tipo.");
+
+  const [docs] = await pool.query("SELECT id,current_version FROM documents WHERE id=? LIMIT 1", [id]);
+  if (!docs.length) throw new Error("Documento no encontrado.");
+  const version = Number(docs[0].current_version || 0) + 1;
+  const sha256 = await sha256File(file.path);
+  await pool.query(
+    `INSERT INTO document_versions
+      (document_id,version_number,original_name,stored_name,storage_path,mime_type,size_bytes,sha256,created_by_user_id)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [id,version,safeDocumentName(file.originalname),path.basename(file.path),"documents/"+path.basename(file.path),file.mimetype,stat.size,sha256,userId || null]
+  );
+  await pool.query("UPDATE documents SET current_version=?,updated_at=CURRENT_TIMESTAMP WHERE id=?", [version,id]);
+  return { version, sha256, sizeBytes: stat.size };
+}
+
+async function buildJobDocumentPdf(job, type) {
+  const doc = new PDFDocument({ size: "A4", margin: 50 });
+  doc.fillColor("#111827").font("Helvetica-Bold").fontSize(20).text("JR ELECTRICIDAD");
+  doc.fillColor("#f59e0b").fontSize(9).text("Electricista Matriculado · Cat. 3");
+  doc.moveDown(1.2);
+  doc.fillColor("#111827").fontSize(16).text(type === "work_completion" ? "CONSTANCIA DE TRABAJO" : "INFORME DE TRABAJO");
+  doc.moveDown(.8);
+  const lines = [
+    ["Trabajo", "#" + job.id],
+    ["Cliente", job.client_name || "-"],
+    ["Teléfono", job.client_phone || "-"],
+    ["Servicio", job.service || "-"],
+    ["Estado", job.status || "-"],
+    ["Ubicación", job.location || "-"],
+    ["Programado", job.scheduled_at ? new Date(job.scheduled_at).toLocaleString("es-AR") : "-"],
+    ["Inicio", job.started_at ? new Date(job.started_at).toLocaleString("es-AR") : "-"],
+    ["Finalización", job.completed_at ? new Date(job.completed_at).toLocaleString("es-AR") : "-"],
+    ["Técnico", job.technician_name || "-"]
+  ];
+  for (const [label,value] of lines) {
+    doc.fillColor("#6b7280").font("Helvetica-Bold").fontSize(9).text(label.toUpperCase());
+    doc.fillColor("#111827").font("Helvetica").fontSize(11).text(String(value));
+    doc.moveDown(.35);
+  }
+  if (job.execution_notes) {
+    doc.moveDown(.4).fillColor("#111827").font("Helvetica-Bold").fontSize(10).text("NOTAS DE EJECUCIÓN");
+    doc.font("Helvetica").fontSize(10).text(String(job.execution_notes));
+  }
+  if (job.completion_notes) {
+    doc.moveDown(.4).fillColor("#111827").font("Helvetica-Bold").fontSize(10).text("NOTAS DE FINALIZACIÓN");
+    doc.font("Helvetica").fontSize(10).text(String(job.completion_notes));
+  }
+  doc.moveDown(2);
+  doc.fillColor("#6b7280").fontSize(8).text("Documento generado por el panel de administración de JR Electricidad.");
+  return pdfToBuffer(doc);
+}
+
+async function createGeneratedPdfDocument({ title, type, pdf, clientId, quoteRequestId, quoteId, jobId, userId, fileName }) {
+  const tmp = path.join(documentsDir, documentFileName(fileName || "documento.pdf"));
+  await fs.promises.writeFile(tmp, pdf);
+  try {
+    return await createStoredDocument({
+      title, documentType:type, clientId, quoteRequestId, quoteId, jobId,
+      originalName:fileName || "documento.pdf",
+      mimeType:"application/pdf", filePath:tmp, createdByUserId:userId
+    });
+  } catch (error) {
+    await fs.promises.unlink(tmp).catch(() => {});
+    throw error;
+  }
+}
+
+app.get("/api/admin/documents", requireAdmin, async (req,res)=>{
+  try {
+    const q=String(req.query.q||"").trim().slice(0,120);
+    const type=String(req.query.type||"").trim();
+    const params=[];
+    const where=[];
+    if(q){
+      where.push("(d.title LIKE ? OR d.description LIKE ? OR dv.original_name LIKE ? OR c.name LIKE ?)");
+      const like="%"+q+"%"; params.push(like,like,like,like);
+    }
+    if(type){
+      const normalized=normalizeDocumentType(type);
+      if(!normalized) return res.status(400).json({error:"Tipo de documento inválido."});
+      where.push("d.document_type=?"); params.push(normalized);
+    }
+    const sql=`SELECT d.id,d.document_type,d.title,d.description,d.client_id,d.quote_request_id,d.quote_id,d.job_id,
+      d.current_version,d.created_at,d.updated_at,
+      dv.id AS version_id,dv.original_name,dv.mime_type,dv.size_bytes,dv.sha256,dv.created_at AS version_created_at,
+      c.name AS client_name
+      FROM documents d
+      INNER JOIN document_versions dv ON dv.document_id=d.id AND dv.version_number=d.current_version
+      LEFT JOIN clients c ON c.id=d.client_id
+      ${where.length?"WHERE "+where.join(" AND "):""}
+      ORDER BY d.updated_at DESC,d.id DESC LIMIT 200`;
+    const [rows]=await pool.query(sql,params);
+    res.json({types:DOCUMENT_TYPES,documents:rows});
+  }catch(error){
+    logError("Error listando documentos",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron obtener los documentos."});
+  }
+});
+
+app.get("/api/admin/documents/:id(\\d+)", requireAdmin, async(req,res)=>{
+  try{
+    const id=validateDocumentEntityId(req.params.id);
+    if(!id) return res.status(400).json({error:"ID de documento inválido."});
+    const [docs]=await pool.query(
+      `SELECT d.*,c.name AS client_name FROM documents d LEFT JOIN clients c ON c.id=d.client_id WHERE d.id=? LIMIT 1`,[id]);
+    if(!docs.length) return res.status(404).json({error:"Documento no encontrado."});
+    const [versions]=await pool.query(
+      `SELECT v.id,v.version_number,v.original_name,v.mime_type,v.size_bytes,v.sha256,v.created_at,u.name AS created_by_name
+       FROM document_versions v LEFT JOIN users u ON u.id=v.created_by_user_id WHERE v.document_id=? ORDER BY v.version_number DESC`,[id]);
+    res.json({...docs[0],versions});
+  }catch(error){res.status(500).json({error:"No se pudo obtener el documento."});}
+});
+
+app.get("/api/admin/documents/:id(\\d+)/download", requireAdmin, async(req,res)=>{
+  try{
+    const id=validateDocumentEntityId(req.params.id);
+    const version=req.query.version==null?null:Number(req.query.version);
+    if(!id) return res.status(400).json({error:"ID de documento inválido."});
+    let sql=`SELECT d.title,v.* FROM documents d INNER JOIN document_versions v ON v.document_id=d.id
+      WHERE d.id=? ${version? "AND v.version_number=?":"AND v.version_number=d.current_version"} LIMIT 1`;
+    const params=version?[id,version]:[id];
+    const [rows]=await pool.query(sql,params);
+    if(!rows.length) return res.status(404).json({error:"Versión de documento no encontrada."});
+    const filePath=documentAbsolutePath(rows[0].stored_name);
+    if(!filePath || !fs.existsSync(filePath)) return res.status(404).json({error:"Archivo no encontrado en almacenamiento."});
+    await writeAudit(req,"document_downloaded","document",id,{version:rows[0].version_number});
+    res.setHeader("Content-Type",rows[0].mime_type);
+    res.setHeader("Content-Disposition",`attachment; filename="${safeDocumentName(rows[0].original_name)}"`);
+    res.sendFile(filePath);
+  }catch(error){logError("Error descargando documento",{requestId:req.requestId,error:error.message});res.status(500).json({error:"No se pudo descargar el documento."});}
+});
+
+app.post("/api/admin/documents/upload", requireAdmin, adminMutationLimiter, documentUpload.single("file"), async(req,res)=>{
+  try{
+    if(!req.file) return res.status(400).json({error:"Seleccioná un archivo."});
+    const documentType=normalizeDocumentType(req.body.document_type);
+    if(!documentType){await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"Tipo de documento inválido."});}
+    const result=await createStoredDocument({
+      title:String(req.body.title||req.file.originalname).trim(),
+      description:req.body.description,
+      documentType,
+      clientId:validateDocumentEntityId(req.body.client_id),
+      quoteRequestId:validateDocumentEntityId(req.body.quote_request_id),
+      quoteId:validateDocumentEntityId(req.body.quote_id),
+      jobId:validateDocumentEntityId(req.body.job_id),
+      originalName:req.file.originalname,mimeType:req.file.mimetype,filePath:req.file.path,
+      createdByUserId:req.session.user.id
+    });
+    await writeAudit(req,"document_created","document",result.documentId,{document_type:documentType,version:1});
+    res.status(201).json({success:true,...result});
+  }catch(error){
+    if(req.file) await fs.promises.unlink(req.file.path).catch(()=>{});
+    logError("Error subiendo documento",{requestId:req.requestId,error:error.message});
+    res.status(400).json({error:error.message||"No se pudo guardar el documento."});
+  }
+});
+
+app.post("/api/admin/documents/:id(\\d+)/versions", requireAdmin, adminMutationLimiter, documentUpload.single("file"), async(req,res)=>{
+  try{
+    if(!req.file) return res.status(400).json({error:"Seleccioná un archivo."});
+    const result=await createDocumentVersion(req.params.id,req.file,req.session.user.id);
+    await writeAudit(req,"document_version_created","document",Number(req.params.id),{version:result.version});
+    res.status(201).json({success:true,...result});
+  }catch(error){
+    if(req.file) await fs.promises.unlink(req.file.path).catch(()=>{});
+    res.status(400).json({error:error.message||"No se pudo crear la versión."});
+  }
+});
+
+app.post("/api/admin/documents/from-quote/:quoteId(\\d+)", requireAdmin, adminMutationLimiter, async(req,res)=>{
+  try{
+    const quoteId=validateDocumentEntityId(req.params.quoteId);
+    if(!quoteId) return res.status(400).json({error:"ID de presupuesto inválido."});
+    const quote=await getQuoteDetail(pool,quoteId);
+    if(!quote) return res.status(404).json({error:"Presupuesto no encontrado."});
+    const pdf=await pdfToBuffer(buildQuotePdf(quote));
+    const result=await createGeneratedPdfDocument({
+      title:"Presupuesto "+(quote.quote_number||quoteId),
+      type:"quote_pdf",pdf,
+      clientId:quote.client_id||null,quoteRequestId:quote.quote_request_id||null,quoteId,
+      userId:req.session.user.id,fileName:`presupuesto-${quote.quote_number||quoteId}.pdf`
+    });
+    await writeAudit(req,"quote_document_generated","document",result.documentId,{quote_id:quoteId});
+    res.status(201).json({success:true,...result});
+  }catch(error){logError("Error generando documento de presupuesto",{requestId:req.requestId,error:error.message});res.status(500).json({error:"No se pudo generar el PDF del presupuesto."});}
+});
+
+app.post("/api/admin/documents/from-job/:jobId(\\d+)", requireAdmin, adminMutationLimiter, async(req,res)=>{
+  try{
+    const jobId=validateDocumentEntityId(req.params.jobId);
+    if(!jobId) return res.status(400).json({error:"ID de trabajo inválido."});
+    const [rows]=await pool.query(
+      `SELECT j.*,qr.name AS client_name,qr.phone AS client_phone,qr.service,qu.quote_number,
+        u.name AS technician_name,c.id AS client_id
+       FROM jobs j
+       LEFT JOIN quote_requests qr ON qr.id=j.quote_request_id
+       LEFT JOIN quotes qu ON qu.id=j.quote_id
+       LEFT JOIN clients c ON c.id=qr.client_id
+       LEFT JOIN users u ON u.id=j.assigned_user_id
+       WHERE j.id=? LIMIT 1`,[jobId]);
+    if(!rows.length) return res.status(404).json({error:"Trabajo no encontrado."});
+    const type=String(req.body.type||"job_report")==="work_completion"?"work_completion":"job_report";
+    const pdf=await buildJobDocumentPdf(rows[0],type);
+    const result=await createGeneratedPdfDocument({
+      title:(type==="work_completion"?"Constancia de trabajo #":"Informe de trabajo #")+jobId,
+      type,pdf,clientId:rows[0].client_id||null,quoteRequestId:rows[0].quote_request_id||null,quoteId:rows[0].quote_id||null,jobId,
+      userId:req.session.user.id,fileName:`${type}-${jobId}.pdf`
+    });
+    await writeAudit(req,"job_document_generated","document",result.documentId,{job_id:jobId,type});
+    res.status(201).json({success:true,...result});
+  }catch(error){logError("Error generando documento de trabajo",{requestId:req.requestId,error:error.message});res.status(500).json({error:"No se pudo generar el documento del trabajo."});}
+});
+
+app.delete("/api/admin/documents/:id(\\d+)", requireAdmin, adminMutationLimiter, async(req,res)=>{
+  const connection=await pool.getConnection();
+  try{
+    const id=validateDocumentEntityId(req.params.id);
+    if(!id){connection.release();return res.status(400).json({error:"ID de documento inválido."});}
+    const [versions]=await connection.query("SELECT stored_name FROM document_versions WHERE document_id=?",[id]);
+    const [result]=await connection.query("DELETE FROM documents WHERE id=?",[id]);
+    if(!result.affectedRows){connection.release();return res.status(404).json({error:"Documento no encontrado."});}
+    await connection.commit().catch(()=>{});
+    connection.release();
+    for(const row of versions){const p=documentAbsolutePath(row.stored_name);if(p) await fs.promises.unlink(p).catch(()=>{});}
+    await writeAudit(req,"document_deleted","document",id,{versions:versions.length});
+    res.json({success:true,message:"Documento eliminado."});
+  }catch(error){await connection.rollback().catch(()=>{});connection.release();res.status(500).json({error:"No se pudo eliminar el documento."});}
+});
+
+app.get("/api/admin/documents/:id(\\d+)/versions", requireAdmin, async(req,res)=>{
+  try{
+    const id=validateDocumentEntityId(req.params.id);
+    if(!id) return res.status(400).json({error:"ID de documento inválido."});
+    const [rows]=await pool.query(
+      `SELECT v.*,u.name AS created_by_name FROM document_versions v LEFT JOIN users u ON u.id=v.created_by_user_id WHERE v.document_id=? ORDER BY v.version_number DESC`,[id]);
+    res.json(rows);
+  }catch(error){res.status(500).json({error:"No se pudieron obtener las versiones."});}
+});
 
 // =========================================================
 // PRODUCCIÓN - HEALTH CHECK
