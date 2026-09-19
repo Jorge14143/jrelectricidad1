@@ -282,6 +282,25 @@
         const showActions =
           !finalStatuses.includes(quote.status);
 
+        const signatureHtml = showActions ? `
+          <div class="quote-signature-box" id="quoteSignatureBox">
+            <div class="quote-signature-title">✍️ Firma digital</div>
+            <p>Si querés aceptar el presupuesto mediante firma, completá tus datos y dibujá tu firma.</p>
+            <div class="quote-signature-fields">
+              <input id="signerName" type="text" maxlength="150" placeholder="Nombre y apellido" value="${escapeHtml(quote.client_name || "")}">
+              <input id="signerEmail" type="email" maxlength="190" placeholder="Correo electrónico" value="${escapeHtml(quote.client_email || "")}">
+            </div>
+            <div class="quote-signature-canvas-wrap">
+              <canvas id="quoteSignatureCanvas" width="900" height="240"></canvas>
+            </div>
+            <div class="quote-signature-actions">
+              <button type="button" id="clearQuoteSignature" class="quote-reject-btn">Limpiar</button>
+              <button type="button" id="signQuoteButton" class="quote-accept-btn">✍️ Firmar y aceptar</button>
+            </div>
+            <div id="signatureResponse" class="quote-response"></div>
+          </div>
+        ` : "";
+
         const actionsHtml = showActions
           ? `
             <div id="quoteActions" class="quote-actions">
@@ -528,6 +547,8 @@
               </div>
 
 
+              ${signatureHtml}
+
               ${actionsHtml}
 
             </section>
@@ -693,11 +714,57 @@
       }
     }
 
+
+    function setupSignatureHandlers() {
+      document.addEventListener("click", async event => {
+        if (event.target.closest("#clearQuoteSignature")) {
+          const canvas = document.getElementById("quoteSignatureCanvas");
+          if (canvas) canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
+        }
+        if (!event.target.closest("#signQuoteButton")) return;
+
+        const canvas = document.getElementById("quoteSignatureCanvas");
+        const responseBox = document.getElementById("signatureResponse");
+        const name = document.getElementById("signerName")?.value.trim();
+        const email = document.getElementById("signerEmail")?.value.trim();
+        if (!canvas || !name) {
+          if (responseBox) { responseBox.className="quote-response error"; responseBox.textContent="Ingresá el nombre del firmante."; }
+          return;
+        }
+        const ctx = canvas.getContext("2d");
+        const blank = document.createElement("canvas");
+        blank.width=canvas.width; blank.height=canvas.height;
+        if (canvas.toDataURL() === blank.toDataURL()) {
+          if (responseBox) { responseBox.className="quote-response error"; responseBox.textContent="Dibujá tu firma antes de continuar."; }
+          return;
+        }
+        if (!confirm("¿Querés firmar y aceptar este presupuesto?")) return;
+        const button=document.getElementById("signQuoteButton");
+        button.disabled=true;
+        try {
+          const response=await fetch(`/api/public/quotes/${encodeURIComponent(token)}/sign`,{
+            method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({signer_name:name,signer_email:email,signature_data:canvas.toDataURL("image/png")})
+          });
+          const data=await response.json();
+          if(!response.ok) throw new Error(data.error||"No se pudo registrar la firma.");
+          if(responseBox){responseBox.className="quote-response success";responseBox.textContent="✓ Firma registrada y presupuesto aceptado correctamente.";}
+          const actions=document.getElementById("quoteActions"); if(actions) actions.style.display="none";
+          document.getElementById("quoteSignatureBox").style.display="none";
+        } catch(error) {
+          if(responseBox){responseBox.className="quote-response error";responseBox.textContent=error.message;}
+          button.disabled=false;
+        }
+      });
+    }
+
     /*
       =========================================================
       INICIAR
       =========================================================
     */
+
+    setupSignatureHandlers();
 
     loadQuote();
 
