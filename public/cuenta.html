@@ -224,7 +224,7 @@
 
         <label>
           Email
-          <input id="profile-email" type="email" maxlength="190" autocomplete="email" required>
+          <input id="profile-email" type="email" maxlength="190" autocomplete="email" readonly>
         </label>
 
         <button class="btn" type="submit">💾 Guardar datos</button>
@@ -232,6 +232,38 @@
         <div id="profile-message" class="account-form-message"></div>
 
       </form>
+
+
+
+      <!-- AVATAR OPCIONAL -->
+
+      <div class="account-section-title">
+        FOTO DE PERFIL (OPCIONAL)
+      </div>
+
+      <form id="avatar-form" class="account-form">
+        <label>
+          URL HTTPS de la imagen
+          <input id="avatar-url" type="url" maxlength="500" placeholder="https://ejemplo.com/foto.jpg" autocomplete="url">
+        </label>
+
+        <img id="avatar-preview" src="" alt="Vista previa del avatar"
+             style="display:none;max-width:120px;max-height:120px;border-radius:50%;object-fit:cover;">
+
+        <button class="btn" type="submit">🖼️ Guardar avatar</button>
+        <div id="avatar-message" class="account-form-message"></div>
+      </form>
+
+
+      <!-- HISTORIAL PERSONAL -->
+
+      <div class="account-section-title">
+        MI ACTIVIDAD
+      </div>
+
+      <div id="activity-list" class="account-data" style="display:block;">
+        Cargando actividad...
+      </div>
 
 
       <!-- CAMBIAR CONTRASEÑA -->
