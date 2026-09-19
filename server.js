@@ -20,6 +20,7 @@ const registerEmailRoutes = require("./email-routes");
 const registerSignatureRoutes = require("./signature-routes");
 const registerDashboardRoutes = require("./dashboard-routes");
 const registerNotificationRoutes = require("./notification-routes");
+const registerConfigurationRoutes = require("./configuration-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -341,6 +342,7 @@ registerEmailRoutes({ app, pool, requireAdmin });
 registerSignatureRoutes({ app, pool, requireAdmin, requireAuth });
 registerDashboardRoutes({ app, pool, requireAdmin });
 registerNotificationRoutes({ app, pool, requireAdmin });
+registerConfigurationRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
