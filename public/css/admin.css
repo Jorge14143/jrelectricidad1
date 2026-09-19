@@ -10652,3 +10652,21 @@ body.lightbox-open {
     flex-direction: column;
   }
 }
+
+/* =========================================================
+   FASE 14 — DOCUMENTOS
+========================================================= */
+.documents-toolbar{display:grid;grid-template-columns:minmax(220px,1.4fr) minmax(180px,.7fr) auto;gap:10px;margin-bottom:14px}
+.documents-toolbar input,.documents-toolbar select{min-height:42px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text)}
+.documents-generator-actions{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px}
+.document-upload-panel{padding:18px;margin-bottom:18px}
+.documents-upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.document-admin-card{display:flex;align-items:center;gap:12px;padding:14px;margin-bottom:9px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}
+.document-admin-icon{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:11px;background:rgba(255,196,0,.06);flex:0 0 auto}
+.document-admin-main{min-width:0;flex:1}
+.document-admin-main strong,.document-admin-main small{display:block}
+.document-admin-main strong{font-size:13px}
+.document-admin-main small{margin-top:3px;color:var(--muted);font-size:10px}
+.document-admin-actions{display:flex;gap:6px;flex-wrap:wrap}
+.document-admin-actions .btn{font-size:10px;padding:7px 9px}
+@media(max-width:800px){.documents-toolbar,.documents-upload-grid{grid-template-columns:1fr}.document-admin-card{align-items:flex-start;flex-wrap:wrap}.document-admin-main{width:calc(100% - 55px)}.document-admin-actions{width:100%}}
