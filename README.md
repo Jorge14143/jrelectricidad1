@@ -145,3 +145,15 @@ Gestión de Trabajos V3 implementada al 100% estructuralmente: motor y ciclo de 
 - Documentación: `docs/V3-BLOCK-F.md`
 
 **Nota:** la migración 021 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
+
+## V3.0 — Bloque G completado
+
+Finanzas V3 implementadas al 100% estructuralmente: facturación, cobros, gastos, saldos, rentabilidad, reportes e integración con presupuestos y trabajos.
+
+- Administración: `/finanzas-v3.html`
+- API: `/api/v3/admin/finance/*`
+- Migración: `migrations/022_v3_finance.sql`
+- Checker: `npm run test:v3-finance`
+- Documentación: `docs/V3-BLOCK-G.md`
+
+**Nota:** la migración 022 todavía debe ejecutarse en la base MySQL real antes del uso productivo.
