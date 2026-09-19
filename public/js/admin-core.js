@@ -119,9 +119,9 @@ if (passwordForm) {
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < 12) {
       showSettingsMessage(
-        "La nueva contraseña debe tener al menos 8 caracteres.",
+        "La nueva contraseña debe tener al menos 12 caracteres.",
         "error"
       );
       return;
