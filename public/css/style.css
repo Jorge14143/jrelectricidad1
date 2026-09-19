@@ -23,3 +23,236 @@
 .admin-audit-table pre{white-space:pre-wrap;max-width:360px;max-height:180px;overflow:auto;margin:8px 0 0;font-size:.75rem}
 .admin-audit-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:18px 0}
 @media(max-width:800px){.admin-audit-toolbar{grid-template-columns:1fr}.admin-audit-table-wrap{margin-inline:-8px}}
+
+
+/* =========================================================
+   FASE 20 — RESPONSIVE / UX PÚBLICO
+========================================================= */
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img,
+video,
+iframe {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.btn,
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .section,
+  .footer-inner,
+  .footer-bottom {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hero {
+    min-height: auto;
+  }
+
+  .hero h1 {
+    font-size: clamp(40px, 8vw, 58px);
+    line-height: 1.04;
+  }
+
+  .services-heading,
+  .why-jr-header,
+  .contacto-header,
+  .zona-header {
+    max-width: 100%;
+  }
+
+  .zona-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .zona-map iframe {
+    min-height: 320px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gallery-grid .gallery-item:first-child {
+    grid-column: span 2;
+  }
+
+  .footer-nav {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 680px) {
+  .hero {
+    padding-top: 48px;
+    padding-bottom: 52px;
+  }
+
+  .hero h1 {
+    font-size: clamp(36px, 11vw, 50px);
+  }
+
+  .hero-actions,
+  .actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-actions .btn,
+  .actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero-trust {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .hero-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .services-heading,
+  .why-jr-header,
+  .contacto-header,
+  .zona-header {
+    text-align: left;
+  }
+
+  .services-footer,
+  .why-jr-bottom,
+  .contacto-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .services-footer .btn,
+  .why-jr-bottom .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .about-modern-content h2,
+  .why-jr-header h2,
+  .contacto-header h2,
+  .zona-header h2 {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 1.08;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 250px;
+  }
+
+  .gallery-grid .gallery-item:first-child {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 250px;
+  }
+
+  .gallery-grid .gallery-item:first-child img,
+  .gallery-grid .gallery-item:not(:first-child) img {
+    min-height: 250px;
+  }
+
+  .gallery-grid .gallery-item:first-child .gallery-info {
+    padding: 18px;
+  }
+
+  .contacto-form-card {
+    padding: 22px 16px;
+  }
+
+  .quote-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .quote-field-full {
+    grid-column: auto;
+  }
+
+  .zona-map iframe {
+    min-height: 280px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .whatsapp-float {
+    right: 14px;
+    bottom: 14px;
+  }
+}
+
+@media (max-width: 430px) {
+  .section {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .hero {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .hero-card {
+    padding: 24px;
+  }
+
+  .service,
+  .why-jr-card {
+    min-width: 0;
+  }
+
+  .contacto-form-card {
+    border-radius: 16px;
+  }
+
+  .quote-submit {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .footer-inner,
+  .footer-bottom {
+    width: calc(100% - 28px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .scroll-reveal-left,
+  .scroll-reveal-right {
+    transition: none !important;
+    transform: none !important;
+  }
+}
