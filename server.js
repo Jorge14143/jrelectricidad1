@@ -527,6 +527,7 @@ function cleanUser(user) {
     role: user.role,
     email_verified: Boolean(user.email_verified ?? user.email_verified_at),
     email_verified_at: user.email_verified_at || null,
+    pending_email: user.pending_email || null,
     avatar_url: user.avatar_url || null,
     totp_enabled: Boolean(user.totp_enabled)
   };
