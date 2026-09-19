@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Portal de clientes de JR Electricidad. Consultá solicitudes, presupuestos, trabajos, documentos y notificaciones.">
+<title>Portal de clientes | JR Electricidad</title>
+<link rel="stylesheet" href="/css/v3-client.css">
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header class="portal-nav">
+  <a class="brand" href="/">⚡ JR <span>ELECTRICIDAD</span></a>
+  <nav>
+    <a href="/">Inicio</a><a href="/#servicios">Servicios</a><a href="/#contacto">Contacto</a>
+    <button id="logoutBtn" class="ghost">Cerrar sesión</button>
+  </nav>
+</header>
+
+<main id="main" class="portal">
+  <section class="portal-hero">
+    <div>
+      <small>PORTAL DE CLIENTES · V3</small>
+      <h1>Hola, <span id="userName">cliente</span>.</h1>
+      <p>Todo lo relacionado con JR Electricidad, en un solo lugar.</p>
+    </div>
+    <div class="hero-badge">⚡ CAT. 3<br><small>Electricista Matriculado</small></div>
+  </section>
+
+  <div id="portalMessage" class="message"></div>
+
+  <section class="stats" aria-label="Resumen">
+    <article><strong id="countRequests">0</strong><span>Solicitudes</span></article>
+    <article><strong id="countQuotes">0</strong><span>Presupuestos</span></article>
+    <article><strong id="countJobs">0</strong><span>Trabajos</span></article>
+    <article><strong id="countDocs">0</strong><span>Documentos</span></article>
+  </section>
+
+  <div class="layout">
+    <div class="main-column">
+      <section class="card" id="newRequestSection">
+        <div class="section-head"><div><small>NUEVA SOLICITUD</small><h2>Pedí un presupuesto</h2></div></div>
+        <form id="requestForm" class="form-grid">
+          <label>Servicio<select id="requestService" required><option value="">Seleccioná un servicio</option></select></label>
+          <label>Fecha preferida<input id="requestDate" type="date"></label>
+          <label class="full">Descripción<textarea id="requestDescription" rows="4" maxlength="3000" placeholder="Contanos qué necesitás..." required></textarea></label>
+          <button class="primary" type="submit">⚡ Enviar solicitud</button>
+        </form>
+        <div id="requestMessage" class="message"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>MIS SOLICITUDES</small><h2>Solicitudes de presupuesto</h2></div></div>
+        <div id="requestsList" class="list"><div class="loading">Cargando...</div></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>MIS PRESUPUESTOS</small><h2>Presupuestos recibidos</h2></div></div>
+        <div id="quotesList" class="list"><div class="loading">Cargando...</div></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>MIS TRABAJOS</small><h2>Trabajos y seguimiento</h2></div></div>
+        <div id="jobsList" class="list"><div class="loading">Cargando...</div></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>DOCUMENTACIÓN</small><h2>Mis documentos</h2></div></div>
+        <div id="documentsList" class="list"><div class="loading">Cargando...</div></div>
+      </section>
+    </div>
+
+    <aside class="side-column">
+      <section class="card">
+        <div class="section-head"><div><small>MI PERFIL</small><h2>Datos personales</h2></div></div>
+        <form id="profileForm" class="form-grid one">
+          <label>Nombre<input id="profileName" maxlength="150" required></label>
+          <label>Email<input id="profileEmail" type="email" readonly></label>
+          <label>Teléfono<input id="profilePhone" maxlength="50"></label>
+          <label>WhatsApp<input id="profileWhatsapp" maxlength="50"></label>
+          <label>Dirección<input id="profileAddress" maxlength="255"></label>
+          <label>Localidad<input id="profileLocality" maxlength="120"></label>
+          <label>Notas<textarea id="profileNotes" rows="3" maxlength="1000"></textarea></label>
+          <button class="primary" type="submit">💾 Guardar perfil</button>
+        </form>
+        <div id="profileMessage" class="message"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>NOTIFICACIONES</small><h2>Últimas novedades</h2></div></div>
+        <div id="notificationsList" class="list compact"><div class="loading">Cargando...</div></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head"><div><small>ACTIVIDAD</small><h2>Historial</h2></div></div>
+        <div id="activityList" class="list compact"><div class="loading">Cargando...</div></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer>© 2026 JR Electricidad · Electricista Matriculado Cat. 3</footer>
+<script src="/js/v3-client.js"></script>
+</body>
+</html>
