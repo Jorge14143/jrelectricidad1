@@ -17,6 +17,8 @@ for (const route of [
   "/api/admin/documents/:id",
   "/api/admin/documents/:id",
   "/api/admin/documents/:id",
+  "/download",
+  "/versions",
   "/api/admin/documents/from-quote/:quoteId",
   "/api/admin/documents/from-job/:jobId"
 ]) assert(server.includes(route), `Falta ruta ${route}`);
