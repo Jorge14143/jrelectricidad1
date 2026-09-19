@@ -8723,7 +8723,8 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
     const [result] = await connection.query(
       `
       UPDATE quotes
-      SET status = 'aceptado'
+      SET status = 'aceptado',
+          accepted_at = NOW()
       WHERE access_token = ?
         AND status = 'enviado'
         AND (
@@ -8788,6 +8789,15 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
     }
 
     const quote = quoteRows[0];
+
+    await connection.query(
+      `INSERT INTO quote_history
+        (quote_id, action, old_status, new_status, metadata)
+       SELECT q.id, 'customer_accepted', 'enviado', 'aceptado', ?
+       FROM quotes q
+       WHERE q.id = ?`,
+      [JSON.stringify({ source: "public" }), quote.id]
+    );
 
     await connection.query(
       `
