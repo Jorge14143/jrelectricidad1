@@ -57,280 +57,161 @@
 
   <section class="account-card">
 
-    <div class="account-icon">
-      👤
-    </div>
+    <div class="account-icon">👤</div>
+    <div class="eyebrow">MI CUENTA</div>
+    <h1 id="account-welcome-title">Mi cuenta</h1>
+    <p class="account-description">Consultá tus datos, solicitudes, presupuestos, trabajos y facturación desde un solo lugar.</p>
 
-    <div class="eyebrow">
-      MI CUENTA
-    </div>
+    <div id="account-message" class="account-message">Cargando información...</div>
 
-    <h1>
-      Mi perfil
-    </h1>
+    <div id="account-data" class="account-data" style="display:none;">
 
-    <p class="account-description">
-      Administrá la información y seguridad de tu cuenta.
-    </p>
+      <section class="account-dashboard">
 
-
-    <div
-      id="account-message"
-      class="account-message"
-    >
-      Cargando información...
-    </div>
-
-
-    <div
-      id="account-data"
-      class="account-data"
-      style="display:none;"
-    >
-
-
-      <!-- INFORMACIÓN -->
-
-      <div class="account-section-title">
-        INFORMACIÓN DE LA CUENTA
-      </div>
-
-
-      <div class="account-field">
-
-        <span>
-          👤
-        </span>
-
-        <div>
-
-          <small>
-            Nombre
-          </small>
-
-          <strong id="account-name">
-          </strong>
-
+        <div class="account-welcome">
+          <div>
+            <div class="account-section-kicker">RESUMEN DE CLIENTE</div>
+            <h2>Hola, <span id="account-welcome-name">cliente</span> 👋</h2>
+            <p>Acá podés seguir el estado de tus solicitudes y trabajos.</p>
+          </div>
         </div>
 
-      </div>
-
-
-      <div class="account-field">
-
-        <span>
-          ✉️
-        </span>
-
-        <div>
-
-          <small>
-            Email
-          </small>
-
-          <strong id="account-email">
-          </strong>
-
+        <div class="account-stats">
+          <div class="account-stat">
+            <span>📋</span>
+            <small>Solicitudes</small>
+            <strong id="stat-requests">0</strong>
+          </div>
+          <div class="account-stat">
+            <span>💰</span>
+            <small>Presupuestos</small>
+            <strong id="stat-quotes">0</strong>
+          </div>
+          <div class="account-stat">
+            <span>🔧</span>
+            <small>Trabajos activos</small>
+            <strong id="stat-active-jobs">0</strong>
+          </div>
+          <div class="account-stat">
+            <span>💵</span>
+            <small>Saldo pendiente</small>
+            <strong id="stat-balance">$0</strong>
+          </div>
         </div>
 
-      </div>
+        <section class="account-history-section">
+          <div class="account-history-heading">
+            <div>
+              <div class="account-section-kicker">SOLICITUDES</div>
+              <h2>Mis solicitudes</h2>
+            </div>
+          </div>
+          <div id="account-requests-list" class="account-list"></div>
+        </section>
 
+        <section class="account-history-section">
+          <div class="account-history-heading">
+            <div>
+              <div class="account-section-kicker">PRESUPUESTOS</div>
+              <h2>Mis presupuestos</h2>
+            </div>
+          </div>
+          <div id="account-quotes-list" class="account-list"></div>
+        </section>
+
+        <section class="account-history-section">
+          <div class="account-history-heading">
+            <div>
+              <div class="account-section-kicker">TRABAJOS</div>
+              <h2>Mis trabajos</h2>
+            </div>
+          </div>
+          <div id="account-jobs-list" class="account-list"></div>
+        </section>
+
+        <section class="account-history-section">
+          <div class="account-history-heading">
+            <div>
+              <div class="account-section-kicker">FACTURACIÓN</div>
+              <h2>Mis facturas</h2>
+            </div>
+          </div>
+          <div id="account-invoices-list" class="account-list"></div>
+        </section>
+
+        <section class="account-history-section">
+          <div class="account-history-heading">
+            <div>
+              <div class="account-section-kicker">RESEÑAS</div>
+              <h2>Mis reseñas</h2>
+            </div>
+          </div>
+          <div id="account-reviews-list" class="account-list"></div>
+        </section>
+
+      </section>
+
+      <div class="account-section-title">INFORMACIÓN DE LA CUENTA</div>
 
       <div class="account-field">
-
-        <span>
-          🔐
-        </span>
-
-        <div>
-
-          <small>
-            Tipo de cuenta
-          </small>
-
-          <strong id="account-role">
-          </strong>
-
-        </div>
-
+        <span>👤</span>
+        <div><small>Nombre</small><strong id="account-name"></strong></div>
       </div>
 
-
-
-      <!-- CAMBIAR CORREO -->
-
-      <div class="account-section-title">
-        CAMBIAR CORREO ELECTRÓNICO
+      <div class="account-field">
+        <span>✉️</span>
+        <div><small>Email</small><strong id="account-email"></strong></div>
       </div>
 
+      <div class="account-field">
+        <span>🔐</span>
+        <div><small>Tipo de cuenta</small><strong id="account-role"></strong></div>
+      </div>
 
-      <form id="email-form" class="account-form">
-
-        <label>
-          Nuevo correo electrónico
-
-          <input
-            id="new-email"
-            type="email"
-            placeholder="nuevo@email.com"
-            autocomplete="email"
-            required
-          >
-
-        </label>
-
-
-        <label>
-          Contraseña actual
-
-          <input
-            id="email-current-password"
-            type="password"
-            placeholder="Tu contraseña actual"
-            autocomplete="current-password"
-            required
-          >
-
-        </label>
-
-
-        <button
-          class="btn"
-          type="submit"
-        >
-          ✉️ Cambiar correo
-        </button>
-
-      </form>
-
-
-      <div
-        id="email-message"
-        class="account-form-message"
-      ></div>
-
-
-
-      <!-- DATOS PERSONALES -->
+      <div class="account-section-title">DATOS PERSONALES</div>
 
       <form id="profile-form" class="account-form">
-
-        <h3>👤 Datos personales</h3>
-
         <label>
           Nombre
           <input id="profile-name" type="text" maxlength="150" autocomplete="name" required>
         </label>
-
         <label>
           Email
           <input id="profile-email" type="email" maxlength="190" autocomplete="email" required>
         </label>
-
         <button class="btn" type="submit">💾 Guardar datos</button>
-
         <div id="profile-message" class="account-form-message"></div>
-
       </form>
 
-
-      <!-- CAMBIAR CONTRASEÑA -->
-
-      <div class="account-section-title">
-        CAMBIAR CONTRASEÑA
-      </div>
-
+      <div class="account-section-title">CAMBIAR CONTRASEÑA</div>
 
       <form id="password-form" class="account-form">
-
         <label>
           Contraseña actual
-
-          <input
-            id="current-password"
-            type="password"
-            placeholder="Contraseña actual"
-            autocomplete="current-password"
-            required
-          >
-
+          <input id="current-password" type="password" placeholder="Contraseña actual" autocomplete="current-password" required>
         </label>
-
-
         <label>
           Nueva contraseña
-
-          <input
-            id="new-password"
-            type="password"
-            placeholder="Mínimo 8 caracteres"
-            minlength="8"
-            autocomplete="new-password"
-            required
-          >
-
+          <input id="new-password" type="password" placeholder="Mínimo 8 caracteres" minlength="8" autocomplete="new-password" required>
         </label>
-
-
         <label>
           Repetir nueva contraseña
-
-          <input
-            id="confirm-password"
-            type="password"
-            placeholder="Repetí la nueva contraseña"
-            minlength="8"
-            autocomplete="new-password"
-            required
-          >
-
+          <input id="confirm-password" type="password" placeholder="Repetí la nueva contraseña" minlength="8" autocomplete="new-password" required>
         </label>
-
-
-        <button
-          class="btn"
-          type="submit"
-        >
-          🔐 Cambiar contraseña
-        </button>
-
+        <button class="btn" type="submit">🔐 Cambiar contraseña</button>
       </form>
 
+      <div id="password-message" class="account-form-message"></div>
 
-      <div
-        id="password-message"
-        class="account-form-message"
-      ></div>
-
-
-
-      <!-- ACCIONES -->
+      <div class="account-section-title">ACCIONES</div>
 
       <div class="account-actions">
-
-        <a
-          class="btn ghost"
-          href="/"
-        >
-          ← Volver al inicio
-        </a>
-
-        <a
-          id="admin-link"
-          class="btn"
-          href="/admin"
-          style="display:none;"
-        >
-          ⚙️ Panel
-        </a>
-
+        <a class="btn ghost" href="/">← Volver al inicio</a>
+        <a id="admin-link" class="btn" href="/admin" style="display:none;">⚙️ Panel</a>
       </div>
 
-
     </div>
-
   </section>
-
 </main>
 
 
