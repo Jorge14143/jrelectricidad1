@@ -1,4 +1,19 @@
 -- Fase 16 — Configuración
+CREATE TABLE IF NOT EXISTS business_settings (
+  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+  business_name VARCHAR(150) NOT NULL DEFAULT 'JR Electricidad',
+  legal_name VARCHAR(180) DEFAULT '',
+  phone VARCHAR(50) DEFAULT '',
+  whatsapp VARCHAR(50) DEFAULT '',
+  email VARCHAR(190) DEFAULT '',
+  address VARCHAR(255) DEFAULT '',
+  city VARCHAR(120) DEFAULT '',
+  hours VARCHAR(255) DEFAULT '',
+  logo_url VARCHAR(500) DEFAULT '',
+  pdf_footer VARCHAR(500) DEFAULT '',
+  pdf_notes TEXT,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE business_settings ADD COLUMN whatsapp_enabled TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE business_settings ADD COLUMN whatsapp_auto_notifications TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE business_settings ADD COLUMN currency_code VARCHAR(10) NOT NULL DEFAULT 'ARS';
