@@ -92,3 +92,16 @@ Verificación estructural:
 `npm run test:v3-public`
 
 La migración y la validación operativa sobre la instancia MySQL/servidor real deben ejecutarse antes del despliegue de producción.
+
+
+## V3.0 — Bloque C completado
+
+Portal Cliente V3 implementado al 100% estructuralmente: dashboard, perfil, solicitudes, presupuestos con decisión, trabajos, documentos, notificaciones y actividad.
+
+- Portal: `/portal.html`
+- API: `/api/v3/client/*`
+- Migración: `migrations/018_v3_client_portal.sql`
+- Checker: `npm run test:v3-client`
+- Documentación: `docs/V3-BLOCK-C.md`
+
+**Nota:** la migración 018 todavía debe ejecutarse en la base de datos real antes de usar estas funciones en producción.
