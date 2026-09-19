@@ -1466,17 +1466,10 @@
         id="galleryForm"
         class="gallery-form"
       >
-
-        <input
-          type="hidden"
-          id="galleryId"
-        >
-
+        <input type="hidden" id="galleryId">
 
         <label>
-
           Título del trabajo
-
           <input
             type="text"
             id="galleryTitle"
@@ -1484,111 +1477,118 @@
             maxlength="150"
             required
           >
-
         </label>
 
-
         <label>
-
           Descripción
-
           <textarea
             id="galleryDescription"
             placeholder="Contá brevemente qué trabajo se realizó."
             maxlength="500"
           ></textarea>
-
         </label>
 
+        <div class="gallery-form-grid">
+          <label>
+            Categoría
+            <select id="galleryCategory">
+              <option value="instalaciones">Instalaciones</option>
+              <option value="reparaciones">Reparaciones</option>
+              <option value="tableros">Tableros eléctricos</option>
+              <option value="iluminacion">Iluminación</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="otros" selected>Otros</option>
+            </select>
+          </label>
+
+          <label>
+            Texto alternativo
+            <input
+              type="text"
+              id="galleryAltText"
+              maxlength="255"
+              placeholder="Descripción de la imagen"
+              required
+            >
+          </label>
+
+          <label>
+            Cliente vinculado
+            <select id="galleryClient">
+              <option value="">Sin cliente vinculado</option>
+            </select>
+          </label>
+
+          <label>
+            Trabajo finalizado/cerrado
+            <select id="galleryJob">
+              <option value="">Sin trabajo vinculado</option>
+            </select>
+          </label>
+
+          <label>
+            Presupuesto vinculado
+            <select id="galleryQuote">
+              <option value="">Sin presupuesto vinculado</option>
+            </select>
+          </label>
+        </div>
 
         <label>
-
           Imagen del trabajo
-
           <input
             type="file"
             id="galleryImage"
             accept="image/jpeg,image/png,image/webp,image/gif"
           >
-
+          <small class="muted">JPG, PNG, WEBP o GIF · máximo 5 MB.</small>
         </label>
 
-
-        <div
-          id="galleryPreview"
-          class="gallery-preview"
-        ></div>
-
+        <div id="galleryPreview" class="gallery-preview"></div>
 
         <label class="gallery-active-label">
-
-          <input
-            type="checkbox"
-            id="galleryActive"
-            checked
-          >
-
+          <input type="checkbox" id="galleryActive" checked>
           Publicar este trabajo
-
         </label>
-<label class="gallery-active-label">
 
-  <input
-    type="checkbox"
-    id="galleryFeatured"
-  >
-
-  ⭐ Marcar como trabajo destacado
-
-</label>
+        <label class="gallery-active-label">
+          <input type="checkbox" id="galleryFeatured">
+          ⭐ Marcar como trabajo destacado
+        </label>
 
         <div class="form-actions">
-
-          <button
-            type="submit"
-            class="btn"
-            id="gallerySubmit"
-          >
-            📸 Agregar trabajo
-          </button>
-
-
-          <button
-            type="button"
-            class="btn ghost"
-            id="galleryCancel"
-            hidden
-          >
-            Cancelar
-          </button>
-
+          <button type="submit" class="btn" id="gallerySubmit">📸 Agregar trabajo</button>
+          <button type="button" class="btn ghost" id="galleryCancel" hidden>Cancelar</button>
         </div>
-
       </form>
-
 
       <div class="gallery-toolbar">
         <input
           type="search"
           id="gallerySearch"
-          placeholder="Buscar trabajo..."
+          placeholder="Buscar trabajo, cliente o presupuesto..."
           autocomplete="off"
         >
 
+        <select id="galleryCategoryFilter" aria-label="Filtrar por categoría">
+          <option value="">Todas las categorías</option>
+          <option value="instalaciones">Instalaciones</option>
+          <option value="reparaciones">Reparaciones</option>
+          <option value="tableros">Tableros eléctricos</option>
+          <option value="iluminacion">Iluminación</option>
+          <option value="mantenimiento">Mantenimiento</option>
+          <option value="otros">Otros</option>
+        </select>
+
         <select id="galleryStatusFilter" aria-label="Filtrar galería">
-          <option value="">Todos</option>
+          <option value="">Todos los estados</option>
           <option value="active">Publicados</option>
           <option value="inactive">Ocultos</option>
           <option value="featured">Destacados</option>
         </select>
 
-        <button type="button" class="btn btn-secondary" id="clearGalleryFilters">
-          Limpiar
-        </button>
-
-        <button type="button" class="btn btn-primary" id="refreshGallery">
-          🔄 Actualizar
-        </button>
+        <button type="button" class="btn btn-secondary" id="clearGalleryFilters">Limpiar</button>
+        <button type="button" class="btn btn-primary" id="refreshGallery">🔄 Actualizar</button>
       </div>
 
       <div
