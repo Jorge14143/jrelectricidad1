@@ -2,7 +2,7 @@ const crypto = require("crypto");
 
 function registerSignatureRoutes({ app, pool, requireAdmin, requireAuth }) {
   function validDataUrl(value) {
-    return /^data:image\\/(png|jpeg);base64,[A-Za-z0-9+/=\\s]+$/.test(String(value || ""));
+    return /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=\s]+$/.test(String(value || ""));
   }
 
   function hashEvidence(data) {
@@ -56,7 +56,7 @@ function registerSignatureRoutes({ app, pool, requireAdmin, requireAuth }) {
       if (!signerName || signerName.length > 150) {
         return res.status(400).json({ error: "Ingresá el nombre del firmante." });
       }
-      if (signerEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(signerEmail)) {
+      if (signerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signerEmail)) {
         return res.status(400).json({ error: "Correo del firmante inválido." });
       }
       if (!validDataUrl(signatureData) || signatureData.length > 1200000) {
