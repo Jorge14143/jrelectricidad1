@@ -4,7 +4,7 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
 const checks = [
-  ["migración de backups", fs.existsSync(path.join(root, "migrations", "013_v2_backups.sql"))],
+  ["migración de backups", fs.existsSync(path.join(root, "migrations", "014_v2_backups.sql"))],
   ["servicio de backups", fs.existsSync(path.join(root, "lib", "backups.js"))],
   ["script CLI", fs.existsSync(path.join(root, "scripts", "backup-database.js"))],
   ["UI backups", fs.existsSync(path.join(root, "public", "js", "admin-backups.js"))],
