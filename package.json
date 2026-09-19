@@ -1,7 +1,7 @@
 {
   "name": "jr-electricidad",
-  "version": "2.0.0",
-  "description": "Sitio web para empresa de electricidad con usuarios y panel administrador",
+  "version": "3.0.0",
+  "description": "Plataforma web y de gestión para JR Electricidad | Electricista Matriculado Cat. 3 — V3",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -34,7 +34,8 @@
     "test:v2-all": "node scripts/test-v2-all.js",
     "migration:v1-v2": "node scripts/migrate-v1-to-v2.js --yes",
     "migration:v1-v2:dry-run": "node scripts/migrate-v1-to-v2.js --dry-run",
-    "test:v2-migration": "node scripts/check-v2-migration.js"
+    "test:v2-migration": "node scripts/check-v2-migration.js",
+    "test:v3-foundation": "node scripts/check-v3-foundation.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
