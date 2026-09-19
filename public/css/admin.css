@@ -10855,3 +10855,396 @@ body.lightbox-open {
 .backup-empty.is-error{color:#ff8b8b}
 @media(max-width:900px){.backup-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.backup-item{align-items:flex-start;flex-wrap:wrap}.backup-item-main{width:calc(100% - 52px)}.backup-item-actions{width:100%}}
+
+
+/* =========================================================
+   FASE 20 — RESPONSIVE / UX
+   Ajustes finales mobile-first para V2
+========================================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body.admin-page {
+  overflow-x: hidden;
+}
+
+.admin-page .admin-sidebar {
+  will-change: transform;
+}
+
+.admin-page .admin-mobile-backdrop {
+  display: none;
+}
+
+.admin-page .admin-main,
+.admin-page .admin-topbar {
+  min-width: 0;
+}
+
+.admin-page .admin-main > *,
+.admin-page .admin-dashboard-panel,
+.admin-page .panel,
+.admin-page .quote-modal-card,
+.admin-page .modal-content {
+  min-width: 0;
+}
+
+.admin-page img,
+.admin-page video,
+.admin-page iframe {
+  max-width: 100%;
+}
+
+.admin-page .panel-heading,
+.admin-page .quote-section-header,
+.admin-page .quote-section-title,
+.admin-page .dashboard-list-item,
+.admin-page .service-row,
+.admin-page .document-admin-card,
+.admin-page .backup-item {
+  min-width: 0;
+}
+
+.admin-page .panel-heading > *,
+.admin-page .quote-section-title > *,
+.admin-page .dashboard-list-item > div,
+.admin-page .service-info,
+.admin-page .document-admin-main,
+.admin-page .backup-item-main {
+  min-width: 0;
+}
+
+.admin-page .panel-heading h2,
+.admin-page .panel-heading p,
+.admin-page .quote-section-title h2,
+.admin-page .quote-section-title p {
+  overflow-wrap: anywhere;
+}
+
+.admin-page input,
+.admin-page select,
+.admin-page textarea,
+.admin-page button {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-page .btn,
+.admin-page .admin-nav-item,
+.admin-page .notifications-button,
+.admin-page .admin-mobile-menu {
+  min-height: 42px;
+}
+
+.admin-page .table-wrapper,
+.admin-page .table-wrap,
+.admin-page .admin-audit-table-wrap {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.admin-page .table-wrapper table,
+.admin-page .table-wrap table,
+.admin-page .admin-audit-table {
+  min-width: 680px;
+}
+
+.admin-page .quote-modal,
+.admin-page .modal {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-page .quote-modal-card,
+.admin-page .modal-content {
+  width: min(920px, 100%);
+  max-width: 100%;
+}
+
+.admin-page .form-actions,
+.admin-page .row-actions,
+.admin-page .backup-actions,
+.admin-page .document-admin-actions {
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .admin-page .admin-mobile-menu {
+    display: inline-flex;
+  }
+
+  .admin-page .admin-sidebar {
+    transform: translateX(-102%);
+    box-shadow: 20px 0 70px rgba(0,0,0,.45);
+  }
+
+  .admin-page.admin-mobile-menu-open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-page .admin-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: block;
+    background: rgba(0,0,0,.58);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+    backdrop-filter: blur(2px);
+  }
+
+  .admin-page.admin-mobile-menu-open .admin-mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .admin-page .admin-topbar {
+    padding: 0 18px;
+  }
+
+  .admin-page .admin-main {
+    padding: 22px 18px 45px;
+  }
+
+  .admin-page .admin-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-page .quote-requests-toolbar,
+  .admin-page .history-toolbar,
+  .admin-page .admin-audit-toolbar,
+  .admin-page .documents-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-page .quote-requests-toolbar input[type="search"],
+  .admin-page .history-toolbar input:first-child,
+  .admin-page .admin-audit-toolbar input[type="search"] {
+    grid-column: 1 / -1;
+  }
+
+  .admin-page .analytics-dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .admin-page .admin-topbar {
+    height: auto;
+    min-height: 68px;
+    gap: 8px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+
+  .admin-page .admin-topbar-left {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .admin-page .admin-topbar-left > div {
+    min-width: 0;
+  }
+
+  .admin-page .admin-topbar-label {
+    font-size: 9px;
+  }
+
+  .admin-page .admin-topbar-left strong {
+    display: block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .admin-page .admin-topbar-right {
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .admin-page .admin-global-search {
+    flex: 0 0 auto;
+  }
+
+  .admin-page .admin-user-info {
+    display: none;
+  }
+
+  .admin-page .admin-user-avatar {
+    width: 37px;
+    height: 37px;
+  }
+
+  .admin-page .admin-main {
+    padding: 18px 12px 38px;
+  }
+
+  .admin-page .admin-welcome {
+    margin-bottom: 20px;
+  }
+
+  .admin-page .admin-welcome h1 {
+    font-size: clamp(25px, 8vw, 34px);
+    line-height: 1.1;
+  }
+
+  .admin-page .admin-welcome p {
+    font-size: 13px;
+  }
+
+  .admin-page .admin-dashboard {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admin-page .admin-dashboard-card {
+    padding: 16px;
+  }
+
+  .admin-page .panel,
+  .admin-page .admin-dashboard-panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .admin-page .panel-heading,
+  .admin-page .quote-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-page .quote-section-title {
+    width: 100%;
+  }
+
+  .admin-page .quote-requests-toolbar,
+  .admin-page .history-toolbar,
+  .admin-page .admin-audit-toolbar,
+  .admin-page .documents-toolbar,
+  .admin-page .users-toolbar,
+  .admin-page .gallery-admin-toolbar,
+  .admin-page .documents-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page .quote-requests-toolbar input[type="search"],
+  .admin-page .history-toolbar input:first-child,
+  .admin-page .admin-audit-toolbar input[type="search"] {
+    grid-column: auto;
+  }
+
+  .admin-page .form-actions,
+  .admin-page .row-actions,
+  .admin-page .backup-actions,
+  .admin-page .document-admin-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .admin-page .form-actions .btn,
+  .admin-page .row-actions .btn,
+  .admin-page .backup-actions .btn,
+  .admin-page .document-admin-actions .btn {
+    width: 100%;
+  }
+
+  .admin-page .dashboard-kpis,
+  .admin-page .dashboard-pipeline {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page .dashboard-chart-wrap {
+    overflow-x: auto;
+  }
+
+  .admin-page .dashboard-monthly-chart {
+    min-width: 520px;
+  }
+
+  .admin-page .notifications-panel {
+    position: fixed;
+    top: 74px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .admin-page .global-search-results {
+    max-height: min(55vh, 420px);
+  }
+
+  .admin-page .quote-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .admin-page .quote-modal-card,
+  .admin-page .modal-content {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    padding: 18px;
+  }
+
+  .admin-page .table-wrapper,
+  .admin-page .table-wrap,
+  .admin-page .admin-audit-table-wrap {
+    margin-inline: -4px;
+    width: calc(100% + 8px);
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-page .admin-mobile-menu {
+    width: 40px;
+    height: 40px;
+  }
+
+  .admin-page .admin-topbar-right {
+    gap: 5px;
+  }
+
+  .admin-page .notifications-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .admin-page .admin-user-avatar {
+    width: 35px;
+    height: 35px;
+  }
+
+  .admin-page .panel,
+  .admin-page .admin-dashboard-panel {
+    padding: 14px;
+  }
+
+  .admin-page .btn {
+    min-height: 44px;
+  }
+
+  .admin-page .admin-sidebar {
+    width: min(310px, 90vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .admin-page *,
+  .admin-page *::before,
+  .admin-page *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
