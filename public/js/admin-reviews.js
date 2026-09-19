@@ -59,12 +59,12 @@ async function loadAdminReviews() {
             ${adminReviews.map(review => `
               <tr>
                 <td>
-                  <strong>${h(review.user_name || "Cliente")}</strong>
-                  <small>${h(review.user_email || "")}</small>
+                  <strong>${h(review.client_name || "Cliente")}</strong>
+                  <small>${h(review.client_email || "")}</small>
                 </td>
                 <td>
                   <strong>${h(review.service || "Trabajo")}</strong>
-                  <small>Solicitud #${h(review.quote_id || "-")}</small>
+                  <small>Solicitud #${h(review.quote_number || ("Solicitud #" + (review.quote_id || "-")))}</small>
                 </td>
                 <td>
                   <div class="admin-review-stars" aria-label="${Number(review.rating)} de 5">
