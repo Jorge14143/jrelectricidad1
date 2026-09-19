@@ -4725,523 +4725,339 @@ async function start() {
       "✅ MySQL conectado"
     );
 	// =====================================================
-// GESTIÓN DE TRABAJOS - ADMIN
+// =====================================================
+// FASE 8 — GESTIÓN AVANZADA DE TRABAJOS
 // =====================================================
 
-// Listar trabajos con búsqueda y filtros
-app.get("/api/admin/jobs", requireAdmin, async (req, res) => {
-  try {
-    const {
-      search = "",
-      status = "",
-      date_from = "",
-      date_to = ""
-    } = req.query;
+const JOB_STATUSES = [
+  "pendiente_presupuesto",
+  "presupuesto_enviado",
+  "aceptado",
+  "programado",
+  "en_proceso",
+  "pausado",
+  "finalizado",
+  "cerrado",
+  "rechazado",
+  "cancelado"
+];
 
-    let sql = `
-      SELECT
-        j.id,
-        j.quote_id,
-        j.status,
-        j.started_at,
-        j.completed_at,
-        j.created_at,
-        j.updated_at,
+const JOB_TRANSITIONS = {
+  pendiente_presupuesto:["presupuesto_enviado","rechazado","cancelado"],
+  presupuesto_enviado:["aceptado","rechazado","cancelado"],
+  aceptado:["programado","en_proceso","cancelado"],
+  programado:["en_proceso","cancelado"],
+  en_proceso:["pausado","finalizado","cancelado"],
+  pausado:["en_proceso","cancelado"],
+  finalizado:["cerrado"],
+  cerrado:[],
+  rechazado:[],
+  cancelado:[]
+};
 
-        q.quote_number,
-        q.issue_date,
-        q.expiration_date,
-        q.subtotal,
-        q.discount,
-        q.total,
-        q.notes,
-
-        qr.name AS client_name,
-        qr.phone AS client_phone,
-        qr.email AS client_email,
-        qr.service AS requested_service,
-        qr.description AS work_description,
-        qr.preferred_date,
-        qr.image_url
-
-      FROM jobs j
-
-      INNER JOIN quotes q
-        ON q.id = j.quote_id
-
-      INNER JOIN quote_requests qr
-        ON qr.id = q.quote_request_id
-
-      WHERE 1 = 1
-    `;
-
-    const params = [];
-
-    // Buscar por cliente, teléfono o presupuesto
-    if (search.trim()) {
-      sql += `
-        AND (
-          qr.name LIKE ?
-          OR qr.phone LIKE ?
-          OR q.quote_number LIKE ?
-        )
-      `;
-
-      const searchValue = `%${search.trim()}%`;
-
-      params.push(
-        searchValue,
-        searchValue,
-        searchValue
-      );
-    }
-
-    // Filtrar por estado
-    if (status) {
-      const allowedStatuses = [
-        "pendiente_presupuesto",
-        "presupuesto_enviado",
-        "aceptado",
-        "en_proceso",
-        "rechazado",
-        "cerrado"
-      ];
-
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          error: "Estado de trabajo inválido."
-        });
-      }
-
-      sql += ` AND j.status = ? `;
-      params.push(status);
-    }
-
-    // Fecha desde
-    if (date_from) {
-      sql += `
-        AND DATE(j.created_at) >= ?
-      `;
-
-      params.push(date_from);
-    }
-
-    // Fecha hasta
-    if (date_to) {
-      sql += `
-        AND DATE(j.created_at) <= ?
-      `;
-
-      params.push(date_to);
-    }
-
-    sql += `
-      ORDER BY j.created_at DESC, j.id DESC
-    `;
-
-    const [rows] = await pool.query(sql, params);
-
-    res.json({
-      success: true,
-      jobs: rows
-    });
-
-  } catch (error) {
-    console.error("Error obteniendo trabajos:", error);
-
-    res.status(500).json({
-      error: "No se pudieron obtener los trabajos."
-    });
-  }
-});
-
-
-// Obtener un trabajo específico
-// =====================================================
-// HISTORIAL DE TRABAJOS CERRADOS
-// =====================================================
-
-app.get("/api/admin/jobs-history", requireAdmin, async (req, res) => {
-  try {
-    const search = String(req.query.search || "").trim();
-    const dateFrom = String(req.query.date_from || "").trim();
-    const dateTo = String(req.query.date_to || "").trim();
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-    if ((dateFrom && !dateRegex.test(dateFrom)) || (dateTo && !dateRegex.test(dateTo))) {
-      return res.status(400).json({
-        error: "Las fechas del historial no son válidas."
-      });
-    }
-
-    if (dateFrom && dateTo && dateFrom > dateTo) {
-      return res.status(400).json({
-        error: "La fecha desde no puede ser posterior a la fecha hasta."
-      });
-    }
-
-    let sql = `
-      SELECT
-        j.id,
-        j.quote_id,
-        j.status,
-        j.started_at,
-        j.completed_at,
-        j.created_at,
-        j.updated_at,
-        q.quote_number,
-        q.issue_date,
-        q.subtotal,
-        q.discount,
-        q.total,
-        q.notes,
-        qr.name AS client_name,
-        qr.phone AS client_phone,
-        qr.email AS client_email,
-        qr.service AS requested_service,
-        qr.description AS work_description,
-        qr.preferred_date
-      FROM jobs j
-      INNER JOIN quotes q ON q.id = j.quote_id
-      INNER JOIN quote_requests qr ON qr.id = q.quote_request_id
-      WHERE j.status = 'cerrado'
-    `;
-
-    const params = [];
-
-    if (search) {
-      sql += `
-        AND (
-          qr.name LIKE ?
-          OR qr.phone LIKE ?
-          OR qr.email LIKE ?
-          OR qr.service LIKE ?
-          OR q.quote_number LIKE ?
-          OR qr.description LIKE ?
-        )
-      `;
-
-      const value = `%${search}%`;
-      params.push(value, value, value, value, value, value);
-    }
-
-    if (dateFrom) {
-      sql += " AND DATE(j.completed_at) >= ?";
-      params.push(dateFrom);
-    }
-
-    if (dateTo) {
-      sql += " AND DATE(j.completed_at) <= ?";
-      params.push(dateTo);
-    }
-
-    sql += " ORDER BY j.completed_at DESC, j.id DESC";
-
-    const [rows] = await pool.query(sql, params);
-
-    const total = rows.reduce(
-      (sum, row) => sum + Number(row.total || 0),
-      0
-    );
-
-    res.json({
-      success: true,
-      jobs: rows,
-      summary: {
-        count: rows.length,
-        total
-      }
-    });
-
-  } catch (error) {
-    console.error("Error obteniendo historial:", error);
-
-    res.status(500).json({
-      error: "No se pudo obtener el historial de trabajos."
-    });
-  }
-});
-
-
-app.get("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
-  try {
-    const jobId = Number(req.params.id);
-
-    if (!Number.isInteger(jobId) || jobId <= 0) {
-      return res.status(400).json({
-        error: "ID de trabajo inválido."
-      });
-    }
-
-    const [rows] = await pool.query(
-      `
-      SELECT
-        j.id,
-        j.quote_id,
-        j.status,
-        j.started_at,
-        j.completed_at,
-        j.created_at,
-        j.updated_at,
-
-        q.quote_number,
-        q.issue_date,
-        q.expiration_date,
-        q.notes,
-        q.subtotal,
-        q.discount,
-        q.total,
-
-        qr.name AS client_name,
-        qr.phone AS client_phone,
-        qr.email AS client_email,
-        qr.service AS requested_service,
-        qr.description AS work_description,        qr.preferred_date,        qr.image_url
-      FROM jobs j
-
-      INNER JOIN quotes q
-        ON q.id = j.quote_id
-
-      INNER JOIN quote_requests qr
-        ON qr.id = q.quote_request_id
-
-      WHERE j.id = ?
-
-      LIMIT 1
-      `,
-      [jobId]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({
-        error: "Trabajo no encontrado."
-      });
-    }
-
-    const [items] = await pool.query(
-      `
-      SELECT
-        id,
-        description,
-        quantity,
-        unit,
-        unit_price,
-        total
-      FROM quote_items
-      WHERE quote_id = ?
-      ORDER BY id ASC
-      `,
-      [rows[0].quote_id]
-    );
-
-    res.json({
-      success: true,
-      job: {
-        ...rows[0],
-        items
-      }
-    });
-
-  } catch (error) {
-    console.error("Error obteniendo trabajo:", error);
-
-    res.status(500).json({
-      error: "No se pudo obtener el trabajo."
-    });
-  }
-});
-
-
-// Cambiar estado del trabajo
-app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
-  try {
-    const jobId = Number(req.params.id);
-    const { status } = req.body;
-
-    if (!Number.isInteger(jobId) || jobId <= 0) {
-      return res.status(400).json({
-        error: "ID de trabajo inválido."
-      });
-    }
-
-    const allowedStatuses = [
-      "pendiente_presupuesto",
-      "presupuesto_enviado",
-      "aceptado",
-      "en_proceso",
-      "rechazado",
-      "cerrado"
+const jobUpload = multer({
+  storage,
+  limits:{fileSize:10*1024*1024},
+  fileFilter:(req,file,cb)=>{
+    const allowed=[
+      "image/jpeg","image/png","image/webp","image/gif",
+      "application/pdf","text/plain",
+      "application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     ];
-
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        error: "Estado de trabajo inválido."
-      });
-    }
-
-    const [rows] = await pool.query(
-      `
-      SELECT
-        id,
-        quote_id,
-        status,
-        started_at,
-        completed_at
-      FROM jobs
-      WHERE id = ?
-      LIMIT 1
-      `,
-      [jobId]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json({
-        error: "Trabajo no encontrado."
-      });
-    }
-
-    const job = rows[0];
-
-    // No permitir modificar un trabajo cerrado
-    if (job.status === "cerrado") {
-      return res.status(400).json({
-        error: "Un trabajo cerrado no puede modificarse."
-      });
-    }
-
-    // No permitir modificar un trabajo rechazado
-    if (job.status === "rechazado") {
-      return res.status(400).json({
-        error: "Un trabajo rechazado no puede modificarse."
-      });
-    }
-
-    // -------------------------------------------------
-    // VALIDAR TRANSICIONES DE ESTADO
-    // -------------------------------------------------
-
-    const allowedTransitions = {
-      pendiente_presupuesto: ["presupuesto_enviado", "rechazado"],
-      presupuesto_enviado: ["aceptado", "rechazado"],
-      aceptado: ["en_proceso"],
-      en_proceso: ["cerrado"]
-    };
-
-    const nextStatuses = allowedTransitions[job.status] || [];
-
-    if (!nextStatuses.includes(status)) {
-      return res.status(400).json({
-        error: "No se puede cambiar a ese estado desde el estado actual."
-      });
-    }
-
-    // -------------------------------------------------
-    // INICIAR TRABAJO
-    // -------------------------------------------------
-
-    if (status === "en_proceso") {
-
-      if (
-        job.status !== "aceptado" &&
-        job.status !== "presupuesto_enviado"
-      ) {
-        return res.status(400).json({
-          error: "El trabajo debe estar aceptado antes de iniciarlo."
-        });
-      }
-
-      await pool.query(
-        `
-        UPDATE jobs
-        SET
-          status = 'en_proceso',
-          started_at = COALESCE(started_at, NOW())
-        WHERE id = ?
-        `,
-        [jobId]
-      );
-
-      await pool.query(
-        `
-        INSERT INTO admin_notifications (type, quote_id, message)
-        VALUES ('job_started', ?, ?)
-        `,
-        [job.quote_id, "Se inició el trabajo asociado al presupuesto #" + job.quote_id + "."]
-      );
-
-      return res.json({
-        success: true,
-        status: "en_proceso",
-        message: "Trabajo iniciado correctamente."
-      });
-    }
-
-    // -------------------------------------------------
-    // CERRAR TRABAJO
-    // -------------------------------------------------
-
-    if (status === "cerrado") {
-
-      if (job.status !== "en_proceso") {
-        return res.status(400).json({
-          error: "El trabajo debe estar en proceso antes de cerrarlo."
-        });
-      }
-
-      await pool.query(
-        `
-        UPDATE jobs
-        SET
-          status = 'cerrado',
-          completed_at = NOW()
-        WHERE id = ?
-        `,
-        [jobId]
-      );
-
-      await pool.query(
-        `
-        INSERT INTO admin_notifications (type, quote_id, message)
-        VALUES ('job_closed', ?, ?)
-        `,
-        [job.quote_id, "Se cerró el trabajo asociado al presupuesto #" + job.quote_id + "."]
-      );
-
-      return res.json({
-        success: true,
-        status: "cerrado",
-        message: "Trabajo cerrado correctamente."
-      });
-    }
-
-    // -------------------------------------------------
-    // OTROS ESTADOS ADMINISTRATIVOS
-    // -------------------------------------------------
-
-    await pool.query(
-      `
-      UPDATE jobs
-      SET status = ?
-      WHERE id = ?
-      `,
-      [status, jobId]
-    );
-
-    res.json({
-      success: true,
-      status,
-      message: "Estado actualizado correctamente."
-    });
-
-  } catch (error) {
-    console.error("Error actualizando estado del trabajo:", error);
-
-    res.status(500).json({
-      error: "No se pudo actualizar el estado del trabajo."
-    });
+    if(!allowed.includes(file.mimetype)) return cb(new Error("Tipo de archivo no permitido."));
+    cb(null,true);
   }
 });
+
+function validateJobId(value){
+  const id=Number(value);
+  return Number.isInteger(id)&&id>0?id:null;
+}
+
+function validateJobStatus(value){
+  const status=String(value||"").trim();
+  return JOB_STATUSES.includes(status)?status:null;
+}
+
+function validateJobDateTime(value){
+  if(value==null||String(value).trim()==="") return null;
+  const text=String(value).trim();
+  if(!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/.test(text)) return undefined;
+  return text.replace("T"," ");
+}
+
+async function recordJobHistory(req,jobId,action,oldStatus=null,newStatus=null,metadata=null,db=pool){
+  await db.query(
+    `INSERT INTO job_history
+      (job_id,actor_user_id,action,old_status,new_status,metadata)
+     VALUES (?,?,?,?,?,?)`,
+    [jobId,req.session?.user?.id||null,action,oldStatus,newStatus,metadata?JSON.stringify(metadata):null]
+  );
+}
+
+async function createJobNotification(type,quoteId,message){
+  await pool.query(
+    "INSERT INTO admin_notifications (type,quote_id,message) VALUES (?,?,?)",
+    [type,quoteId,message]
+  ).catch(error=>logError("No se pudo crear notificación de trabajo",{error:error.message,quoteId}));
+}
+
+// Lista de trabajos.
+app.get("/api/admin/jobs",requireAdmin,async(req,res)=>{
+  try{
+    const search=String(req.query.search||"").trim();
+    const status=String(req.query.status||"").trim();
+    const assignedUserId=String(req.query.assigned_user_id||"").trim();
+    const dateFrom=String(req.query.date_from||"").trim();
+    const dateTo=String(req.query.date_to||"").trim();
+
+    if(status&&!validateJobStatus(status)) return res.status(400).json({error:"Estado de trabajo inválido."});
+
+    const params=[];
+    let sql=`
+      SELECT j.id,j.quote_id,j.status,j.started_at,j.completed_at,j.created_at,j.updated_at,
+             j.assigned_user_id,j.scheduled_at,j.internal_notes,j.execution_notes,j.completion_notes,j.location,
+             q.quote_number,q.issue_date,q.subtotal,q.discount,q.total,q.notes,
+             qr.name AS client_name,qr.phone AS client_phone,qr.email AS client_email,
+             qr.service AS requested_service,qr.description AS work_description,qr.preferred_date,
+             u.name AS assigned_user_name
+      FROM jobs j
+      INNER JOIN quotes q ON q.id=j.quote_id
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN users u ON u.id=j.assigned_user_id
+      WHERE 1=1`;
+
+    if(search){
+      const v=`%${search}%`;
+      sql+=` AND (qr.name LIKE ? OR qr.phone LIKE ? OR qr.email LIKE ? OR q.quote_number LIKE ? OR qr.service LIKE ? OR qr.description LIKE ?)`;
+      params.push(v,v,v,v,v,v);
+    }
+    if(status){sql+=" AND j.status=?";params.push(status);}
+    if(assignedUserId){
+      const id=Number(assignedUserId);
+      if(!Number.isInteger(id)||id<=0)return res.status(400).json({error:"Técnico inválido."});
+      sql+=" AND j.assigned_user_id=?";params.push(id);
+    }
+    if(dateFrom){if(!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom))return res.status(400).json({error:"Fecha desde inválida."});sql+=" AND DATE(COALESCE(j.scheduled_at,j.created_at))>=?";params.push(dateFrom);}
+    if(dateTo){if(!/^\d{4}-\d{2}-\d{2}$/.test(dateTo))return res.status(400).json({error:"Fecha hasta inválida."});sql+=" AND DATE(COALESCE(j.scheduled_at,j.created_at))<=?";params.push(dateTo);}
+    sql+=" ORDER BY FIELD(j.status,'programado','en_proceso','pausado','finalizado','aceptado','pendiente_presupuesto','presupuesto_enviado','cerrado','rechazado','cancelado'),COALESCE(j.scheduled_at,j.created_at) ASC,j.id DESC";
+
+    const [jobs]=await pool.query(sql,params);
+    res.json({success:true,jobs});
+  }catch(error){
+    logError("Error obteniendo trabajos V2",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron obtener los trabajos."});
+  }
+});
+
+// Detalle completo.
+app.get("/api/admin/jobs/:id(\\d+)",requireAdmin,async(req,res)=>{
+  try{
+    const id=validateJobId(req.params.id);
+    if(!id)return res.status(400).json({error:"ID de trabajo inválido."});
+    const [rows]=await pool.query(`
+      SELECT j.*,q.quote_number,q.issue_date,q.expiration_date,q.notes,q.subtotal,q.discount,q.total,
+             qr.name AS client_name,qr.phone AS client_phone,qr.email AS client_email,
+             qr.service AS requested_service,qr.description AS work_description,qr.preferred_date,
+             c.address AS client_address,c.locality AS client_locality,u.name AS assigned_user_name
+      FROM jobs j
+      INNER JOIN quotes q ON q.id=j.quote_id
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN clients c ON c.id=qr.client_id
+      LEFT JOIN users u ON u.id=j.assigned_user_id
+      WHERE j.id=? LIMIT 1`,[id]);
+    if(!rows.length)return res.status(404).json({error:"Trabajo no encontrado."});
+
+    const [items]=await pool.query("SELECT id,description,quantity,unit,unit_price,total FROM quote_items WHERE quote_id=? ORDER BY id",[rows[0].quote_id]);
+    const [history]=await pool.query(`
+      SELECT h.*,u.name AS actor_name FROM job_history h
+      LEFT JOIN users u ON u.id=h.actor_user_id
+      WHERE h.job_id=? ORDER BY h.created_at DESC,h.id DESC`,[id]);
+    const [attachments]=await pool.query(`
+      SELECT id,original_name,url,mime_type,size_bytes,category,created_at
+      FROM job_attachments WHERE job_id=? ORDER BY created_at DESC,id DESC`,[id]);
+
+    res.json({success:true,job:{...rows[0],items,history,attachments}});
+  }catch(error){
+    logError("Error obteniendo detalle de trabajo",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el trabajo."});
+  }
+});
+
+// Técnicos disponibles.
+app.get("/api/admin/jobs/assignees",requireAdmin,async(req,res)=>{
+  try{
+    const [rows]=await pool.query("SELECT id,name,email FROM users ORDER BY name");
+    res.json({success:true,users:rows});
+  }catch(error){res.status(500).json({error:"No se pudieron obtener los técnicos."});}
+});
+
+// Actualizar datos operativos.
+app.put("/api/admin/jobs/:id(\\d+)",requireAdmin,adminMutationLimiter,async(req,res)=>{
+  try{
+    const id=validateJobId(req.params.id);
+    if(!id)return res.status(400).json({error:"ID de trabajo inválido."});
+    const [rows]=await pool.query("SELECT * FROM jobs WHERE id=? LIMIT 1",[id]);
+    if(!rows.length)return res.status(404).json({error:"Trabajo no encontrado."});
+    const current=rows[0];
+    if(["cerrado","cancelado","rechazado"].includes(current.status))return res.status(409).json({error:"Este trabajo ya está cerrado o cancelado."});
+
+    let assigned=current.assigned_user_id;
+    if(req.body.assigned_user_id!==undefined){
+      assigned=req.body.assigned_user_id===""||req.body.assigned_user_id===null?null:Number(req.body.assigned_user_id);
+      if(assigned!==null&&(!Number.isInteger(assigned)||assigned<=0))return res.status(400).json({error:"Técnico inválido."});
+      if(assigned!==null){const [u]=await pool.query("SELECT id FROM users WHERE id=? LIMIT 1",[assigned]);if(!u.length)return res.status(400).json({error:"El técnico no existe."});}
+    }
+    const scheduled=req.body.scheduled_at===undefined?current.scheduled_at:validateJobDateTime(req.body.scheduled_at);
+    if(scheduled===undefined)return res.status(400).json({error:"Fecha programada inválida."});
+    const fields={
+      assigned_user_id:assigned,
+      scheduled_at:scheduled,
+      internal_notes:req.body.internal_notes===undefined?current.internal_notes:String(req.body.internal_notes||"").slice(0,10000),
+      execution_notes:req.body.execution_notes===undefined?current.execution_notes:String(req.body.execution_notes||"").slice(0,10000),
+      location:req.body.location===undefined?current.location:String(req.body.location||"").slice(0,255)
+    };
+    await pool.query(`UPDATE jobs SET assigned_user_id=?,scheduled_at=?,internal_notes=?,execution_notes=?,location=? WHERE id=?`,
+      [fields.assigned_user_id,fields.scheduled_at,fields.internal_notes,fields.execution_notes,fields.location,id]);
+    await recordJobHistory(req,id,"job_updated",current.status,current.status,{changes:fields});
+    await writeAudit(req,"job_updated","job",id,fields);
+    res.json({success:true,message:"Trabajo actualizado correctamente."});
+  }catch(error){
+    logError("Error actualizando trabajo",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar el trabajo."});
+  }
+});
+
+// Cambiar estado con transiciones controladas.
+app.put("/api/admin/jobs/:id(\\d+)/status",requireAdmin,adminMutationLimiter,async(req,res)=>{
+  const connection=await pool.getConnection();
+  try{
+    const id=validateJobId(req.params.id);
+    const next=validateJobStatus(req.body?.status);
+    if(!id||!next){connection.release();return res.status(400).json({error:"ID o estado de trabajo inválido."});}
+    const [rows]=await connection.query("SELECT * FROM jobs WHERE id=? LIMIT 1 FOR UPDATE",[id]);
+    if(!rows.length){connection.release();return res.status(404).json({error:"Trabajo no encontrado."});}
+    const job=rows[0];
+    if(job.status===next){connection.release();return res.json({success:true,status:next,message:"El trabajo ya se encuentra en ese estado."});}
+    if(!(JOB_TRANSITIONS[job.status]||[]).includes(next)){
+      connection.release();return res.status(409).json({error:"No se puede cambiar a ese estado desde el estado actual."});
+    }
+
+    const nowFields=[];
+    const values=[];
+    if(next==="en_proceso"){
+      nowFields.push("started_at=COALESCE(started_at,NOW())","started_by_user_id=?");values.push(req.session.user.id);
+    }
+    if(next==="finalizado"){
+      nowFields.push("completed_at=COALESCE(completed_at,NOW())","completed_by_user_id=?");values.push(req.session.user.id);
+    }
+    if(next==="cerrado" && !job.completed_at){
+      nowFields.push("completed_at=NOW()","completed_by_user_id=?");values.push(req.session.user.id);
+    }
+    nowFields.push("status=?");values.push(next,id);
+    await connection.query(`UPDATE jobs SET ${nowFields.join(",")} WHERE id=?`,values);
+    await recordJobHistory(req,id,"status_changed",job.status,next,null,connection);
+    await connection.commit();
+
+    const messages={
+      programado:"Trabajo programado correctamente.",
+      en_proceso:"Trabajo iniciado correctamente.",
+      pausado:"Trabajo pausado correctamente.",
+      finalizado:"Trabajo marcado como finalizado.",
+      cerrado:"Trabajo cerrado correctamente.",
+      cancelado:"Trabajo cancelado correctamente."
+    };
+    await createJobNotification(next==="cerrado"?"job_closed":"job_status_changed",job.quote_id,`El trabajo #${id} pasó de ${job.status} a ${next}.`);
+    await writeAudit(req,"job_status_changed","job",id,{old_status:job.status,new_status:next});
+    res.json({success:true,status:next,message:messages[next]||"Estado actualizado correctamente."});
+  }catch(error){
+    await connection.rollback().catch(()=>{});
+    logError("Error actualizando estado de trabajo",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar el estado del trabajo."});
+  }finally{connection.release();}
+});
+
+// Historial.
+app.get("/api/admin/jobs/:id(\\d+)/history",requireAdmin,async(req,res)=>{
+  try{
+    const id=validateJobId(req.params.id);if(!id)return res.status(400).json({error:"ID inválido."});
+    const [rows]=await pool.query(`
+      SELECT h.*,u.name AS actor_name FROM job_history h
+      LEFT JOIN users u ON u.id=h.actor_user_id
+      WHERE h.job_id=? ORDER BY h.created_at DESC,h.id DESC`,[id]);
+    res.json({success:true,history:rows});
+  }catch(error){res.status(500).json({error:"No se pudo obtener el historial."});}
+});
+
+// Subir evidencia/documento.
+app.post("/api/admin/jobs/:id(\\d+)/attachments",requireAdmin,jobUpload.single("file"),async(req,res)=>{
+  try{
+    const id=validateJobId(req.params.id);if(!id)return res.status(400).json({error:"ID inválido."});
+    const [rows]=await pool.query("SELECT id FROM jobs WHERE id=? LIMIT 1",[id]);
+    if(!rows.length){if(req.file)fs.unlink(req.file.path,()=>{});return res.status(404).json({error:"Trabajo no encontrado."});}
+    if(!req.file)return res.status(400).json({error:"No se recibió ningún archivo."});
+    const allowedCategories=["inicio","proceso","final","documento","otro"];
+    const category=allowedCategories.includes(String(req.body.category||""))?String(req.body.category):"otro";
+    const url="/uploads/"+req.file.filename;
+    const [result]=await pool.query(`
+      INSERT INTO job_attachments
+      (job_id,uploaded_by_user_id,original_name,stored_name,url,mime_type,size_bytes,category)
+      VALUES (?,?,?,?,?,?,?,?)`,
+      [id,req.session.user.id,req.file.originalname,req.file.filename,url,req.file.mimetype,req.file.size,category]
+    );
+    await recordJobHistory(req,id,"attachment_added",null,null,{attachment_id:result.insertId,category,name:req.file.originalname});
+    await writeAudit(req,"job_attachment_added","job",id,{attachment_id:result.insertId,category});
+    res.status(201).json({success:true,id:result.insertId,url,message:"Archivo adjuntado correctamente."});
+  }catch(error){
+    if(req.file)fs.unlink(req.file.path,()=>{});
+    logError("Error subiendo evidencia de trabajo",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo adjuntar el archivo."});
+  }
+});
+
+// Eliminar evidencia.
+app.delete("/api/admin/jobs/:id(\\d+)/attachments/:attachmentId(\\d+)",requireAdmin,adminMutationLimiter,async(req,res)=>{
+  try{
+    const jobId=validateJobId(req.params.id),attachmentId=validateJobId(req.params.attachmentId);
+    if(!jobId||!attachmentId)return res.status(400).json({error:"ID inválido."});
+    const [rows]=await pool.query("SELECT * FROM job_attachments WHERE id=? AND job_id=? LIMIT 1",[attachmentId,jobId]);
+    if(!rows.length)return res.status(404).json({error:"Archivo no encontrado."});
+    await pool.query("DELETE FROM job_attachments WHERE id=?",[attachmentId]);
+    if(rows[0].stored_name)fs.unlink(path.join(uploadsDir,rows[0].stored_name),()=>{});
+    await recordJobHistory(req,jobId,"attachment_deleted",null,null,{attachment_id:attachmentId});
+    await writeAudit(req,"job_attachment_deleted","job",jobId,{attachment_id:attachmentId});
+    res.json({success:true,message:"Archivo eliminado."});
+  }catch(error){res.status(500).json({error:"No se pudo eliminar el archivo."});}
+});
+
+// Historial cerrado con filtros.
+app.get("/api/admin/jobs-history",requireAdmin,async(req,res)=>{
+  try{
+    const search=String(req.query.search||"").trim();
+    const dateFrom=String(req.query.date_from||"").trim();
+    const dateTo=String(req.query.date_to||"").trim();
+    const params=[];
+    let sql=`
+      SELECT j.id,j.quote_id,j.status,j.started_at,j.completed_at,j.created_at,j.updated_at,
+             j.scheduled_at,j.location,j.assigned_user_id,u.name AS assigned_user_name,
+             q.quote_number,q.issue_date,q.subtotal,q.discount,q.total,q.notes,
+             qr.name AS client_name,qr.phone AS client_phone,qr.email AS client_email,
+             qr.service AS requested_service,qr.description AS work_description
+      FROM jobs j
+      INNER JOIN quotes q ON q.id=j.quote_id
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN users u ON u.id=j.assigned_user_id
+      WHERE j.status IN ('cerrado','finalizado')`;
+    if(search){const v=`%${search}%`;sql+=" AND (qr.name LIKE ? OR qr.phone LIKE ? OR qr.email LIKE ? OR q.quote_number LIKE ? OR qr.service LIKE ? OR qr.description LIKE ?)";params.push(v,v,v,v,v,v);}
+    if(dateFrom){if(!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom))return res.status(400).json({error:"Fecha desde inválida."});sql+=" AND DATE(COALESCE(j.completed_at,j.created_at))>=?";params.push(dateFrom);}
+    if(dateTo){if(!/^\d{4}-\d{2}-\d{2}$/.test(dateTo))return res.status(400).json({error:"Fecha hasta inválida."});sql+=" AND DATE(COALESCE(j.completed_at,j.created_at))<=?";params.push(dateTo);}
+    sql+=" ORDER BY COALESCE(j.completed_at,j.created_at) DESC,j.id DESC";
+    const [jobs]=await pool.query(sql,params);
+    res.json({success:true,jobs,summary:{count:jobs.length,total:jobs.reduce((sum,row)=>sum+Number(row.total||0),0)}});
+  }catch(error){logError("Error obteniendo historial de trabajos",{requestId:req.requestId,error:error.message});res.status(500).json({error:"No se pudo obtener el historial."});}
+});
+
 app.get("/presupuesto/:token", (req, res) => {
   res.sendFile(
     path.join(__dirname, "public", "presupuesto.html")
