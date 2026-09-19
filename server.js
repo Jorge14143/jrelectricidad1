@@ -15,6 +15,17 @@ const multer = require("multer");
 const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
 const { runMigrations } = require("./lib/migrations");
+const {
+  PASSWORD_MIN,
+  PASSWORD_MAX,
+  validatePassword,
+  generateTotpSecret,
+  verifyTotp,
+  encryptSecret,
+  decryptSecret,
+  hashBackupCode,
+  generateBackupCodes
+} = require("./lib/security");
 
 const app = express();
 app.disable("x-powered-by");
@@ -226,13 +237,21 @@ app.use(
         process.env.NODE_ENV === "production",
 
       maxAge:
-        1000 * 60 * 60 * 8
+        1000 * 60 * 60 * 8,
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Host-jr_session"
+          : "jr_session"
 
     }
 
   })
 );
 
+
+// =========================================================
+ // V2 — CSRF / ORIGIN
+app.use(requireCsrfOrigin);
 
 // =========================================================
 // V2 — AUDITORÍA DE MUTACIONES ADMIN
@@ -296,6 +315,21 @@ async function invalidateUserSessions(userId, keepSessionId = null) {
   await pool.query(`DELETE FROM sessions WHERE data LIKE ?`, [pattern]);
 }
 
+async function isLoginLocked(email, ip) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS failures
+     FROM login_attempts
+     WHERE email=? AND ip_address=? AND success=0
+       AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)`,
+    [email, ip || ""]
+  );
+  return Number(rows[0]?.failures || 0) >= 5;
+}
+
+async function validateLoginLock(email, ip) {
+  return isLoginLocked(email, ip);
+}
+
 function requireAuth(req, res, next) {
 
   if (!req.session.user) {
@@ -341,6 +375,70 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+
+async function registerActiveSession(req, userId) {
+  if (!req.sessionID || !userId) return;
+  await pool.query(
+    `INSERT INTO active_sessions
+      (session_id, user_id, ip_address, user_agent)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       ip_address=VALUES(ip_address),
+       user_agent=VALUES(user_agent),
+       last_seen_at=CURRENT_TIMESTAMP`,
+    [
+      req.sessionID,
+      Number(userId),
+      req.ip || null,
+      String(req.get("user-agent") || "").slice(0, 512) || null
+    ]
+  );
+}
+
+async function removeActiveSession(sessionId) {
+  if (!sessionId) return;
+  await pool.query("DELETE FROM active_sessions WHERE session_id=?", [sessionId]).catch(() => {});
+}
+
+async function removeAllActiveSessions(userId, keepSessionId = null) {
+  if (keepSessionId) {
+    await pool.query("DELETE FROM active_sessions WHERE user_id=? AND session_id<>?", [userId, keepSessionId]);
+  } else {
+    await pool.query("DELETE FROM active_sessions WHERE user_id=?", [userId]);
+  }
+}
+
+function requireCsrfOrigin(req, res, next) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+
+  const site = req.get("Sec-Fetch-Site");
+  if (site === "cross-site") {
+    return res.status(403).json({ success: false, error: "Solicitud cross-site bloqueada." });
+  }
+
+  const origin = req.get("Origin");
+  const forwardedHost = req.get("X-Forwarded-Host");
+  const host = forwardedHost || req.get("Host");
+  const targetOrigin = `${req.protocol}://${host}`;
+
+  if (origin) {
+    if (origin !== targetOrigin) {
+      return res.status(403).json({ success: false, error: "Origen no autorizado." });
+    }
+    return next();
+  }
+
+  const referer = req.get("Referer");
+  if (referer) {
+    try {
+      if (new URL(referer).origin === targetOrigin) return next();
+    } catch {}
+  }
+
+  if (process.env.NODE_ENV !== "production") return next();
+
+  return res.status(403).json({ success: false, error: "No se pudo verificar el origen de la solicitud." });
+}
 
 async function writeAudit(req, action, entityType = null, entityId = null, metadata = null) {
   try {
@@ -1349,6 +1447,27 @@ app.post(
       await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
       req.session.user = loggedUser;
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+      if (loggedUser.role === "admin") {
+        const [securityRows] = await pool.query(
+          "SELECT totp_enabled FROM users WHERE id=? LIMIT 1",
+          [loggedUser.id]
+        );
+        if (securityRows[0]?.totp_enabled) {
+          req.session.pending2fa = {
+            userId: loggedUser.id,
+            createdAt: Date.now()
+          };
+          await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+          await writeAudit(req, "login_password_verified_2fa_pending", "user", loggedUser.id);
+          return res.json({
+            ok: true,
+            requires2fa: true,
+            message: "Ingresá el código de autenticación de dos factores."
+          });
+        }
+      }
+
+      await registerActiveSession(req, loggedUser.id);
       await writeAudit(req, "login", "user", loggedUser.id);
 
       res.json({
