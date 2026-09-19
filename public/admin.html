@@ -8,6 +8,7 @@
 
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/materials.css">
+  <link rel="stylesheet" href="/css/whatsapp.css">
 </head>
 
 <body class="admin-page">
@@ -152,6 +153,11 @@
     <a href="/finanzas.html" class="admin-nav-item">
       <span>💰</span>
       <span>Finanzas</span>
+    </a>
+
+    <a href="#whatsappSection" class="admin-nav-item">
+      <span>💬</span>
+      <span>WhatsApp</span>
     </a>
 
     <a href="#materialsSection" class="admin-nav-item">
@@ -2246,6 +2252,49 @@
 
     </div>
 <!-- =========================================================
+     WHATSAPP Y COMUNICACIONES — BLOQUE I
+========================================================= -->
+<section id="whatsappSection" class="admin-section">
+  <div class="admin-section-header"><div><span class="admin-section-eyebrow">COMUNICACIONES</span><h2>💬 WhatsApp</h2><p>Prepará mensajes profesionales y abrilos directamente en WhatsApp. Cada comunicación queda registrada.</p></div></div>
+  <div class="wa-grid">
+    <div class="wa-card">
+      <h3>Enviar comunicación</h3>
+      <form id="waSendForm" class="wa-form-grid">
+        <div><label>Nombre</label><input id="waName" placeholder="Nombre del cliente"></div>
+        <div><label>WhatsApp</label><input id="waPhone" placeholder="Ej. 3385684660" required></div>
+        <div><label>Plantilla</label><select id="waTemplate"></select></div>
+        <div><label>Evento</label><input id="waEvent" value="general"></div>
+        <div><label>Presupuesto</label><input id="waQuote" placeholder="Ej. PRES-001"></div>
+        <div><label>Total</label><input id="waTotal" placeholder="$ 0,00"></div>
+        <div><label>Fecha</label><input id="waDate" placeholder="dd/mm/aaaa"></div>
+        <div><label>Hora</label><input id="waTime" placeholder="10:00"></div>
+        <div><label>Trabajo</label><input id="waJob" placeholder="Trabajo / servicio"></div>
+        <div><label>Detalle</label><input id="waDetail" placeholder="Actualización"></div>
+        <div class="full"><label>URL</label><input id="waUrl" placeholder="https://..."></div>
+        <div><label>Tipo de destino</label><input id="waTargetType" placeholder="quote / job / payment"></div>
+        <div><label>ID destino</label><input id="waTargetId" type="number" min="1"></div>
+        <div class="full"><button class="btn" type="submit">💬 Abrir WhatsApp</button></div>
+      </form>
+    </div>
+    <div class="wa-card">
+      <h3>Plantillas</h3>
+      <form id="waTemplateForm" class="wa-form-grid">
+        <div><label>Nombre</label><input id="waTemplateName" required></div>
+        <div><label>Evento</label><input id="waTemplateEvent" placeholder="quote_sent" required></div>
+        <div class="full"><label>Mensaje</label><textarea id="waTemplateBody" rows="6" required placeholder="Hola {cliente}..."></textarea></div>
+        <div class="full"><button class="btn" type="submit">➕ Crear plantilla</button></div>
+      </form>
+      <div id="waTemplatesList" style="margin-top:16px"></div>
+      <p class="muted">Variables disponibles: {cliente}, {presupuesto}, {total}, {url}, {fecha}, {hora}, {trabajo}, {detalle}.</p>
+    </div>
+  </div>
+  <div class="wa-card" style="margin-top:18px">
+    <h3>Historial de comunicaciones</h3>
+    <div class="table-wrap"><table class="materials-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>WhatsApp</th><th>Evento</th><th>Estado</th><th></th></tr></thead><tbody id="waHistoryList"></tbody></table></div>
+  </div>
+</section>
+
+<!-- =========================================================
      MATERIALES TÉCNICOS — BLOQUE H
 ========================================================= -->
 <section id="materialsSection" class="admin-section">
@@ -2572,6 +2621,7 @@
 <script src="/js/admin-quotes.js"></script>
 <script src="/js/admin-jobs.js"></script>
 <script src="/js/admin-materials.js"></script>
+<script src="/js/admin-whatsapp.js"></script>
 <script src="/js/admin-navigation.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
