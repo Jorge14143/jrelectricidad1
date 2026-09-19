@@ -2912,6 +2912,63 @@ app.get(
         [days]
       );
 
+      const [[clientsSummary]] = await pool.query(
+        `SELECT
+          COUNT(*) AS total,
+          SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS newClients
+         FROM clients`,
+        [days]
+      );
+
+      const [[gallerySummary]] = await pool.query(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS published,
+                SUM(CASE WHEN featured=1 AND active=1 THEN 1 ELSE 0 END) AS featured
+         FROM gallery`
+      );
+
+      const [[requestPipeline]] = await pool.query(
+        `SELECT
+          SUM(CASE WHEN status='pendiente' THEN 1 ELSE 0 END) AS pending,
+          SUM(CASE WHEN status='en_revision' THEN 1 ELSE 0 END) AS review,
+          SUM(CASE WHEN status='presupuestando' THEN 1 ELSE 0 END) AS quoting,
+          SUM(CASE WHEN status='presupuestada' THEN 1 ELSE 0 END) AS quoted,
+          SUM(CASE WHEN status='aceptada' THEN 1 ELSE 0 END) AS accepted
+         FROM quote_requests`
+      );
+
+      const [upcomingJobs] = await pool.query(
+        `SELECT j.id,j.status,j.scheduled_at,j.location,
+                COALESCE(c.name,qr.name,'Sin cliente') AS client_name,
+                u.name AS technician_name
+         FROM jobs j
+         LEFT JOIN clients c ON c.id=j.client_id
+         LEFT JOIN quote_requests qr ON qr.id=j.quote_request_id
+         LEFT JOIN users u ON u.id=j.assigned_user_id
+         WHERE j.scheduled_at IS NOT NULL
+           AND j.scheduled_at >= NOW()
+           AND j.status IN ('aceptado','programado','en_proceso','pausado')
+         ORDER BY j.scheduled_at ASC
+         LIMIT 8`
+      );
+
+      const [topServices] = await pool.query(
+        `SELECT COALESCE(NULLIF(TRIM(qr.service),''),'Sin servicio') AS service,
+                COUNT(*) AS requests,
+                SUM(CASE WHEN qr.status='aceptada' THEN 1 ELSE 0 END) AS accepted
+         FROM quote_requests qr
+         GROUP BY COALESCE(NULLIF(TRIM(qr.service),''),'Sin servicio')
+         ORDER BY requests DESC, accepted DESC
+         LIMIT 6`
+      );
+
+      const [jobStatusSummary] = await pool.query(
+        `SELECT status,COUNT(*) AS total
+         FROM jobs
+         GROUP BY status
+         ORDER BY total DESC`
+      );
+
       res.json({
         users: Number(users.total),
         services: Number(services.total),
@@ -2938,7 +2995,40 @@ app.get(
           quotes: Number(row.quotes || 0),
           amount: Number(row.amount || 0)
         })),
-        recentActivity
+        recentActivity,
+        clients: {
+          total: Number(clientsSummary.total || 0),
+          newClients: Number(clientsSummary.newClients || 0)
+        },
+        gallery: {
+          total: Number(gallerySummary.total || 0),
+          published: Number(gallerySummary.published || 0),
+          featured: Number(gallerySummary.featured || 0)
+        },
+        requestPipeline: {
+          pending: Number(requestPipeline.pending || 0),
+          review: Number(requestPipeline.review || 0),
+          quoting: Number(requestPipeline.quoting || 0),
+          quoted: Number(requestPipeline.quoted || 0),
+          accepted: Number(requestPipeline.accepted || 0)
+        },
+        upcomingJobs: upcomingJobs.map(row => ({
+          id: Number(row.id),
+          status: row.status,
+          scheduledAt: row.scheduled_at,
+          location: row.location,
+          clientName: row.client_name,
+          technicianName: row.technician_name
+        })),
+        topServices: topServices.map(row => ({
+          service: row.service,
+          requests: Number(row.requests || 0),
+          accepted: Number(row.accepted || 0)
+        })),
+        jobStatusSummary: jobStatusSummary.map(row => ({
+          status: row.status,
+          total: Number(row.total || 0)
+        }))
       });
     } catch (e) {
       console.error("Error obteniendo estadísticas:", e);
