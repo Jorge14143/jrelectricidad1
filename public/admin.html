@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/css/automation-v3.css">
   <link rel="stylesheet" href="/css/evidence-v3.css">
   <link rel="stylesheet" href="/css/admin-themes-v3.css">
+  <link rel="stylesheet" href="/css/admin-reviews-v3.css">
 </head>
 
 <body class="admin-page">
@@ -53,140 +54,55 @@
 
   <nav class="admin-sidebar-nav">
 
-    <div class="admin-nav-label">
-      PRINCIPAL
-    </div>
+    <div class="admin-nav-label">PRINCIPAL</div>
+    <a href="#dashboardStats" class="admin-nav-item active"><span>🏠</span><span>Dashboard</span></a>
 
-    <a href="#dashboardStats" class="admin-nav-item active">
-      <span>🏠</span>
-      <span>Dashboard</span>
-    </a>
+    <div class="admin-nav-label">OPERACIONES</div>
 
-
-    <div class="admin-nav-label">
-      GESTIÓN
-    </div>
-
-    <button
-      type="button"
-      class="admin-nav-item admin-nav-toggle"
-      data-menu="presupuestosMenu"
-    >
-      <span>📋</span>
-      <span>Presupuestos</span>
-      <b>⌄</b>
+    <button type="button" class="admin-nav-item admin-nav-toggle" data-menu="operacionesMenu">
+      <span>📋</span><span>Presupuestos</span><b>⌄</b>
     </button>
-
-    <div class="admin-submenu" id="presupuestosMenu">
-
-      <a href="#quoteRequestsSection">
-        Solicitudes
-      </a>
-
-      <a href="#quotesSection">
-        Presupuestos
-      </a>
-
-      <a href="#jobsHistorySection">
-        Historial
-      </a>
-
+    <div class="admin-submenu" id="operacionesMenu">
+      <a href="#quoteRequestsSection">Solicitudes</a>
+      <a href="#quotesSection">Presupuestos</a>
     </div>
 
-
-    <button
-      type="button"
-      class="admin-nav-item admin-nav-toggle"
-      data-menu="trabajosMenu"
-    >
-      <span>🔧</span>
-      <span>Trabajos</span>
-      <b>⌄</b>
+    <button type="button" class="admin-nav-item admin-nav-toggle" data-menu="trabajosMenu">
+      <span>🔧</span><span>Trabajos</span><b>⌄</b>
     </button>
-
     <div class="admin-submenu" id="trabajosMenu">
-
-      <a href="#jobsSection">
-        Activos
-      </a>
-
-      <a href="#jobsHistorySection">
-        Trabajos cerrados
-      </a>
-
+      <a href="#jobsSection">Trabajos activos</a>
+      <a href="#jobsHistorySection">Historial de trabajos</a>
     </div>
 
+    <a href="#clientsSection" class="admin-nav-item"><span>👥</span><span>Clientes</span></a>
 
-    <a href="#clientsSection" class="admin-nav-item">
-      <span>👥</span>
-      <span>Clientes</span>
-    </a>
+    <div class="admin-nav-label">CONTENIDO</div>
+    <a href="#servicesSection" class="admin-nav-item"><span>🛠️</span><span>Servicios</span></a>
+    <a href="#gallerySection" class="admin-nav-item"><span>🖼️</span><span>Galería</span></a>
+    <a href="#materialsSection" class="admin-nav-item"><span>🧰</span><span>Materiales</span></a>
+    <a href="#evidenceSection" class="admin-nav-item"><span>📸</span><span>Evidencias</span></a>
+    <a href="#reviewsSection" class="admin-nav-item"><span>⭐</span><span>Reseñas</span></a>
 
-
-    <a href="#servicesSection" class="admin-nav-item">
-      <span>🛠️</span>
-      <span>Servicios</span>
-    </a>
-
-
-    <a href="#gallerySection" class="admin-nav-item">
-      <span>🖼️</span>
-      <span>Galería</span>
-    </a>
-
-
+    <div class="admin-nav-label">COMUNICACIONES</div>
     <button type="button" class="admin-nav-item" id="sidebarNotificationsButton">
       <span>🔔</span><span>Notificaciones</span>
       <em id="sidebarNotificationsBadge" class="admin-sidebar-badge" hidden>0</em>
     </button>
-    <a href="#notificationSettingsSection" class="admin-nav-item">
-      <span>🔔</span><span>Preferencias de notificaciones</span>
-    </a>
+    <a href="#notificationSettingsSection" class="admin-nav-item"><span>⚙️</span><span>Preferencias</span></a>
+    <a href="#whatsappSection" class="admin-nav-item"><span>💬</span><span>WhatsApp</span></a>
+    <a href="#emailSection" class="admin-nav-item"><span>✉️</span><span>Email</span></a>
+    <a href="#signaturesSection" class="admin-nav-item"><span>✍️</span><span>Firma digital</span></a>
 
+    <div class="admin-nav-label">FINANZAS</div>
+    <a href="/finanzas.html" class="admin-nav-item"><span>💰</span><span>Facturación</span></a>
 
-    <a href="#usersSection" class="admin-nav-item">
-      <span>👤</span>
-      <span>Usuarios</span>
-    </a>
+    <div class="admin-nav-label">SISTEMA</div>
+    <a href="#usersSection" class="admin-nav-item"><span>👤</span><span>Usuarios</span></a>
+    <a href="#securityV3Section" class="admin-nav-item"><span>🛡️</span><span>Seguridad</span></a>
+    <a href="#configurationV3Section" class="admin-nav-item"><span>⚙️</span><span>Configuración</span></a>
+    <a href="#automationV3Section" class="admin-nav-item"><span>🤖</span><span>Automatizaciones</span></a>
 
-
-    <a href="/finanzas.html" class="admin-nav-item">
-      <span>💰</span>
-      <span>Finanzas</span>
-    </a>
-
-    <a href="#whatsappSection" class="admin-nav-item">
-      <span>💬</span>
-      <span>WhatsApp</span>
-    </a>
-
-    <a href="#emailSection" class="admin-nav-item">
-      <span>✉️</span>
-      <span>Email</span>
-    </a>
-
-    <a href="#signaturesSection" class="admin-nav-item">
-      <span>✍️</span>
-      <span>Firma digital</span>
-    </a>
-
-    <a href="#evidenceSection" class="admin-nav-item"><span>📸</span><span>Evidencias de trabajos</span></a>
-
-    <a href="#materialsSection" class="admin-nav-item">
-      <span>🧰</span>
-      <span>Materiales técnicos</span>
-    </a>
-
-    <div class="admin-nav-label">
-      SISTEMA
-    </div>
-
-   <a href="#securityV3Section" class="admin-nav-item"><span>🛡️</span><span>Seguridad</span></a>
-
-   <a href="#settingsSection" class="admin-nav-item">
-  <span>⚙️</span>
-  <span>Configuración</span>
-</a>
   </nav>
 
 
@@ -1500,7 +1416,32 @@
          USUARIOS
     ====================================================== -->
 
-    <section
+    <!-- RESEÑAS DE CLIENTES V3 -->
+<section class="admin-section" id="reviewsSection">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">CLIENTES</span>
+      <h2>Reseñas de clientes</h2>
+      <p>Moderá las valoraciones reales recibidas después de trabajos cerrados.</p>
+    </div>
+    <button type="button" class="btn" id="refreshAdminReviews">↻ Actualizar</button>
+  </div>
+
+  <div class="admin-reviews-summary">
+    <div class="admin-reviews-summary-card"><span>Total</span><strong id="adminReviewsTotal">—</strong></div>
+    <div class="admin-reviews-summary-card"><span>Visibles</span><strong id="adminReviewsVisible">—</strong></div>
+    <div class="admin-reviews-summary-card"><span>Ocultas</span><strong id="adminReviewsHidden">—</strong></div>
+    <div class="admin-reviews-summary-card"><span>Promedio registrado</span><strong id="adminReviewsAverage">—</strong></div>
+  </div>
+
+  <div class="panel">
+    <div id="adminReviewsList">
+      <div class="admin-reviews-empty">Cargando reseñas...</div>
+    </div>
+  </div>
+</section>
+
+<section
       class="admin-section"
       id="usersSection"
     >
@@ -2995,6 +2936,7 @@
 <script src="/js/admin-whatsapp.js"></script>
 <script src="/js/admin-email.js"></script>
 <script src="/js/admin-signatures.js"></script>
+<script src="/js/admin-reviews.js"></script>
 <script src="/js/admin-navigation.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
