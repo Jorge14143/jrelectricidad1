@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/css/security-v3.css">
   <link rel="stylesheet" href="/css/automation-v3.css">
   <link rel="stylesheet" href="/css/evidence-v3.css">
+  <link rel="stylesheet" href="/css/admin-themes-v3.css">
 </head>
 
 <body class="admin-page">
@@ -332,6 +333,16 @@
     JR Electricidad
   </small>
 
+</div>
+
+<div class="admin-theme-switcher" id="adminThemeSwitcher">
+  <button type="button" class="admin-theme-button" id="adminThemeButton" aria-expanded="false" aria-haspopup="true">🎨 <span class="theme-button-label">Carbono</span></button>
+  <div class="admin-theme-menu" id="adminThemeMenu" hidden role="radiogroup" aria-label="Estilo del panel">
+    <button type="button" class="admin-theme-option active" data-theme="carbon" role="radio"><span class="admin-theme-dot" style="background:linear-gradient(135deg,#ffc400,#ff8a00)"></span><span>Carbono<small>JR clásico · amarillo</small></span></button>
+    <button type="button" class="admin-theme-option" data-theme="midnight" role="radio"><span class="admin-theme-dot" style="background:linear-gradient(135deg,#63b3ff,#7c5cff)"></span><span>Midnight<small>Azul · violeta</small></span></button>
+    <button type="button" class="admin-theme-option" data-theme="graphite" role="radio"><span class="admin-theme-dot" style="background:linear-gradient(135deg,#f2c94c,#e8892d)"></span><span>Graphite<small>Industrial · elegante</small></span></button>
+    <button type="button" class="admin-theme-option" data-theme="glass" role="radio"><span class="admin-theme-dot" style="background:linear-gradient(135deg,#ffd54a,#ff8a3d)"></span><span>Glass<small>Vidrio · premium</small></span></button>
+  </div>
 </div>
   </header>
 
@@ -2955,6 +2966,7 @@
 <script src="/js/admin-security-v3.js"></script>
 <script src="/js/admin-automation-v3.js"></script>
 <script src="/js/admin-evidence-v3.js"></script>
+<script src="/js/admin-themes-v3.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
