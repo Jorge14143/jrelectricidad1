@@ -8989,15 +8989,14 @@ async function cleanupOldBackups() {
     await pool.query("UPDATE backups SET status='deleted' WHERE id=?", [row.id]).catch(() => {});
   }
 
-  const [overflow] = await pool.query(
+  const [allCompleted] = await pool.query(
     `SELECT id, storage_path FROM backups
      WHERE status='completed'
      ORDER BY created_at DESC, id DESC
-     LIMIT 18446744073709551615 OFFSET ?`,
-    [Math.max(0, MAX_BACKUPS)]
+     LIMIT 1000`
   );
 
-  for (const row of overflow) {
+  for (const row of allCompleted.slice(MAX_BACKUPS)) {
     const backupPath = path.resolve(String(row.storage_path || ""));
     const backupRoot = path.resolve(getBackupDir());
     if (backupPath !== backupRoot && backupPath.startsWith(backupRoot + path.sep)) {
