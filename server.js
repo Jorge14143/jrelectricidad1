@@ -359,7 +359,7 @@ registerSignatureRoutes({ app, pool, requireAdmin, requireAuth });
 registerDashboardRoutes({ app, pool, requireAdmin });
 registerNotificationRoutes({ app, pool, requireAdmin });
 registerConfigurationRoutes({ app, pool, requireAdmin });
-registerSecurityRoutes({ app, pool, requireAdmin, cleanUser });
+registerSecurityRoutes({ app, pool, requireAdmin, cleanUser, authLimiter });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
