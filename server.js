@@ -864,6 +864,31 @@ async function ensureServiceColumns() {
   await pool.query("UPDATE services SET sort_order=id WHERE sort_order=0");
 }
 
+async function ensureReviewsSchema() {
+  await pool.query("ALTER TABLE quote_requests ADD COLUMN user_id INT NULL AFTER id").catch(error => {
+    if (!/Duplicate column name|already exists/i.test(error.message)) throw error;
+  });
+  await pool.query(`CREATE TABLE IF NOT EXISTS customer_reviews (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    quote_id INT NOT NULL,
+    user_id INT NOT NULL,
+    rating TINYINT UNSIGNED NOT NULL,
+    comment VARCHAR(1000) NOT NULL,
+    status ENUM('approved','hidden') NOT NULL DEFAULT 'approved',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_customer_review_quote (quote_id),
+    KEY idx_customer_review_user (user_id),
+    KEY idx_customer_review_status_created (status, created_at),
+    CONSTRAINT fk_customer_review_quote FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_customer_review_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  await pool.query("CREATE INDEX idx_quote_requests_user ON quote_requests(user_id)").catch(error => {
+    if (!/Duplicate key name|already exists/i.test(error.message)) throw error;
+  });
+}
+
 async function ensureBusinessSettingsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS business_settings (
@@ -1680,6 +1705,7 @@ app.post(
       `
       INSERT INTO quote_requests
       (
+        user_id,
         name,
         phone,
         email,
@@ -1688,9 +1714,10 @@ app.post(
         preferred_date,
         image_url
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        req.session.user?.id || null,
         cleanName,
         cleanPhone,
         cleanEmail,
@@ -1743,6 +1770,80 @@ app.post(
     });
   }
 });
+// =========================================================
+// RESEÑAS REALES DE CLIENTES
+// =========================================================
+app.get("/api/reviews", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT r.id,r.rating,r.comment,r.created_at,u.name AS client_name
+      FROM customer_reviews r INNER JOIN users u ON u.id=r.user_id
+      WHERE r.status='approved' ORDER BY r.created_at DESC LIMIT 30`);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error obteniendo reseñas:", error);
+    res.status(500).json({ error:"No se pudieron cargar las reseñas." });
+  }
+});
+app.get("/api/reviews/my", requireAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT j.id AS job_id,q.id AS quote_id,q.quote_number,qr.service,
+      r.id AS review_id,r.rating,r.comment,r.status
+      FROM jobs j INNER JOIN quotes q ON q.id=j.quote_id
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN customer_reviews r ON r.quote_id=q.id
+      WHERE qr.user_id=? AND j.status='cerrado'
+      ORDER BY j.completed_at DESC,j.id DESC`,[req.session.user.id]);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error obteniendo trabajos reseñables:",error);
+    res.status(500).json({ error:"No se pudieron obtener tus trabajos." });
+  }
+});
+app.post("/api/reviews", requireAuth, async (req, res) => {
+  try {
+    const quoteId=Number(req.body.quote_id);
+    const rating=Number(req.body.rating);
+    const comment=String(req.body.comment||"").trim();
+    if(!Number.isInteger(quoteId)||quoteId<1) return res.status(400).json({error:"Trabajo no válido."});
+    if(!Number.isInteger(rating)||rating<1||rating>5) return res.status(400).json({error:"La calificación debe ser de 1 a 5 estrellas."});
+    if(!comment||comment.length<5||comment.length>1000) return res.status(400).json({error:"Escribí un comentario de entre 5 y 1000 caracteres."});
+    const [jobs]=await pool.query(`SELECT j.id,j.status FROM jobs j
+      INNER JOIN quotes q ON q.id=j.quote_id INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      WHERE q.id=? AND qr.user_id=? LIMIT 1`,[quoteId,req.session.user.id]);
+    if(!jobs.length||jobs[0].status!=="cerrado") return res.status(403).json({error:"Solo podés calificar trabajos tuyos que ya fueron cerrados."});
+    const [existing]=await pool.query("SELECT id FROM customer_reviews WHERE quote_id=? LIMIT 1",[quoteId]);
+    if(existing.length) return res.status(409).json({error:"Este trabajo ya tiene una reseña."});
+    await pool.query("INSERT INTO customer_reviews (quote_id,user_id,rating,comment) VALUES (?,?,?,?)",[quoteId,req.session.user.id,rating,comment]);
+    res.status(201).json({success:true,message:"Gracias por compartir tu experiencia."});
+  } catch(error) {
+    console.error("Error guardando reseña:",error);
+    res.status(500).json({error:"No se pudo guardar la reseña."});
+  }
+});
+app.get("/api/admin/reviews", requireAdmin, async (req,res) => {
+  try {
+    const [rows]=await pool.query(`SELECT r.id,r.quote_id,r.rating,r.comment,r.status,r.created_at,
+      u.name AS client_name,u.email AS client_email,q.quote_number
+      FROM customer_reviews r INNER JOIN users u ON u.id=r.user_id INNER JOIN quotes q ON q.id=r.quote_id
+      ORDER BY r.created_at DESC`);
+    res.json(rows);
+  } catch(error) {
+    console.error("Error obteniendo reseñas admin:",error);
+    res.status(500).json({error:"No se pudieron cargar las reseñas."});
+  }
+});
+app.patch("/api/admin/reviews/:id/status", requireAdmin, async (req,res) => {
+  try {
+    const status=req.body.status==="hidden"?"hidden":"approved";
+    const [result]=await pool.query("UPDATE customer_reviews SET status=? WHERE id=?",[status,Number(req.params.id)]);
+    if(!result.affectedRows) return res.status(404).json({error:"Reseña no encontrada."});
+    res.json({success:true,status});
+  } catch(error) {
+    console.error("Error actualizando reseña:",error);
+    res.status(500).json({error:"No se pudo actualizar la reseña."});
+  }
+});
+
 // =========================================================
 // GALERÍA PÚBLICA
 // =========================================================
@@ -3999,6 +4100,7 @@ async function start() {
   await ensureBusinessSettingsTable();
   await ensureServiceColumns();
   await ensureNotificationSchema();
+  await ensureReviewsSchema();
 
 
   try {
