@@ -12,7 +12,8 @@
     "migrate": "node scripts/run-migrations.js",
     "test:v2-security": "node scripts/check-v2-security.js",
     "test:v2-accounts": "node scripts/check-v2-accounts.js",
-    "test:v2-clients": "node scripts/check-v2-clients.js"
+    "test:v2-clients": "node scripts/check-v2-clients.js",
+    "test:v2-requests": "node scripts/check-v2-requests.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
