@@ -7224,13 +7224,20 @@ app.get("/health", async (req, res) => {
     await pool.query("SELECT 1");
     res.status(200).json({
       ok: true,
-      service: "jr-electricidad"
+      service: "jr-electricidad",
+      environment: process.env.NODE_ENV || "development",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      database: "ok"
     });
   } catch (error) {
     console.error("Health check MySQL:", error);
     res.status(503).json({
       ok: false,
-      service: "jr-electricidad"
+      service: "jr-electricidad",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      database: "error"
     });
   }
 });
@@ -7282,4 +7289,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-start();
+process.on("SIGTERM", async () => {
+  console.log("⏹️ SIGTERM recibido. Cerrando JR Electricidad...");
+  try { await pool.end(); } catch (error) { console.error("Error cerrando MySQL:", error.message); }
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("⏹️ SIGINT recibido. Cerrando JR Electricidad...");
+  try { await pool.end(); } catch (error) { console.error("Error cerrando MySQL:", error.message); }
+  process.exit(0);
+});
+
+start().catch(error => {
+  console.error("❌ No se pudo iniciar JR Electricidad:", error);
+  process.exit(1);
+});
