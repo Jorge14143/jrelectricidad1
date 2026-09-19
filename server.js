@@ -13,9 +13,27 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const fs = require("fs");
+const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
+const { runMigrations } = require("./lib/migrations");
 
 const app = express();
 app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  req.requestId = req.get("X-Request-ID") || createRequestId();
+  res.setHeader("X-Request-ID", req.requestId);
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    logInfo("HTTP", {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt
+    });
+  });
+  next();
+});
 const PORT = process.env.PORT || 3000;
 
 
@@ -217,6 +235,20 @@ app.use(
 
 
 // =========================================================
+// V2 — AUDITORÍA DE MUTACIONES ADMIN
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/admin/") || !["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+  res.on("finish", () => {
+    if (res.statusCode < 500 && req.session?.user?.id) {
+      writeAudit(req, "admin_mutation", req.path.split("/")[3] || "admin", req.params?.id || null, {
+        method: req.method,
+        status: res.statusCode
+      });
+    }
+  });
+  next();
+});
+
 // RATE LIMIT
 // =========================================================
 
@@ -309,6 +341,47 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+
+async function writeAudit(req, action, entityType = null, entityId = null, metadata = null) {
+  try {
+    await pool.query(
+      `INSERT INTO audit_log
+        (actor_user_id, action, entity_type, entity_id, ip_address, user_agent, request_id, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.session?.user?.id || null,
+        action,
+        entityType,
+        entityId == null ? null : String(entityId),
+        req.ip || null,
+        String(req.get("user-agent") || "").slice(0, 512) || null,
+        req.requestId || null,
+        metadata ? JSON.stringify(metadata) : null
+      ]
+    );
+  } catch (error) {
+    logError("No se pudo registrar auditoría", { requestId: req.requestId, action, error: error.message });
+  }
+}
+
+async function recordLoginAttempt(req, email, success, userId = null) {
+  try {
+    await pool.query(
+      `INSERT INTO login_attempts
+        (user_id, email, success, ip_address, user_agent)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        userId,
+        String(email || "").slice(0, 190),
+        success ? 1 : 0,
+        req.ip || null,
+        String(req.get("user-agent") || "").slice(0, 512) || null
+      ]
+    );
+  } catch (error) {
+    logError("No se pudo registrar intento de login", { requestId: req.requestId, error: error.message });
+  }
+}
 
 function cleanUser(user) {
 
@@ -3940,6 +4013,7 @@ function validateProductionConfig() {
 
 async function start() {
   validateProductionConfig();
+  await runMigrations(pool);
   await ensureBusinessSettingsTable();
   await ensureServiceColumns();
   await ensureNotificationSchema();
@@ -7147,7 +7221,7 @@ app.get("/health", async (req, res) => {
       service: "jr-electricidad"
     });
   } catch (error) {
-    console.error("Health check MySQL:", error);
+    logError("Health check MySQL", { error: error.message });
     res.status(503).json({
       ok: false,
       service: "jr-electricidad"
@@ -7195,7 +7269,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  console.error("Error no controlado:", err);
+  logError("Error no controlado", { requestId: req.requestId, error: err.message, stack: err.stack });
 
   return res.status(500).json({
     error: "Error interno del servidor."
