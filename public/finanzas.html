@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finanzas | JR Electricidad</title>
+<link rel="stylesheet" href="/css/finanzas.css">
+</head>
+<body>
+<header class="finance-top">
+  <a class="brand" href="/admin.html"><b>⚡</b><span><strong>JR ELECTRICIDAD</strong><small>Finanzas de servicios</small></span></a>
+  <div class="top-actions"><button id="refreshFinance" class="btn">🔄 Actualizar</button><a class="btn" href="/admin.html">← Panel</a><button id="logout" class="btn primary">Salir</button></div>
+</header>
+<main class="finance-main">
+  <div class="hero"><span class="eyebrow">FINANZAS V3</span><h1>Facturación, cobros y gastos</h1><p>Registro económico de los servicios eléctricos realizados. Los materiales no son productos de venta y no participan del cálculo financiero.</p></div>
+  <div id="financeMsg" class="notice"></div>
+  <section class="kpis">
+    <div class="kpi"><span>Facturado</span><strong id="finBilled">$0</strong></div>
+    <div class="kpi"><span>Cobrado</span><strong id="finCollected">$0</strong></div>
+    <div class="kpi"><span>Por cobrar</span><strong id="finReceivable">$0</strong></div>
+    <div class="kpi"><span>Gastos</span><strong id="finExpenses">$0</strong></div>
+    <div class="kpi"><span>Resultado cobrado</span><strong id="finResult">$0</strong></div>
+    <div class="kpi"><span>Registros de facturación</span><strong id="finInvoices">0</strong></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><span class="eyebrow">SERVICIOS</span><h2>Facturación registrada</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Registro</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Cobrado</th><th>Saldo</th><th>Estado</th><th></th></tr></thead><tbody id="invoiceRows"></tbody></table></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><span class="eyebrow">COBROS</span><h2>Pagos recibidos</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Registro</th><th>Importe</th><th>Medio</th><th>Referencia</th></tr></thead><tbody id="paymentRows"></tbody></table></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><span class="eyebrow">GASTOS</span><h2>Gastos del negocio</h2></div></div>
+    <form id="expenseForm">
+      <div class="form-grid">
+        <div class="field"><label>Fecha</label><input id="expenseDate" type="date" required></div>
+        <div class="field"><label>Categoría</label><input id="expenseCategory" value="general" maxlength="100"></div>
+        <div class="field"><label>Importe</label><input id="expenseAmount" type="number" min="0.01" step="0.01" required></div>
+        <div class="field"><label>Descripción</label><input id="expenseDescription" maxlength="500" required></div>
+        <div class="field full"><label>Notas</label><textarea id="expenseNotes"></textarea></div>
+      </div>
+      <div class="form-actions"><button class="btn primary" type="submit">+ Registrar gasto</button></div>
+    </form>
+    <div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Importe</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><span class="eyebrow">CLIENTES</span><h2>Finanzas por cliente</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Email</th><th>Facturado</th><th>Cobrado</th><th>Debe</th></tr></thead><tbody id="clientRows"></tbody></table></div>
+  </section>
+</main>
+<script src="/js/finanzas.js"></script>
+</body>
+</html>
