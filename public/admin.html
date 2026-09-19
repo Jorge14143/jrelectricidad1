@@ -147,10 +147,25 @@
       <span>Usuarios</span>
     </a>
 
+    <a href="#documentsSection" class="admin-nav-item">
+      <span>📄</span>
+      <span>Documentos</span>
+    </a>
+
 
     <div class="admin-nav-label">
       SISTEMA
     </div>
+
+   <a href="#backupsSection" class="admin-nav-item">
+      <span class="admin-nav-icon">💾</span>
+      <span>Backups</span>
+    </a>
+
+    <a href="#auditSection" class="admin-nav-item">
+  <span>🛡️</span>
+  <span>Auditoría</span>
+</a>
 
    <a href="#settingsSection" class="admin-nav-item">
   <span>⚙️</span>
@@ -178,6 +193,8 @@
   </div>
 
 </aside>
+
+<div class="admin-mobile-backdrop" id="adminMobileBackdrop" aria-hidden="true"></div>
 
 
 <!-- =========================================================
@@ -217,6 +234,22 @@
 
 
     <div class="admin-topbar-right">
+
+      <div class="admin-global-search">
+        <label class="sr-only" for="globalAdminSearch">Búsqueda global</label>
+        <span class="global-search-symbol">⌕</span>
+        <input
+          type="search"
+          id="globalAdminSearch"
+          placeholder="Buscar clientes, solicitudes, presupuestos..."
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Búsqueda global"
+        >
+        <div id="globalSearchResults" class="global-search-results" hidden></div>
+      </div>
+
+      
 
       <!-- NOTIFICACIONES -->
 
@@ -553,6 +586,10 @@
           <div><span>Facturación aceptada</span><strong id="dashAcceptedAmount">—</strong></div>
           <div><span>Presupuestos del período</span><strong id="dashPeriodQuotes">—</strong></div>
           <div><span>Trabajos del período</span><strong id="dashPeriodJobs">—</strong></div>
+          <div><span>Clientes nuevos</span><strong id="dashNewClients">—</strong></div>
+          <div><span>Galería publicada</span><strong id="dashGalleryPublished">—</strong></div>
+          <div><span>Trabajos destacados</span><strong id="dashGalleryFeatured">—</strong></div>
+          <div><span>Conversión de solicitudes</span><strong id="dashConversion">—</strong></div>
         </div>
         <div class="dashboard-chart-wrap">
           <div class="dashboard-chart-title">Presupuestos por mes</div>
@@ -568,6 +605,50 @@
           </div>
         </div>
         <div id="dashboardRecentActivity" class="dashboard-activity-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel dashboard-wide-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">PIPELINE</span>
+            <h2>Solicitudes por etapa</h2>
+            <p class="muted">Dónde están concentradas las solicitudes actuales.</p>
+          </div>
+        </div>
+        <div id="dashboardRequestPipeline" class="dashboard-pipeline"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">AGENDA</span>
+            <h2>Próximos trabajos</h2>
+            <p class="muted">Trabajos programados y próximos a ejecutarse.</p>
+          </div>
+        </div>
+        <div id="dashboardUpcomingJobs" class="dashboard-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">SERVICIOS</span>
+            <h2>Servicios más solicitados</h2>
+            <p class="muted">Demanda registrada en solicitudes.</p>
+          </div>
+        </div>
+        <div id="dashboardTopServices" class="dashboard-list"></div>
+      </div>
+
+      <div class="admin-dashboard-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">TRABAJOS</span>
+            <h2>Estado de trabajos</h2>
+            <p class="muted">Distribución actual por estado.</p>
+          </div>
+        </div>
+        <div id="dashboardJobStatuses" class="dashboard-list"></div>
       </div>
     </section>
 
@@ -631,10 +712,27 @@
 
         <select id="quoteRequestStatusFilter">
           <option value="">Todos los estados</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="contactado">Contactados</option>
-          <option value="presupuestado">Presupuestados</option>
-          <option value="cerrado">Cerrados</option>
+          <option value="nueva">🟡 Nueva</option>
+          <option value="en_revision">🔵 En revisión</option>
+          <option value="presupuestando">🟣 Presupuestando</option>
+          <option value="presupuestada">🟢 Presupuestada</option>
+          <option value="aceptada">🟢 Aceptada</option>
+          <option value="programada">📅 Programada</option>
+          <option value="en_trabajo">🔧 En trabajo</option>
+          <option value="finalizada">✅ Finalizada</option>
+          <option value="cerrada">⚫ Cerrada</option>
+        </select>
+
+        <select id="quoteRequestPriorityFilter" aria-label="Filtrar prioridad">
+          <option value="">Todas las prioridades</option>
+          <option value="urgente">🚨 Urgente</option>
+          <option value="alta">Alta</option>
+          <option value="normal">Normal</option>
+          <option value="baja">Baja</option>
+        </select>
+
+        <select id="quoteRequestAssignedFilter" aria-label="Filtrar técnico">
+          <option value="">Todos los técnicos</option>
         </select>
 
         <input
@@ -1230,46 +1328,34 @@
          CLIENTES
     ====================================================== -->
 
-    <section
-      class="admin-section"
-      id="clientsSection"
-    >
+    <section class="admin-section" id="clientsSection">
       <div class="section-header">
         <div>
           <span class="section-label">CLIENTES</span>
-          <h2>👥 Clientes</h2>
-          <p>Listado consolidado de personas que solicitaron presupuestos o contrataron servicios.</p>
+          <h2>👥 Gestión de clientes</h2>
+          <p>Administrá datos, contacto y el historial completo de cada cliente.</p>
         </div>
+        <button type="button" class="btn btn-primary" id="newClientButton">＋ Nuevo cliente</button>
       </div>
 
       <section class="panel">
         <div class="jobs-filters">
           <div class="jobs-filter-group">
             <label for="clientsSearch">Buscar</label>
-            <input
-              type="text"
-              id="clientsSearch"
-              placeholder="Nombre, teléfono o email"
-            >
+            <input type="search" id="clientsSearch" placeholder="Nombre, teléfono, WhatsApp, email o localidad" autocomplete="off">
+          </div>
+          <div class="jobs-filter-group">
+            <label for="clientsLocality">Localidad</label>
+            <input type="search" id="clientsLocality" placeholder="Filtrar localidad">
           </div>
           <div class="jobs-filter-actions">
-            <button type="button" class="btn btn-secondary" id="clearClientsSearch">
-              Limpiar
-            </button>
-            <button type="button" class="btn btn-primary" id="refreshClients">
-              🔄 Actualizar
-            </button>
+            <button type="button" class="btn btn-secondary" id="clearClientsSearch">Limpiar</button>
+            <button type="button" class="btn btn-primary" id="refreshClients">🔄 Actualizar</button>
           </div>
         </div>
 
-        <div id="clientsLoading" class="admin-loading" hidden>
-          Cargando clientes...
-        </div>
-
-        <div id="clientsEmpty" class="admin-empty" hidden>
-          No hay clientes registrados todavía.
-        </div>
-
+        <div id="clientsLoading" class="admin-loading" hidden>Cargando clientes...</div>
+        <div id="clientsEmpty" class="admin-empty" hidden>No hay clientes registrados todavía.</div>
         <div class="table-wrap" id="clients"></div>
       </section>
     </section>
@@ -1461,17 +1547,10 @@
         id="galleryForm"
         class="gallery-form"
       >
-
-        <input
-          type="hidden"
-          id="galleryId"
-        >
-
+        <input type="hidden" id="galleryId">
 
         <label>
-
           Título del trabajo
-
           <input
             type="text"
             id="galleryTitle"
@@ -1479,111 +1558,118 @@
             maxlength="150"
             required
           >
-
         </label>
 
-
         <label>
-
           Descripción
-
           <textarea
             id="galleryDescription"
             placeholder="Contá brevemente qué trabajo se realizó."
             maxlength="500"
           ></textarea>
-
         </label>
 
+        <div class="gallery-form-grid">
+          <label>
+            Categoría
+            <select id="galleryCategory">
+              <option value="instalaciones">Instalaciones</option>
+              <option value="reparaciones">Reparaciones</option>
+              <option value="tableros">Tableros eléctricos</option>
+              <option value="iluminacion">Iluminación</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="otros" selected>Otros</option>
+            </select>
+          </label>
+
+          <label>
+            Texto alternativo
+            <input
+              type="text"
+              id="galleryAltText"
+              maxlength="255"
+              placeholder="Descripción de la imagen"
+              required
+            >
+          </label>
+
+          <label>
+            Cliente vinculado
+            <select id="galleryClient">
+              <option value="">Sin cliente vinculado</option>
+            </select>
+          </label>
+
+          <label>
+            Trabajo finalizado/cerrado
+            <select id="galleryJob">
+              <option value="">Sin trabajo vinculado</option>
+            </select>
+          </label>
+
+          <label>
+            Presupuesto vinculado
+            <select id="galleryQuote">
+              <option value="">Sin presupuesto vinculado</option>
+            </select>
+          </label>
+        </div>
 
         <label>
-
           Imagen del trabajo
-
           <input
             type="file"
             id="galleryImage"
             accept="image/jpeg,image/png,image/webp,image/gif"
           >
-
+          <small class="muted">JPG, PNG, WEBP o GIF · máximo 5 MB.</small>
         </label>
 
-
-        <div
-          id="galleryPreview"
-          class="gallery-preview"
-        ></div>
-
+        <div id="galleryPreview" class="gallery-preview"></div>
 
         <label class="gallery-active-label">
-
-          <input
-            type="checkbox"
-            id="galleryActive"
-            checked
-          >
-
+          <input type="checkbox" id="galleryActive" checked>
           Publicar este trabajo
-
         </label>
-<label class="gallery-active-label">
 
-  <input
-    type="checkbox"
-    id="galleryFeatured"
-  >
-
-  ⭐ Marcar como trabajo destacado
-
-</label>
+        <label class="gallery-active-label">
+          <input type="checkbox" id="galleryFeatured">
+          ⭐ Marcar como trabajo destacado
+        </label>
 
         <div class="form-actions">
-
-          <button
-            type="submit"
-            class="btn"
-            id="gallerySubmit"
-          >
-            📸 Agregar trabajo
-          </button>
-
-
-          <button
-            type="button"
-            class="btn ghost"
-            id="galleryCancel"
-            hidden
-          >
-            Cancelar
-          </button>
-
+          <button type="submit" class="btn" id="gallerySubmit">📸 Agregar trabajo</button>
+          <button type="button" class="btn ghost" id="galleryCancel" hidden>Cancelar</button>
         </div>
-
       </form>
-
 
       <div class="gallery-toolbar">
         <input
           type="search"
           id="gallerySearch"
-          placeholder="Buscar trabajo..."
+          placeholder="Buscar trabajo, cliente o presupuesto..."
           autocomplete="off"
         >
 
+        <select id="galleryCategoryFilter" aria-label="Filtrar por categoría">
+          <option value="">Todas las categorías</option>
+          <option value="instalaciones">Instalaciones</option>
+          <option value="reparaciones">Reparaciones</option>
+          <option value="tableros">Tableros eléctricos</option>
+          <option value="iluminacion">Iluminación</option>
+          <option value="mantenimiento">Mantenimiento</option>
+          <option value="otros">Otros</option>
+        </select>
+
         <select id="galleryStatusFilter" aria-label="Filtrar galería">
-          <option value="">Todos</option>
+          <option value="">Todos los estados</option>
           <option value="active">Publicados</option>
           <option value="inactive">Ocultos</option>
           <option value="featured">Destacados</option>
         </select>
 
-        <button type="button" class="btn btn-secondary" id="clearGalleryFilters">
-          Limpiar
-        </button>
-
-        <button type="button" class="btn btn-primary" id="refreshGallery">
-          🔄 Actualizar
-        </button>
+        <button type="button" class="btn btn-secondary" id="clearGalleryFilters">Limpiar</button>
+        <button type="button" class="btn btn-primary" id="refreshGallery">🔄 Actualizar</button>
       </div>
 
       <div
@@ -1688,8 +1774,20 @@
               🟢 Aceptado / confirmado
             </option>
 
+            <option value="programado">
+              📅 Programado
+            </option>
+
             <option value="en_proceso">
               🔧 En proceso
+            </option>
+
+            <option value="pausado">
+              ⏸️ Pausado
+            </option>
+
+            <option value="finalizado">
+              ✅ Finalizado
             </option>
 
             <option value="rechazado">
@@ -1704,6 +1802,13 @@
 
         </div>
 
+
+        <div class="jobs-filter-group">
+          <label for="jobsAssignedFilter">Técnico</label>
+          <select id="jobsAssignedFilter">
+            <option value="">Todos los técnicos</option>
+          </select>
+        </div>
 
         <div class="jobs-filter-group">
 
@@ -2235,8 +2340,170 @@
 
     </div>
 <!-- =========================================================
+     FASE 14 — DOCUMENTOS
+========================================================= -->
+<section id="documentsSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">ARCHIVOS</span>
+      <h2>📄 Gestión de documentos</h2>
+      <p>Centralizá presupuestos, informes, constancias y adjuntos en un almacenamiento privado.</p>
+    </div>
+  </div>
+
+  <div class="documents-toolbar">
+    <input id="documentsSearch" type="search" placeholder="Buscar documento, cliente o archivo..." autocomplete="off">
+    <select id="documentsTypeFilter">
+      <option value="">Todos los tipos</option>
+      <option value="quote_pdf">Presupuestos PDF</option>
+      <option value="job_report">Informes de trabajo</option>
+      <option value="work_completion">Constancias</option>
+      <option value="client_attachment">Adjuntos de cliente</option>
+      <option value="request_attachment">Adjuntos de solicitud</option>
+      <option value="other">Otros</option>
+    </select>
+    <button type="button" class="btn btn-primary" id="refreshDocuments">🔄 Actualizar</button>
+  </div>
+
+  <div class="documents-generator-actions">
+    <button type="button" class="btn" id="createQuoteDocument">📋 Generar PDF de presupuesto</button>
+    <button type="button" class="btn" id="createJobReport">🔧 Generar informe de trabajo</button>
+    <button type="button" class="btn" id="createWorkCompletion">✅ Generar constancia de trabajo</button>
+  </div>
+
+  <div class="panel document-upload-panel">
+    <h3>Subir documento</h3>
+    <form id="documentUploadForm" class="documents-upload-grid" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="documentTitle">Título</label>
+        <input id="documentTitle" name="title" maxlength="255" required>
+      </div>
+      <div class="form-group">
+        <label for="documentType">Tipo</label>
+        <select id="documentType" name="document_type" required>
+          <option value="client_attachment">Adjunto de cliente</option>
+          <option value="request_attachment">Adjunto de solicitud</option>
+          <option value="other">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="documentClientId">ID cliente (opcional)</label>
+        <input id="documentClientId" name="client_id" type="number" min="1">
+      </div>
+      <div class="form-group">
+        <label for="documentQuoteId">ID presupuesto (opcional)</label>
+        <input id="documentQuoteId" name="quote_id" type="number" min="1">
+      </div>
+      <div class="form-group">
+        <label for="documentRequestId">ID solicitud (opcional)</label>
+        <input id="documentRequestId" name="quote_request_id" type="number" min="1">
+      </div>
+      <div class="form-group">
+        <label for="documentJobId">ID trabajo (opcional)</label>
+        <input id="documentJobId" name="job_id" type="number" min="1">
+      </div>
+      <div class="form-group settings-field-full">
+        <label for="documentDescription">Descripción</label>
+        <textarea id="documentDescription" name="description" maxlength="10000"></textarea>
+      </div>
+      <div class="form-group settings-field-full">
+        <label for="documentFile">Archivo (máximo 10 MB)</label>
+        <input id="documentFile" name="file" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.txt,.doc,.docx,.xls,.xlsx">
+      </div>
+      <div class="form-group settings-field-full">
+        <button type="submit" class="btn btn-primary">📤 Guardar documento</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="documentsList" class="documents-list"></div>
+</section>
+
+<!-- =========================================================
+     AUDITORÍA ADMINISTRATIVA — FASE 17
+========================================================= -->
+<section class="panel admin-audit-section" id="auditSection">
+  <div class="panel-heading">
+    <div>
+      <span class="eyebrow">SISTEMA</span>
+      <h2>Auditoría</h2>
+      <p class="muted">Registro de acciones administrativas, seguridad y cambios del sistema.</p>
+    </div>
+    <button type="button" class="btn" id="auditExportButton">⬇️ Exportar CSV</button>
+  </div>
+
+  <div class="admin-audit-toolbar">
+    <input type="search" id="auditSearch" placeholder="Buscar acción, usuario, IP, request ID..." autocomplete="off">
+    <select id="auditActionFilter"><option value="">Todas las acciones</option></select>
+    <select id="auditEntityFilter"><option value="">Todas las entidades</option></select>
+    <input type="date" id="auditDateFrom" title="Desde">
+    <input type="date" id="auditDateTo" title="Hasta">
+    <button type="button" class="btn tiny" id="auditRefreshButton">🔄 Actualizar</button>
+  </div>
+
+  <div id="auditSummary" class="admin-audit-summary"></div>
+  <div id="auditState" class="quote-state-box">Cargando auditoría...</div>
+
+  <div class="admin-audit-table-wrap">
+    <table class="admin-audit-table">
+      <thead><tr>
+        <th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>IP</th><th>Request ID</th><th>Detalles</th>
+      </tr></thead>
+      <tbody id="auditTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="admin-audit-pagination">
+    <button type="button" class="btn tiny" id="auditPrevButton">← Anterior</button>
+    <span id="auditPageInfo">Página 1</span>
+    <button type="button" class="btn tiny" id="auditNextButton">Siguiente →</button>
+  </div>
+</section>
+
+<!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
+
+<section id="backupsSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">SEGURIDAD</span>
+      <h2>Backups</h2>
+      <p class="muted">Copias de seguridad de la base de datos, almacenamiento privado y retención automática.</p>
+    </div>
+  </div>
+
+  <div class="backup-grid">
+    <div class="panel backup-create-card">
+      <div class="backup-icon">💾</div>
+      <h3>Backup de base de datos</h3>
+      <p class="muted">Generá una copia completa mediante <code>mysqldump</code>. El archivo queda fuera de <code>public/</code>.</p>
+      <div class="backup-meta">
+        <span>Retención: <strong id="backupRetentionDays">30 días</strong></span>
+        <span>Disponibles: <strong id="backupTotal">0</strong></span>
+      </div>
+      <div class="backup-actions">
+        <button id="createBackupButton" type="button" class="btn">💾 Crear backup ahora</button>
+        <button id="cleanupBackupsButton" type="button" class="btn btn-secondary">🧹 Limpiar antiguos</button>
+      </div>
+      <p id="backupStatus" class="backup-status" aria-live="polite"></p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">HISTORIAL</span>
+          <h3>Copias disponibles</h3>
+          <p class="muted">Cada backup incluye tamaño y SHA-256 para verificar integridad.</p>
+        </div>
+        <button id="refreshBackupsButton" type="button" class="btn btn-secondary">↻ Actualizar</button>
+      </div>
+      <div id="backupsList" class="backups-list">
+        <div class="backup-empty">Cargando backups...</div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section
   id="settingsSection"
@@ -2299,6 +2566,18 @@
             <input id="businessCity" maxlength="120">
           </div>
           <div class="form-group settings-field-full">
+            <label class="settings-toggle">
+              <input id="whatsappEnabled" type="checkbox">
+              <span>Activar integración con WhatsApp Cloud API</span>
+            </label>
+          </div>
+          <div class="form-group settings-field-full">
+            <label class="settings-toggle">
+              <input id="whatsappAutoNotifications" type="checkbox">
+              <span>Enviar automáticamente actualizaciones a clientes por WhatsApp</span>
+            </label>
+          </div>
+          <div class="form-group settings-field-full">
             <label for="businessAddress">Dirección</label>
             <input id="businessAddress" maxlength="255">
           </div>
@@ -2317,6 +2596,60 @@
           <div class="form-group settings-field-full">
             <label for="pdfNotes">Texto adicional para PDF</label>
             <textarea id="pdfNotes" rows="4" maxlength="5000"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="currencyCode">Moneda (código)</label>
+            <input id="currencyCode" maxlength="10" placeholder="ARS">
+          </div>
+          <div class="form-group">
+            <label for="currencySymbol">Símbolo</label>
+            <input id="currencySymbol" maxlength="10" placeholder="$">
+          </div>
+          <div class="form-group settings-field-full">
+            <label class="settings-toggle">
+              <input id="taxEnabled" type="checkbox">
+              <span>Aplicar impuesto configurable a nuevos presupuestos</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="taxName">Nombre del impuesto</label>
+            <input id="taxName" maxlength="80" placeholder="IVA">
+          </div>
+          <div class="form-group">
+            <label for="taxRate">Tasa (%)</label>
+            <input id="taxRate" type="number" min="0" max="100" step="0.001" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="quotePrefix">Prefijo presupuestos</label>
+            <input id="quotePrefix" maxlength="20" placeholder="PR-">
+          </div>
+          <div class="form-group">
+            <label for="quoteNextNumber">Próximo número</label>
+            <input id="quoteNextNumber" type="number" min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label for="jobPrefix">Prefijo trabajos</label>
+            <input id="jobPrefix" maxlength="20" placeholder="TR-">
+          </div>
+          <div class="form-group">
+            <label for="jobNextNumber">Próximo número</label>
+            <input id="jobNextNumber" type="number" min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label for="quoteValidityDays">Vigencia (días)</label>
+            <input id="quoteValidityDays" type="number" min="0" max="3650" step="1">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="quoteDefaultNotes">Notas predeterminadas de presupuestos</label>
+            <textarea id="quoteDefaultNotes" rows="4" maxlength="10000"></textarea>
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="quoteTerms">Condiciones de presupuestos</label>
+            <textarea id="quoteTerms" rows="5" maxlength="10000"></textarea>
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="commercialConditions">Condiciones comerciales</label>
+            <textarea id="commercialConditions" rows="5" maxlength="10000"></textarea>
           </div>
         </div>
 
@@ -2498,6 +2831,7 @@
 ========================================================= -->
 
 <script src="/js/admin-core.js"></script>
+<script src="/js/clients.js"></script>
 <script src="/js/admin-notifications.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-services.js"></script>
@@ -2506,6 +2840,9 @@
 <script src="/js/admin-quotes.js"></script>
 <script src="/js/admin-jobs.js"></script>
 <script src="/js/admin-navigation.js"></script>
+<script src="/js/admin-backups.js"></script>\n<script src="/js/admin-documents.js"></script>
+<script src="/js/admin-search.js"></script>
+<script src="/js/admin-audit.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
 </body>

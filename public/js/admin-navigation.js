@@ -1,3 +1,50 @@
+
+function setupAdminMobileNavigation() {
+
+  const page = document.querySelector(".admin-page");
+  const toggle = document.getElementById("adminMobileMenu");
+  const backdrop = document.getElementById("adminMobileBackdrop");
+  const sidebar = document.getElementById("adminSidebar");
+
+  if (!page || !toggle || !sidebar) return;
+
+  const isMobile = () => window.matchMedia("(max-width: 900px)").matches;
+
+  function closeMenu() {
+    page.classList.remove("admin-mobile-menu-open");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", "Abrir menú");
+    if (backdrop) backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function toggleMenu() {
+    if (!isMobile()) return;
+    const open = page.classList.toggle("admin-mobile-menu-open");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
+    if (backdrop) backdrop.setAttribute("aria-hidden", String(!open));
+  }
+
+  toggle.addEventListener("click", toggleMenu);
+  backdrop?.addEventListener("click", closeMenu);
+
+  sidebar.querySelectorAll("a[href^='#']").forEach(link => {
+    link.addEventListener("click", () => {
+      if (isMobile()) closeMenu();
+    });
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && page.classList.contains("admin-mobile-menu-open")) {
+      closeMenu();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!isMobile()) closeMenu();
+  });
+}
+
 // =========================================================
 // NAVEGACIÓN ADMIN — UNA SECCIÓN A LA VEZ
 // =========================================================
@@ -15,6 +62,8 @@ function setupAdminNavigation() {
     "usersSection",
     "servicesSection",
     "gallerySection",
+    "documentsSection",
+    "auditSection",
     "settingsSection"
   ];
 
@@ -170,6 +219,10 @@ async function loadBusinessSettings() {
       const el = $(id);
       if (el) el.value = value || "";
     });
+    const whatsappEnabled = $("whatsappEnabled");
+    const whatsappAuto = $("whatsappAutoNotifications");
+    if (whatsappEnabled) whatsappEnabled.checked = Boolean(s.whatsapp_enabled);
+    if (whatsappAuto) whatsappAuto.checked = Boolean(s.whatsapp_auto_notifications);
   } catch (error) {
     showMsg(error.message, true);
   }
@@ -189,6 +242,8 @@ function setupBusinessSettings() {
       legal_name: $("legalName")?.value.trim() || "",
       phone: $("businessPhone")?.value.trim() || "",
       whatsapp: $("businessWhatsapp")?.value.trim() || "",
+      whatsapp_enabled: Boolean($("whatsappEnabled")?.checked),
+      whatsapp_auto_notifications: Boolean($("whatsappAutoNotifications")?.checked),
       email: $("businessEmail")?.value.trim() || "",
       address: $("businessAddress")?.value.trim() || "",
       city: $("businessCity")?.value.trim() || "",
@@ -216,3 +271,8 @@ function setupBusinessSettings() {
     }
   });
 }
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupAdminMobileNavigation();
+});

@@ -119,9 +119,9 @@ if (passwordForm) {
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < 12) {
       showSettingsMessage(
-        "La nueva contraseña debe tener al menos 8 caracteres.",
+        "La nueva contraseña debe tener al menos 12 caracteres.",
         "error"
       );
       return;
@@ -204,6 +204,84 @@ if (passwordForm) {
       }
     });
   }
+}
+
+async function loadBusinessSettings() {
+  try {
+    const data = await api("/api/admin/settings");
+    const s = data?.settings || {};
+    const map = {
+      businessName:"business_name", legalName:"legal_name", businessPhone:"phone",
+      businessWhatsapp:"whatsapp", businessEmail:"email", businessCity:"city",
+      businessAddress:"address", businessHours:"hours", businessLogo:"logo_url",
+      pdfFooter:"pdf_footer", pdfNotes:"pdf_notes", currencyCode:"currency_code",
+      currencySymbol:"currency_symbol", taxName:"tax_name", taxRate:"tax_rate",
+      quotePrefix:"quote_prefix", quoteNextNumber:"quote_next_number",
+      jobPrefix:"job_prefix", jobNextNumber:"job_next_number",
+      quoteValidityDays:"quote_validity_days", quoteDefaultNotes:"quote_default_notes",
+      quoteTerms:"quote_terms", commercialConditions:"commercial_conditions"
+    };
+    for (const [id,key] of Object.entries(map)) {
+      const el = $(id);
+      if (el) el.value = s[key] ?? "";
+    }
+    if ($("whatsappEnabled")) $("whatsappEnabled").checked = Boolean(s.whatsapp_enabled);
+    if ($("whatsappAutoNotifications")) $("whatsappAutoNotifications").checked = Boolean(s.whatsapp_auto_notifications);
+    if ($("taxEnabled")) $("taxEnabled").checked = Boolean(s.tax_enabled);
+  } catch (error) {
+    console.error("No se pudo cargar la configuración comercial:", error);
+  }
+}
+
+function setupBusinessSettings() {
+  const form = $("businessSettingsForm");
+  if (!form) return;
+
+  loadBusinessSettings();
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = {
+      business_name: $("businessName")?.value.trim(),
+      legal_name: $("legalName")?.value.trim(),
+      phone: $("businessPhone")?.value.trim(),
+      whatsapp: $("businessWhatsapp")?.value.trim(),
+      whatsapp_enabled: Boolean($("whatsappEnabled")?.checked),
+      whatsapp_auto_notifications: Boolean($("whatsappAutoNotifications")?.checked),
+      email: $("businessEmail")?.value.trim(),
+      address: $("businessAddress")?.value.trim(),
+      city: $("businessCity")?.value.trim(),
+      hours: $("businessHours")?.value.trim(),
+      logo_url: $("businessLogo")?.value.trim(),
+      pdf_footer: $("pdfFooter")?.value.trim(),
+      pdf_notes: $("pdfNotes")?.value.trim(),
+      currency_code: $("currencyCode")?.value.trim(),
+      currency_symbol: $("currencySymbol")?.value.trim(),
+      tax_enabled: Boolean($("taxEnabled")?.checked),
+      tax_name: $("taxName")?.value.trim(),
+      tax_rate: Number($("taxRate")?.value || 0),
+      quote_prefix: $("quotePrefix")?.value.trim(),
+      quote_next_number: Number($("quoteNextNumber")?.value || 1),
+      job_prefix: $("jobPrefix")?.value.trim(),
+      job_next_number: Number($("jobNextNumber")?.value || 1),
+      quote_validity_days: Number($("quoteValidityDays")?.value || 15),
+      quote_default_notes: $("quoteDefaultNotes")?.value.trim(),
+      quote_terms: $("quoteTerms")?.value.trim(),
+      commercial_conditions: $("commercialConditions")?.value.trim()
+    };
+
+    try {
+      const data = await api("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      showSettingsMessage(data.message || "Configuración guardada correctamente.", "success");
+      await loadBusinessSettings();
+    } catch (error) {
+      showSettingsMessage(error.message || "No se pudo guardar la configuración.", "error");
+    }
+  });
 }
 
 function showSettingsMessage(message, type = "success") {

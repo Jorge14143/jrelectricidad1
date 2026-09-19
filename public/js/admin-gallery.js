@@ -1,534 +1,286 @@
-let adminGalleryData = [];
+"use strict";
 
-// =========================================================
-// GALERÍA - CARGAR
-// =========================================================
+let adminGalleryData = [];
+let galleryClients = [];
+let galleryJobs = [];
+let galleryQuotes = [];
+
+const GALLERY_CATEGORY_LABELS = {
+  instalaciones:"Instalaciones",
+  reparaciones:"Reparaciones",
+  tableros:"Tableros eléctricos",
+  iluminacion:"Iluminación",
+  mantenimiento:"Mantenimiento",
+  otros:"Otros"
+};
+
+function galleryEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
 
 async function loadGallery() {
-  const container = $("adminGallery");
-  if (!container) return;
+  const container=$( "adminGallery" );
+  if(!container) return;
   try {
-    adminGalleryData = await api("/api/admin/gallery");
+    const params=new URLSearchParams();
+    const search=$( "gallerySearch" )?.value.trim();
+    const category=$( "galleryCategoryFilter" )?.value;
+    const status=$( "galleryStatusFilter" )?.value;
+    if(search) params.set("search",search);
+    if(category) params.set("category",category);
+    if(status) params.set("status",status);
+    adminGalleryData=await api("/api/admin/gallery?"+params.toString());
     renderAdminGallery();
-  } catch (e) {
-    console.error("Error cargando galería:", e);
-    showMsg("No se pudo cargar la galería: " + e.message, true);
+  } catch(error) {
+    console.error("Error cargando galería:",error);
+    showMsg("No se pudo cargar la galería: "+error.message,true);
   }
 }
 
+function fillGalleryRelations() {
+  const clientSelect=$( "galleryClient" );
+  const jobSelect=$( "galleryJob" );
+  const quoteSelect=$( "galleryQuote" );
+
+  if(clientSelect) {
+    clientSelect.innerHTML='<option value="">Sin cliente vinculado</option>'+
+      galleryClients.map(c=>'<option value="'+Number(c.id)+'">'+galleryEscape(c.name)+' · '+galleryEscape(c.phone)+'</option>').join("");
+  }
+  if(jobSelect) {
+    jobSelect.innerHTML='<option value="">Sin trabajo vinculado</option>'+
+      galleryJobs.map(j=>'<option value="'+Number(j.id)+'">#'+Number(j.id)+' · '+galleryEscape(j.client_name||"Sin cliente")+' · '+galleryEscape(j.quote_number||"")+' · '+galleryEscape(j.status)+'</option>').join("");
+  }
+  if(quoteSelect) {
+    quoteSelect.innerHTML='<option value="">Sin presupuesto vinculado</option>'+
+      galleryQuotes.map(q=>'<option value="'+Number(q.id)+'">'+galleryEscape(q.quote_number||("#"+q.id))+' · '+galleryEscape(q.client_name||"Sin cliente")+'</option>').join("");
+  }
+}
+
+async function loadGalleryRelations() {
+  try {
+    const clientsData=await api("/api/admin/clients");
+    galleryClients=clientsData.clients||[];
+  } catch(error) {
+    galleryClients=[];
+    console.warn("No se pudieron cargar clientes para galería:",error);
+  }
+
+  try {
+    const [finalized,closed]=await Promise.all([
+      api("/api/admin/jobs?status=finalizado"),
+      api("/api/admin/jobs?status=cerrado")
+    ]);
+    const map=new Map();
+    [...(finalized.jobs||[]),...(closed.jobs||[])].forEach(j=>map.set(Number(j.id),j));
+    galleryJobs=[...map.values()];
+  } catch(error) {
+    galleryJobs=[];
+    console.warn("No se pudieron cargar trabajos para galería:",error);
+  }
+
+  try {
+    const quotesData=await api("/api/admin/quotes");
+    galleryQuotes=quotesData.quotes||quotesData||[];
+  } catch(error) {
+    galleryQuotes=[];
+    console.warn("No se pudieron cargar presupuestos para galería:",error);
+  }
+
+  fillGalleryRelations();
+}
+
 function renderAdminGallery() {
-  const container = $("adminGallery");
-  if (!container) return;
-  const search = ($("gallerySearch")?.value || "").trim().toLowerCase();
-  const filter = $("galleryStatusFilter")?.value || "";
-  const items = adminGalleryData.filter(item => {
-    const text = (String(item.title || "") + " " + String(item.description || "")).toLowerCase();
-    if (search && !text.includes(search)) return false;
-    if (!filter) return true;
-    if (filter === "active") return Number(item.active) === 1;
-    if (filter === "inactive") return Number(item.active) === 0;
-    if (filter === "featured") return Number(item.featured) === 1;
-    return true;
-  });
-  if (!items.length) {
-    container.innerHTML = '<p class="muted gallery-empty">No hay trabajos que coincidan con los filtros.</p>';
+  const container=$( "adminGallery" );
+  if(!container) return;
+  if(!adminGalleryData.length) {
+    container.innerHTML='<p class="muted gallery-empty">No hay trabajos que coincidan con los filtros.</p>';
     return;
   }
-  container.innerHTML = items.map(x => {
-    const safeTitle = h(x.title || "");
-    const safeImage = h(x.image_url || "");
-    const safeDescription = h(x.description || "Sin descripción");
-    const active = Number(x.active) === 1;
-    const featured = Number(x.featured) === 1;
-    return '<article class="gallery-admin-item ' + (active ? "" : "inactive") + '">' +
-      '<div class="gallery-admin-image"><img src="' + safeImage + '" alt="' + safeTitle + '" loading="lazy"></div>' +
-      '<div class="gallery-admin-info"><div class="gallery-admin-title"><h3>' + safeTitle + '</h3>' +
-      '<span class="status ' + (active ? "on" : "off") + '">' + (active ? "Publicado" : "Oculto") + '</span></div>' +
-      '<p>' + safeDescription + '</p><div class="gallery-admin-badges">' +
-      (featured ? '<span class="gallery-featured-badge">⭐ Destacado</span>' : "") +
-      '<small class="muted">' + safeImage + '</small></div><div class="row-actions">' +
-      '<button class="btn tiny ghost" type="button" onclick="moveGallery(' + Number(x.id) + ', \'up\')">⬆️</button>' +
-      '<button class="btn tiny ghost" type="button" onclick="moveGallery(' + Number(x.id) + ', \'down\')">⬇️</button>' +
-      '<button class="btn tiny" type="button" onclick=\'editGallery(' + JSON.stringify(x).replace(/'/g, "&#39;") + ')\'>Editar</button>' +
-      '<button class="btn tiny ghost" type="button" onclick="toggleGallery(' + Number(x.id) + ', ' + (active ? 1 : 0) + ')">' + (active ? "Ocultar" : "Publicar") + '</button>' +
-      '<button class="btn tiny danger" type="button" onclick="deleteGallery(' + Number(x.id) + ', \' ' + h(x.title || "") + '\')">Eliminar</button>' +
+
+  container.innerHTML=adminGalleryData.map(item=>{
+    const active=Number(item.active)===1;
+    const featured=Number(item.featured)===1;
+    const category=GALLERY_CATEGORY_LABELS[item.category]||"Otros";
+    const relation=[
+      item.client_name ? "👤 "+galleryEscape(item.client_name) : "",
+      item.job_id ? "🔧 Trabajo #"+Number(item.job_id) : "",
+      item.quote_number ? "📄 "+galleryEscape(item.quote_number) : ""
+    ].filter(Boolean).join(" · ");
+
+    return '<article class="gallery-admin-item '+(active?"":"inactive")+'">'+
+      '<div class="gallery-admin-image"><img src="'+galleryEscape(item.image_url)+'" alt="'+galleryEscape(item.alt_text||item.title)+'" loading="lazy"></div>'+
+      '<div class="gallery-admin-info">'+
+      '<div class="gallery-admin-title"><h3>'+galleryEscape(item.title)+'</h3><span class="status '+(active?"on":"off")+'">'+(active?"Publicado":"Oculto")+'</span></div>'+
+      '<div class="gallery-admin-badges"><span>'+galleryEscape(category)+'</span>'+(featured?'<span class="gallery-featured-badge">⭐ Destacado</span>':"")+'</div>'+
+      '<p>'+galleryEscape(item.description||"Sin descripción")+'</p>'+
+      (relation?'<small class="muted">'+relation+'</small>':"")+
+      '<div class="row-actions">'+
+      '<button class="btn tiny ghost" type="button" onclick="moveGallery('+Number(item.id)+',\'up\')">⬆️</button>'+
+      '<button class="btn tiny ghost" type="button" onclick="moveGallery('+Number(item.id)+',\'down\')">⬇️</button>'+
+      '<button class="btn tiny" type="button" onclick="editGallery('+Number(item.id)+')">Editar</button>'+
+      '<button class="btn tiny ghost" type="button" onclick="toggleGallery('+Number(item.id)+','+Number(item.active)+')">'+(active?"Ocultar":"Publicar")+'</button>'+
+      '<button class="btn tiny danger" type="button" onclick="deleteGallery('+Number(item.id)+')">Eliminar</button>'+
       '</div></div></article>';
   }).join("");
 }
 
-function setupGalleryFilters() {
-  $("gallerySearch")?.addEventListener("input", renderAdminGallery);
-  $("galleryStatusFilter")?.addEventListener("change", renderAdminGallery);
-  $("clearGalleryFilters")?.addEventListener("click", () => {
-    if ($("gallerySearch")) $("gallerySearch").value = "";
-    if ($("galleryStatusFilter")) $("galleryStatusFilter").value = "";
-    renderAdminGallery();
-  });
-  $("refreshGallery")?.addEventListener("click", loadGallery);
-}
-
-// =========================================================
-// GALERÍA - PREVISUALIZACIÓN
-// =========================================================
-
-const galleryImage =
-  $("galleryImage");
-
-if (galleryImage) {
-  galleryImage.addEventListener(
-    "change",
-    () => {
-      const file =
-        galleryImage.files[0];
-
-      const preview =
-        $("galleryPreview");
-
-      if (!preview) {
-        return;
-      }
-
-      if (!file) {
-        preview.innerHTML = "";
-        return;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        preview.innerHTML = `
-          <p class="notice error">
-            El archivo seleccionado no es una imagen válida.
-          </p>
-        `;
-
-        galleryImage.value = "";
-
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        preview.innerHTML = `
-          <p class="notice error">
-            La imagen no puede superar los 5 MB.
-          </p>
-        `;
-
-        galleryImage.value = "";
-
-        return;
-      }
-
-      const url =
-        URL.createObjectURL(file);
-
-      preview.innerHTML = `
-        <div class="gallery-preview-card">
-
-          <img
-            src="${url}"
-            alt="Vista previa"
-          >
-
-        </div>
-      `;
-    }
-  );
-}
-
-
-// =========================================================
-// GALERÍA - EDITAR
-// =========================================================
-
-function editGallery(x) {
-  $("galleryId").value =
-    x.id;
-
-  $("galleryTitle").value =
-    x.title || "";
-
-  $("galleryDescription").value =
-    x.description || "";
-
-  $("galleryActive").checked =
-    !!x.active;
-$("galleryFeatured").checked = !!x.featured;
-  if ($("galleryImage")) {
-    $("galleryImage").value = "";
+async function editGallery(id) {
+  try {
+    const item=await api("/api/admin/gallery/"+Number(id));
+    $( "galleryId" ).value=item.id;
+    $( "galleryTitle" ).value=item.title||"";
+    $( "galleryDescription" ).value=item.description||"";
+    $( "galleryAltText" ).value=item.alt_text||item.title||"";
+    $( "galleryCategory" ).value=item.category||"otros";
+    $( "galleryActive" ).checked=Number(item.active)===1;
+    $( "galleryFeatured" ).checked=Number(item.featured)===1;
+    if($( "galleryClient" ))$( "galleryClient" ).value=item.client_id||"";
+    if($( "galleryJob" ))$( "galleryJob" ).value=item.job_id||"";
+    if($( "galleryQuote" ))$( "galleryQuote" ).value=item.quote_id||"";
+    if($( "galleryPreview" ))$( "galleryPreview" ).innerHTML='<div class="gallery-preview-card"><img src="'+galleryEscape(item.image_url)+'" alt="'+galleryEscape(item.alt_text||item.title)+'"><small class="muted">Imagen actual</small></div>';
+    $( "gallerySubmit" ).textContent="💾 Guardar cambios";
+    $( "galleryCancel" ).hidden=false;
+    document.querySelector(".gallery-admin-panel")?.scrollIntoView({behavior:"smooth",block:"start"});
+  } catch(error) {
+    showMsg(error.message||"No se pudo cargar el trabajo.",true);
   }
-
-  if ($("galleryPreview")) {
-    $("galleryPreview").innerHTML =
-      x.image_url
-        ? `
-          <div class="gallery-preview-card">
-
-            <img
-              src="${h(x.image_url)}"
-              alt="${h(x.title)}"
-            >
-
-            <small class="muted">
-              Imagen actual
-            </small>
-
-          </div>
-        `
-        : "";
-  }
-
-  $("gallerySubmit").textContent =
-    "Guardar cambios";
-
-  $("galleryCancel").hidden =
-    false;
-
-  document
-    .querySelector(".gallery-admin-panel")
-    ?.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
 }
-
-
-// =========================================================
-// GALERÍA - REINICIAR FORMULARIO
-// =========================================================
 
 function resetGalleryForm() {
-  const form =
-    $("galleryForm");
-
-  if (form) {
-    form.reset();
-  }
-$("galleryFeatured").checked = false;
-  $("galleryId").value = "";
-
-  $("gallerySubmit").textContent =
-    "📸 Agregar trabajo";
-
-  $("galleryCancel").hidden =
-    true;
-
-  if ($("galleryPreview")) {
-    $("galleryPreview").innerHTML = "";
-  }
+  $( "galleryForm" )?.reset();
+  $( "galleryId" ).value="";
+  $( "galleryCategory" ).value="otros";
+  $( "galleryActive" ).checked=true;
+  $( "galleryFeatured" ).checked=false;
+  $( "gallerySubmit" ).textContent="📸 Agregar trabajo";
+  $( "galleryCancel" ).hidden=true;
+  if($( "galleryPreview" ))$( "galleryPreview" ).innerHTML="";
 }
 
+async function saveGallery(event) {
+  event.preventDefault();
+  const id=$( "galleryId" ).value.trim();
+  const title=$( "galleryTitle" ).value.trim();
+  const description=$( "galleryDescription" ).value.trim();
+  const altText=$( "galleryAltText" ).value.trim();
+  const category=$( "galleryCategory" ).value;
+  const imageInput=$( "galleryImage" );
+  const clientId=$( "galleryClient" ).value;
+  const jobId=$( "galleryJob" ).value;
+  const quoteId=$( "galleryQuote" ).value;
 
-// =========================================================
-// GALERÍA - GUARDAR
-// =========================================================
+  if(!title) return showMsg("El título es obligatorio.",true);
+  if(title.length>150) return showMsg("El título no puede superar 150 caracteres.",true);
+  if(description.length>500) return showMsg("La descripción no puede superar 500 caracteres.",true);
+  if(!altText||altText.length>255) return showMsg("El texto alternativo es obligatorio y no puede superar 255 caracteres.",true);
+  if(!id&&(!imageInput.files||!imageInput.files.length)) return showMsg("Debes seleccionar una imagen.",true);
+  if(imageInput.files?.[0] && imageInput.files[0].size>5*1024*1024) return showMsg("La imagen no puede superar los 5 MB.",true);
 
-const galleryForm =
-  $("galleryForm");
+  const form=new FormData();
+  form.append("title",title);
+  form.append("description",description);
+  form.append("alt_text",altText);
+  form.append("category",category);
+  form.append("active",$( "galleryActive" ).checked?"1":"0");
+  form.append("featured",$( "galleryFeatured" ).checked?"1":"0");
+  form.append("client_id",clientId);
+  form.append("job_id",jobId);
+  form.append("quote_id",quoteId);
+  if(imageInput.files?.[0])form.append("image",imageInput.files[0]);
 
-if (galleryForm) {
-  galleryForm.onsubmit = async e => {
-    e.preventDefault();
-
-    const id =
-      $("galleryId").value.trim();
-
-    const title =
-      $("galleryTitle").value.trim();
-
-    const description =
-      $("galleryDescription").value.trim();
-
-    const active =
-      $("galleryActive").checked;
-const featured =
-  $("galleryFeatured").checked;
-    const imageInput =
-      $("galleryImage");
-
-    if (!title) {
-      showMsg(
-        "El título es obligatorio.",
-        true
-      );
-
-      return;
-    }
-
-    if (title.length > 150) {
-      showMsg(
-        "El título es demasiado largo.",
-        true
-      );
-
-      return;
-    }
-
-    if (description.length > 500) {
-      showMsg(
-        "La descripción es demasiado larga.",
-        true
-      );
-
-      return;
-    }
-
-    if (
-      !id &&
-      (!imageInput ||
-       !imageInput.files.length)
-    ) {
-      showMsg(
-        "Debes seleccionar una imagen.",
-        true
-      );
-
-      return;
-    }
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      "title",
-      title
-    );
-
-    formData.append(
-      "description",
-      description
-    );
-
-    formData.append(
-      "active",
-      active ? "1" : "0"
-	  
-    );
-formData.append(
-  "featured",
-  featured ? "1" : "0"
-);
-    if (
-      imageInput &&
-      imageInput.files.length
-    ) {
-      formData.append(
-        "image",
-        imageInput.files[0]
-      );
-    }
-
-    try {
-      const url =
-        id
-          ? `/api/admin/gallery/${id}`
-          : "/api/admin/gallery";
-
-      const method =
-        id
-          ? "PUT"
-          : "POST";
-
-      const result =
-        await api(
-          url,
-          {
-            method,
-            body: formData
-          }
-        );
-
-      showMsg(
-        result.message ||
-        (
-          id
-            ? "Trabajo actualizado correctamente."
-            : "Trabajo agregado correctamente."
-        )
-      );
-
-      resetGalleryForm();
-
-      await loadGallery();
-
-    } catch (e) {
-      console.error(
-        "Error guardando galería:",
-        e
-      );
-
-      showMsg(
-        e.message ||
-        "No se pudo guardar el trabajo.",
-        true
-      );
-    }
-  };
-}
-
-
-// =========================================================
-// GALERÍA - CANCELAR
-// =========================================================
-
-const galleryCancel =
-  $("galleryCancel");
-
-if (galleryCancel) {
-  galleryCancel.onclick =
-    resetGalleryForm;
-}
-
-
-// =========================================================
-// GALERÍA - PUBLICAR / OCULTAR
-// =========================================================
-
-async function toggleGallery(id, active) {
   try {
-    const gallery =
-      await api("/api/admin/gallery");
-
-    const item =
-      gallery.find(
-        x => Number(x.id) === Number(id)
-      );
-
-    if (!item) {
-      showMsg(
-        "Trabajo no encontrado.",
-        true
-      );
-
-      return;
-    }
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      "title",
-      item.title || ""
-    );
-
-    formData.append(
-      "description",
-      item.description || ""
-    );
-
-    formData.append(
-      "active",
-      active ? "0" : "1"
-    );
-
-    formData.append(
-      "featured",
-      item.featured ? "1" : "0"
-    );
-
-    await api(
-      `/api/admin/gallery/${id}`,
-      {
-        method: "PUT",
-        body: formData
-      }
-    );
-
-    showMsg(
-      active
-        ? "Trabajo ocultado."
-        : "Trabajo publicado."
-    );
-
+    const result=await api(id?"/api/admin/gallery/"+id:"/api/admin/gallery",{method:id?"PUT":"POST",body:form});
+    showMsg(result.message||"Galería actualizada correctamente.");
+    resetGalleryForm();
     await loadGallery();
-
-  } catch (e) {
-    showMsg(
-      e.message,
-      true
-    );
+  } catch(error) {
+    showMsg(error.message||"No se pudo guardar el trabajo.",true);
   }
 }
 
-
-// =========================================================
-// GALERÍA - ORDEN
-// =========================================================
-
-async function moveGallery(id, direction) {
-  const current = adminGalleryData
-    .find(item => Number(item.id) === Number(id));
-
-  if (!current) {
-    showMsg("Trabajo no encontrado.", true);
-    return;
-  }
-
-  const ordered = [...adminGalleryData]
-    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
-
-  const index = ordered.findIndex(
-    item => Number(item.id) === Number(id)
-  );
-
-  const targetIndex =
-    direction === "up" ? index - 1 : index + 1;
-
-  if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
-    return;
-  }
-
-  const target = ordered[targetIndex];
-
+async function toggleGallery(id,active) {
+  const item=adminGalleryData.find(x=>Number(x.id)===Number(id));
+  if(!item) return showMsg("Trabajo no encontrado.",true);
+  const form=new FormData();
+  form.append("title",item.title||"");
+  form.append("description",item.description||"");
+  form.append("alt_text",item.alt_text||item.title||"");
+  form.append("category",item.category||"otros");
+  form.append("active",active?"0":"1");
+  form.append("featured",item.featured?"1":"0");
+  form.append("client_id",item.client_id||"");
+  form.append("job_id",item.job_id||"");
+  form.append("quote_id",item.quote_id||"");
   try {
-    await api(`/api/admin/gallery/${current.id}/order`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        direction
-      })
+    await api("/api/admin/gallery/"+Number(id),{method:"PUT",body:form});
+    showMsg(active?"Trabajo ocultado.":"Trabajo publicado.");
+    await loadGallery();
+  } catch(error) { showMsg(error.message,true); }
+}
+
+async function moveGallery(id,direction) {
+  try {
+    await api("/api/admin/gallery/"+Number(id)+"/order",{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({direction})
     });
-
     await loadGallery();
-  } catch (e) {
-    console.error("Error cambiando orden de galería:", e);
-    showMsg(e.message || "No se pudo cambiar el orden.", true);
-  }
+  } catch(error) { showMsg(error.message,true); }
 }
 
-// =========================================================
-// GALERÍA - ELIMINAR
-// =========================================================
-
-async function deleteGallery(id, title) {
-  if (
-    !confirm(
-      `¿Eliminar el trabajo "${title}" definitivamente?`
-    )
-  ) {
-    return;
-  }
-
+async function deleteGallery(id) {
+  const item=adminGalleryData.find(x=>Number(x.id)===Number(id));
+  if(!item||!confirm('¿Eliminar el trabajo "'+(item.title||"")+'" definitivamente?'))return;
   try {
-    await api(
-      `/api/admin/gallery/${id}`,
-      {
-        method: "DELETE"
-      }
-    );
-
-    showMsg(
-      "Trabajo eliminado correctamente."
-    );
-
+    await api("/api/admin/gallery/"+Number(id),{method:"DELETE"});
+    showMsg("Trabajo eliminado correctamente.");
     await loadGallery();
-
-  } catch (e) {
-    showMsg(
-      e.message,
-      true
-    );
-  }
+  } catch(error) { showMsg(error.message,true); }
 }
 
+async function promoteJobAttachment(attachmentId,jobId) {
+  const item=galleryJobs.find(j=>Number(j.id)===Number(jobId));
+  const title=prompt("Título para la galería:",item?.requested_service||"Trabajo realizado");
+  if(title===null)return;
+  const category=prompt("Categoría: instalaciones, reparaciones, tableros, iluminacion, mantenimiento u otros","otros");
+  if(category===null)return;
+  try {
+    await api("/api/admin/gallery/from-job-attachment/"+Number(attachmentId),{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({title,category,active:1})
+    });
+    showMsg("La evidencia fue publicada en la galería.");
+    await loadGallery();
+  } catch(error) { showMsg(error.message,true); }
+}
 
+function setupGalleryFilters() {
+  $( "gallerySearch" )?.addEventListener("input",loadGallery);
+  $( "galleryCategoryFilter" )?.addEventListener("change",loadGallery);
+  $( "galleryStatusFilter" )?.addEventListener("change",loadGallery);
+  $( "clearGalleryFilters" )?.addEventListener("click",()=>{
+    if($( "gallerySearch" ))$( "gallerySearch" ).value="";
+    if($( "galleryCategoryFilter" ))$( "galleryCategoryFilter" ).value="";
+    if($( "galleryStatusFilter" ))$( "galleryStatusFilter" ).value="";
+    loadGallery();
+  });
+  $( "refreshGallery" )?.addEventListener("click",loadGallery);
+  $( "galleryCancel" )?.addEventListener("click",resetGalleryForm);
+  $( "galleryForm" )?.addEventListener("submit",saveGallery);
+  $( "galleryImage" )?.addEventListener("change",()=>{
+    const file=$( "galleryImage" ).files?.[0];
+    const preview=$( "galleryPreview" );
+    if(!preview)return;
+    if(!file){preview.innerHTML="";return;}
+    if(!file.type.startsWith("image/")||file.size>5*1024*1024){
+      preview.innerHTML='<p class="notice error">La imagen debe ser JPG, PNG, WEBP o GIF y no superar 5 MB.</p>';
+      $( "galleryImage" ).value="";
+      return;
+    }
+    const url=URL.createObjectURL(file);
+    preview.innerHTML='<div class="gallery-preview-card"><img src="'+url+'" alt="Vista previa"></div>';
+  });
+  loadGalleryRelations();
+  loadGallery();
+}

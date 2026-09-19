@@ -58,6 +58,7 @@ setupJobsHistory();
 
 loadQuoteRequests();
 setupQuoteRequestFilters();
+loadRequestAssignees();
 
 loadAdminUser();
 loadAccountSettings();
