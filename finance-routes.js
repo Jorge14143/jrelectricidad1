@@ -217,6 +217,13 @@ module.exports = function registerFinanceRoutes({ app, pool, requireAdmin }) {
       const total=Number(rows[0].total||0);
       const status=paid>=total-0.005?"pagada":"parcial";
       await connection.query("UPDATE service_invoices SET status=? WHERE id=?",[status,invoiceId]);
+      await connection.query(
+        `INSERT INTO admin_notifications (type, quote_id, message)
+         SELECT 'payment_received', i.quote_id, ?
+         FROM service_invoices i WHERE i.id=?`,
+        [`Se registró un cobro de $ ${amount.toFixed(2)}. Estado de la factura: ${status}.`, invoiceId]
+      ).catch(error => console.error("No se pudo crear notificación de cobro:", error));
+
       await connection.commit();
       res.status(201).json({success:true,paid,balance:Math.max(0,total-paid),status});
     }catch(error){
