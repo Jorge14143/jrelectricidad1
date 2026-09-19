@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trabajos V3 | JR Electricidad</title>
+<link rel="stylesheet" href="/css/v3-public.css"><link rel="stylesheet" href="/css/v3-jobs.css">
+</head>
+<body class="v3-app">
+<main class="v3-jobs-page">
+<header class="v3-jobs-header"><div><span class="eyebrow">GESTIÓN V3</span><h1>Trabajos</h1><p>Seguimiento operativo de cada trabajo, tareas, costos, tiempos y evidencias.</p></div><a class="btn" href="/admin.html">← Administración</a></header>
+<section class="jobs-toolbar">
+<input id="jobsSearch" placeholder="Buscar cliente, presupuesto o servicio"><select id="jobsStatus"><option value="">Todos los estados</option><option>aceptado</option><option>programado</option><option>en_proceso</option><option>pausado</option><option>finalizado</option><option>cerrado</option><option>cancelado</option></select>
+<button id="jobsRefresh" class="btn">🔄 Actualizar</button></section>
+<section id="jobsList" class="v3-jobs-list"><p>Cargando trabajos...</p></section>
+</main>
+<div id="jobModal" class="v3-job-modal" hidden><div class="v3-job-dialog"><button id="jobClose" class="job-close">×</button><div id="jobDetail">Cargando...</div></div></div>
+<script src="/js/v3-jobs.js"></script>
+</body></html>
