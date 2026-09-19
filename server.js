@@ -8967,6 +8967,185 @@ app.get("/api/admin/documents/:id(\\d+)/versions", requireAdmin, async(req,res)=
   }catch(error){res.status(500).json({error:"No se pudieron obtener las versiones."});}
 });
 
+
+// =========================================================
+// V2 — BACKUPS ADMINISTRATIVOS
+// =========================================================
+
+async function cleanupOldBackups() {
+  const retentionDays = normalizeRetention(process.env.BACKUP_RETENTION_DAYS || DEFAULT_RETENTION);
+  const [rows] = await pool.query(
+    `SELECT id, storage_path FROM backups
+     WHERE status='completed' AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+     ORDER BY created_at ASC LIMIT ?`,
+    [retentionDays, MAX_BACKUPS]
+  );
+
+  for (const row of rows) {
+    const backupPath = path.resolve(String(row.storage_path || ""));
+    const backupRoot = path.resolve(getBackupDir());
+    if (backupPath === backupRoot || !backupPath.startsWith(backupRoot + path.sep)) continue;
+    await deleteFileIfExists(backupPath).catch(() => {});
+    await pool.query("UPDATE backups SET status='deleted' WHERE id=?", [row.id]).catch(() => {});
+  }
+
+  const [overflow] = await pool.query(
+    `SELECT id, storage_path FROM backups
+     WHERE status='completed'
+     ORDER BY created_at DESC, id DESC
+     LIMIT 18446744073709551615 OFFSET ?`,
+    [Math.max(0, MAX_BACKUPS)]
+  );
+
+  for (const row of overflow) {
+    const backupPath = path.resolve(String(row.storage_path || ""));
+    const backupRoot = path.resolve(getBackupDir());
+    if (backupPath !== backupRoot && backupPath.startsWith(backupRoot + path.sep)) {
+      await deleteFileIfExists(backupPath).catch(() => {});
+    }
+    await pool.query("UPDATE backups SET status='deleted' WHERE id=?", [row.id]).catch(() => {});
+  }
+}
+
+app.get("/api/admin/backups", requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT b.id,b.filename,b.backup_type,b.size_bytes,b.sha256,b.status,
+              b.created_at,b.completed_at,b.error_message,
+              u.name AS created_by_name
+       FROM backups b
+       LEFT JOIN users u ON u.id=b.created_by_user_id
+       ORDER BY b.created_at DESC,b.id DESC
+       LIMIT 100`
+    );
+    const [countRows] = await pool.query(
+      "SELECT COUNT(*) AS total FROM backups WHERE status='completed'"
+    );
+    res.json({
+      backups: rows,
+      total: Number(countRows[0]?.total || 0),
+      retentionDays: normalizeRetention(process.env.BACKUP_RETENTION_DAYS || DEFAULT_RETENTION)
+    });
+  } catch (error) {
+    logError("Error listando backups", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudieron obtener los backups." });
+  }
+});
+
+app.post("/api/admin/backups", requireAdmin, adminMutationLimiter, async (req, res) => {
+  let created = null;
+  try {
+    created = await createDatabaseBackup();
+    const [result] = await pool.query(
+      `INSERT INTO backups
+       (filename,storage_path,backup_type,size_bytes,sha256,status,created_by_user_id,completed_at)
+       VALUES (?,?,?,?,?,'completed',?,CURRENT_TIMESTAMP)`,
+      [
+        created.filename,
+        created.filePath,
+        "database",
+        created.sizeBytes,
+        created.sha256,
+        req.session.user.id
+      ]
+    );
+    await writeAudit(req, "backup_created", "backup", result.insertId, {
+      filename: created.filename,
+      size_bytes: created.sizeBytes,
+      sha256: created.sha256
+    });
+    await cleanupOldBackups();
+    res.status(201).json({
+      success: true,
+      id: result.insertId,
+      filename: created.filename,
+      size_bytes: created.sizeBytes,
+      sha256: created.sha256,
+      message: "Backup de la base de datos creado correctamente."
+    });
+  } catch (error) {
+    if (created?.filePath) await deleteFileIfExists(created.filePath).catch(() => {});
+    logError("Error creando backup", { requestId: req.requestId, error: error.message });
+    await writeAudit(req, "backup_failed", "backup", null, { error: error.message });
+    res.status(500).json({
+      error: "No se pudo crear el backup. Verificá que mysqldump esté instalado y configurado.",
+      detail: process.env.NODE_ENV === "production" ? undefined : error.message
+    });
+  }
+});
+
+app.get("/api/admin/backups/:id/download", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "ID de backup inválido." });
+
+    const [rows] = await pool.query(
+      "SELECT id,filename,storage_path,status FROM backups WHERE id=? LIMIT 1",
+      [id]
+    );
+    if (!rows.length || rows[0].status !== "completed") {
+      return res.status(404).json({ error: "Backup no disponible." });
+    }
+
+    const backupRoot = path.resolve(getBackupDir());
+    const backupPath = path.resolve(String(rows[0].storage_path || ""));
+    if (backupPath === backupRoot || !backupPath.startsWith(backupRoot + path.sep)) {
+      return res.status(403).json({ error: "Ruta de backup no autorizada." });
+    }
+
+    try {
+      await fs.promises.access(backupPath, fs.constants.R_OK);
+    } catch {
+      return res.status(404).json({ error: "El archivo del backup no existe en el almacenamiento." });
+    }
+
+    await writeAudit(req, "backup_downloaded", "backup", id, { filename: rows[0].filename });
+    res.download(backupPath, rows[0].filename);
+  } catch (error) {
+    logError("Error descargando backup", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo descargar el backup." });
+  }
+});
+
+app.delete("/api/admin/backups/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "ID de backup inválido." });
+
+    const [rows] = await pool.query(
+      "SELECT id,filename,storage_path,status FROM backups WHERE id=? LIMIT 1",
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Backup no encontrado." });
+
+    const backupRoot = path.resolve(getBackupDir());
+    const backupPath = path.resolve(String(rows[0].storage_path || ""));
+    if (backupPath !== backupRoot && backupPath.startsWith(backupRoot + path.sep)) {
+      await deleteFileIfExists(backupPath);
+    }
+
+    await pool.query("UPDATE backups SET status='deleted' WHERE id=?", [id]);
+    await writeAudit(req, "backup_deleted", "backup", id, { filename: rows[0].filename });
+    res.json({ success: true, message: "Backup eliminado." });
+  } catch (error) {
+    logError("Error eliminando backup", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo eliminar el backup." });
+  }
+});
+
+app.post("/api/admin/backups/cleanup", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    await cleanupOldBackups();
+    await writeAudit(req, "backup_cleanup", "backup", null, {
+      retention_days: normalizeRetention(process.env.BACKUP_RETENTION_DAYS || DEFAULT_RETENTION)
+    });
+    res.json({ success: true, message: "Limpieza de backups completada." });
+  } catch (error) {
+    logError("Error limpiando backups", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo completar la limpieza." });
+  }
+});
+
 // =========================================================
 // PRODUCCIÓN - HEALTH CHECK
 // =========================================================
