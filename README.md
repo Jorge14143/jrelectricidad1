@@ -157,3 +157,11 @@ Finanzas V3 implementadas al 100% estructuralmente: facturación, cobros, gastos
 - Documentación: `docs/V3-BLOCK-G.md`
 
 **Nota:** la migración 022 todavía debe ejecutarse en la base MySQL real antes del uso productivo.
+
+
+## V3 — Bloque H: Inventario
+- Panel: `/inventario-v3.html`
+- API: `/api/v3/admin/inventory/*`
+- Migración: `migrations/023_v3_inventory.sql`
+- Checker: `npm run test:v3-inventory`
+- Estado: 100% estructural/code/documentación. La migración 023 queda pendiente de ejecución contra MySQL real.
