@@ -11,7 +11,8 @@
     "backup": "node scripts/backup-db.js",
     "restore": "node scripts/restore-db.js",
     "health": "node scripts/monitor-health.js",
-    "prod:preflight": "node scripts/production-preflight.js"
+    "prod:preflight": "node scripts/production-preflight.js",
+    "prod:check": "node scripts/production-check.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
