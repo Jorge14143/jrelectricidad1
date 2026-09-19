@@ -19,5 +19,9 @@ assert(/sendProviderMessage/.test(service)&&/graph\.facebook\.com/.test(service)
 assert(/configureWhatsAppService/.test(server),"servicio WhatsApp no inicializado");
 assert(/\/api\/admin\/whatsapp\/status/.test(server),"falta estado administrativo");
 assert(/\/api\/admin\/whatsapp\/outbox/.test(server),"falta outbox administrativo");
+assert(/\/api\/admin\/whatsapp\/send/.test(server),"falta envío manual administrativo");
+assert(/notifyRequestWhatsApp/.test(server)&&/notifyQuoteWhatsApp/.test(server)&&/notifyJobWhatsApp/.test(server),"falta integración de eventos");
+assert(/whatsappEnabled/.test(read("public/admin.html"))&&/whatsappAutoNotifications/.test(read("public/admin.html")),"falta UI de preferencias");
+assert(/whatsapp_auto_notifications/.test(read("public/js/admin-navigation.js")),"falta UI de preferencias conectada");
 assert(/test:v2-whatsapp/.test(JSON.stringify(pkg.scripts)),"falta script de validación");
 console.log("V2 WHATSAPP: 100% OK");
