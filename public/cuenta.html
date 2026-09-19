@@ -40,19 +40,19 @@
           <p>Cliente de JR Electricidad</p>
 
           <nav class="account-menu" aria-label="Secciones de la cuenta">
-            <a class="active" href="#servicio">Resumen</a>
-            <a href="#solicitudes">Solicitudes</a>
-            <a href="#presupuestos">Presupuestos</a>
-            <a href="#trabajos">Trabajos</a>
-            <a href="#facturacion">Facturación</a>
-            <a href="#resenas">Reseñas</a>
-            <a href="#configuracion">Configuración</a>
+            <a class="active" href="#servicio" data-account-view="servicio">Resumen</a>
+            <a href="#solicitudes" data-account-view="solicitudes">Solicitudes</a>
+            <a href="#presupuestos" data-account-view="presupuestos">Presupuestos</a>
+            <a href="#trabajos" data-account-view="trabajos">Trabajos</a>
+            <a href="#facturacion" data-account-view="facturacion">Facturación</a>
+            <a href="#resenas" data-account-view="resenas">Reseñas</a>
+            <a href="#configuracion" data-account-view="configuracion">Configuración</a>
           </nav>
         </aside>
 
         <div class="account-main">
 
-          <section class="account-current" id="servicio">
+          <section class="account-current account-view active" id="servicio">
             <div class="account-section-kicker">SEGUIMIENTO DEL SERVICIO</div>
             <h2>Seguimiento de tu servicio</h2>
             <p class="section-description">El estado de tus solicitudes y trabajos aparecerá acá a medida que avances.</p>
@@ -70,42 +70,42 @@
             </div>
           </section>
 
-          <section class="account-history" id="solicitudes">
+          <section class="account-history account-view" id="solicitudes">
             <div class="section-heading">
               <div><div class="account-section-kicker">SOLICITUDES</div><h3>Historial de solicitudes</h3></div>
             </div>
             <div id="account-requests-list" class="account-list"></div>
           </section>
 
-          <section class="account-history" id="presupuestos">
+          <section class="account-history account-view" id="presupuestos">
             <div class="section-heading">
               <div><div class="account-section-kicker">PRESUPUESTOS</div><h3>Presupuestos emitidos</h3></div>
             </div>
             <div id="account-quotes-list" class="account-list"></div>
           </section>
 
-          <section class="account-history" id="trabajos">
+          <section class="account-history account-view" id="trabajos">
             <div class="section-heading">
               <div><div class="account-section-kicker">TRABAJOS</div><h3>Trabajos realizados</h3></div>
             </div>
             <div id="account-jobs-list" class="account-list"></div>
           </section>
 
-          <section class="account-history" id="facturacion">
+          <section class="account-history account-view" id="facturacion">
             <div class="section-heading">
               <div><div class="account-section-kicker">FACTURACIÓN</div><h3>Facturas y pagos</h3></div>
             </div>
             <div id="account-invoices-list" class="account-list"></div>
           </section>
 
-          <section class="account-history" id="resenas">
+          <section class="account-history account-view" id="resenas">
             <div class="section-heading">
               <div><div class="account-section-kicker">RESEÑAS</div><h3>Mis reseñas</h3></div>
             </div>
             <div id="account-reviews-list" class="account-list"></div>
           </section>
 
-          <section class="account-settings" id="configuracion">
+          <section class="account-settings account-view" id="configuracion">
             <div class="account-section-title">INFORMACIÓN DE LA CUENTA</div>
 
             <div class="account-fields">
