@@ -45,8 +45,8 @@ resetForm?.addEventListener("submit", async event => {
     return;
   }
 
-  if (password.length < 8) {
-    showAuthMessage("❌ La contraseña debe tener al menos 8 caracteres.", "error");
+  if (password.length < 12) {
+    showAuthMessage("❌ La contraseña debe tener al menos 12 caracteres.", "error");
     return;
   }
 
