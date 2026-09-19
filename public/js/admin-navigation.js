@@ -170,6 +170,10 @@ async function loadBusinessSettings() {
       const el = $(id);
       if (el) el.value = value || "";
     });
+    const whatsappEnabled = $("whatsappEnabled");
+    const whatsappAuto = $("whatsappAutoNotifications");
+    if (whatsappEnabled) whatsappEnabled.checked = Boolean(s.whatsapp_enabled);
+    if (whatsappAuto) whatsappAuto.checked = Boolean(s.whatsapp_auto_notifications);
   } catch (error) {
     showMsg(error.message, true);
   }
@@ -189,6 +193,8 @@ function setupBusinessSettings() {
       legal_name: $("legalName")?.value.trim() || "",
       phone: $("businessPhone")?.value.trim() || "",
       whatsapp: $("businessWhatsapp")?.value.trim() || "",
+      whatsapp_enabled: Boolean($("whatsappEnabled")?.checked),
+      whatsapp_auto_notifications: Boolean($("whatsappAutoNotifications")?.checked),
       email: $("businessEmail")?.value.trim() || "",
       address: $("businessAddress")?.value.trim() || "",
       city: $("businessCity")?.value.trim() || "",
