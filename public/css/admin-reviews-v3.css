@@ -1,0 +1,38 @@
+/* =========================================================
+   RESEÑAS — ADMIN V3
+========================================================= */
+
+.admin-reviews-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+.admin-reviews-summary-card{
+  padding:16px 18px;
+  border:1px solid var(--admin-border,var(--line));
+  border-radius:16px;
+  background:linear-gradient(145deg,var(--admin-surface-2,#131923),var(--admin-surface,#0f141c));
+}
+.admin-reviews-summary-card span{display:block;color:var(--admin-muted,var(--muted));font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:800}
+.admin-reviews-summary-card strong{display:block;margin-top:6px;font-size:25px;color:var(--admin-text,var(--text))}
+.admin-reviews-table-wrap{overflow:auto;border:1px solid var(--admin-border,var(--line));border-radius:16px}
+.admin-reviews-table{width:100%;min-width:980px;border-collapse:collapse}
+.admin-reviews-table th,.admin-reviews-table td{padding:13px 14px;border-bottom:1px solid var(--admin-border,var(--line));text-align:left;vertical-align:top;font-size:12px}
+.admin-reviews-table th{color:var(--admin-muted,var(--muted));font-size:10px;text-transform:uppercase;letter-spacing:.8px;background:var(--admin-surface-2,#131923)}
+.admin-reviews-table tr:last-child td{border-bottom:0}
+.admin-reviews-table td strong,.admin-reviews-table td small{display:block}
+.admin-reviews-table td small{margin-top:4px;color:var(--admin-muted,var(--muted))}
+.admin-review-stars{white-space:nowrap;letter-spacing:1px}
+.admin-review-stars span{color:#4a5260}
+.admin-review-stars span.is-on{color:var(--admin-accent,var(--accent))}
+.admin-review-comment{max-width:330px;line-height:1.55;color:var(--admin-text,var(--text))}
+.admin-review-status{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900}
+.admin-review-status.approved{background:rgba(34,197,94,.12);color:#6ee7a0;border:1px solid rgba(34,197,94,.2)}
+.admin-review-status.hidden{background:rgba(148,163,184,.10);color:#aab4c2;border:1px solid rgba(148,163,184,.2)}
+.admin-reviews-empty{text-align:center;padding:55px 24px;border:1px dashed var(--admin-border,var(--line));border-radius:16px;color:var(--admin-muted,var(--muted))}
+.admin-reviews-empty-icon{font-size:36px;margin-bottom:10px}
+.admin-reviews-empty strong{display:block;color:var(--admin-text,var(--text));font-size:16px}
+.admin-reviews-empty p{max-width:520px;margin:8px auto 0;line-height:1.6}
+@media(max-width:900px){.admin-reviews-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.admin-reviews-summary{grid-template-columns:1fr}}
