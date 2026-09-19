@@ -16,7 +16,8 @@ const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
 const { runMigrations } = require("./lib/migrations");
 const { configureEmailService, queueEmail } = require("./lib/email");
-const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");\nconst { createDocumentStorage, DOCUMENT_TYPES, ALLOWED_DOCUMENT_MIMES, MAX_DOCUMENT_SIZE, normalizeDocumentType, safeDocumentName, documentFileName, sha256File, validateDocumentSignature } = require("./lib/documents");
+const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");
+const { createDocumentStorage, DOCUMENT_TYPES, ALLOWED_DOCUMENT_MIMES, MAX_DOCUMENT_SIZE, normalizeDocumentType, safeDocumentName, documentFileName, sha256File, validateDocumentSignature } = require("./lib/documents");
 const {
   PASSWORD_MIN,
   PASSWORD_MAX,
