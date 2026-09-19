@@ -15,6 +15,7 @@ function setupAdminNavigation() {
     "usersSection",
     "servicesSection",
     "gallerySection",
+    "materialsSection",
     "settingsSection"
   ];
 
