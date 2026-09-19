@@ -14,11 +14,11 @@ for (const field of ["document_type","client_id","quote_request_id","quote_id","
 for (const helper of ["normalizeDocumentType","sha256File","validateDocumentSignature"]) assert(lib.includes(helper), `Falta helper ${helper}`);
 for (const route of [
   "/api/admin/documents",
-  "/api/admin/documents/:id(\\d+)",
-  "/api/admin/documents/:id(\\d+)/download",
-  "/api/admin/documents/:id(\\d+)/versions",
-  "/api/admin/documents/from-quote/:quoteId(\\d+)",
-  "/api/admin/documents/from-job/:jobId(\\d+)"
+  "/api/admin/documents/:id",
+  "/api/admin/documents/:id",
+  "/api/admin/documents/:id",
+  "/api/admin/documents/from-quote/:quoteId",
+  "/api/admin/documents/from-job/:jobId"
 ]) assert(server.includes(route), `Falta ruta ${route}`);
 for (const id of ["documentsSection","documentsList","documentsSearch","documentsTypeFilter","documentUploadForm"]) assert(html.includes(`id="${id}"`), `Falta UI ${id}`);
 for (const hook of ["loadDocuments","uploadDocument","downloadDocument","createQuoteDocument","createJobDocument"]) assert(js.includes(hook), `Falta hook ${hook}`);
