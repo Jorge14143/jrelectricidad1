@@ -191,7 +191,7 @@ module.exports = function registerFinanceRoutes({ app, pool, requireAdmin }) {
       await connection.beginTransaction();
       const [rows]=await connection.query(
         `
-        SELECT i.id,i.total,COALESCE(SUM(p.amount),0) AS paid
+        SELECT i.id,i.quote_id,i.total,COALESCE(SUM(p.amount),0) AS paid
         FROM service_invoices i
         LEFT JOIN service_payments p ON p.invoice_id=i.id
         WHERE i.id=?
