@@ -50,6 +50,19 @@
       </section>
 
       <section class="card">
+        <div class="section-head"><div><small>AGENDA</small><h2>Mis turnos</h2></div></div>
+        <form id="appointmentForm" class="form-grid">
+          <label>Servicio<input id="appointmentService" maxlength="150" placeholder="Ej. Instalación eléctrica" required></label>
+          <label>Fecha<input id="appointmentDate" type="date" required></label>
+          <label>Horario<select id="appointmentTime" required><option value="">Elegí una fecha primero</option></select></label>
+          <label class="full">Notas<textarea id="appointmentNotes" rows="2" maxlength="1000" placeholder="Información adicional"></textarea></label>
+          <button class="primary" type="submit">📅 Solicitar turno</button>
+        </form>
+        <div id="appointmentMessage" class="message"></div>
+        <div id="appointmentsList" class="list"><div class="loading">Cargando...</div></div>
+      </section>
+
+      <section class="card">
         <div class="section-head"><div><small>MIS SOLICITUDES</small><h2>Solicitudes de presupuesto</h2></div></div>
         <div id="requestsList" class="list"><div class="loading">Cargando...</div></div>
       </section>
