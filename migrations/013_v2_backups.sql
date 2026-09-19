@@ -14,6 +14,5 @@ CREATE TABLE IF NOT EXISTS backups (
   PRIMARY KEY (id),
   UNIQUE KEY uq_backups_filename (filename),
   KEY idx_backups_created (created_at, id),
-  KEY idx_backups_status (status, created_at),
-  CONSTRAINT fk_backups_user FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+  KEY idx_backups_status (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
