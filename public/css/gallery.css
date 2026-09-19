@@ -564,3 +564,63 @@ body.lightbox-open {
   font-weight: 800;
   letter-spacing: .04em;
 }
+
+
+/* =========================================================
+   FASE 9 — FILTROS Y METADATOS PÚBLICOS
+   ========================================================= */
+
+.gallery-public-filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:0 0 28px;
+}
+
+.gallery-filter{
+  border:1px solid var(--line);
+  background:var(--card);
+  color:var(--muted);
+  border-radius:999px;
+  padding:9px 15px;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.gallery-filter:hover,
+.gallery-filter.active{
+  color:var(--text);
+  border-color:rgba(255,196,0,.45);
+  background:rgba(255,196,0,.08);
+}
+
+.gallery-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-bottom:8px;
+}
+
+.gallery-category-label,
+.gallery-featured-label{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.6px;
+  background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.85);
+}
+
+.gallery-featured-label{
+  color:var(--accent);
+  background:rgba(255,196,0,.1);
+}
+
+@media(max-width:700px){
+  .gallery-public-filters{gap:7px}
+  .gallery-filter{padding:8px 11px;font-size:12px}
+}
