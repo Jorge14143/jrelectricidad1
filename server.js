@@ -4488,6 +4488,7 @@ app.put("/api/admin/jobs/:id(\\d+)",requireAdmin,adminMutationLimiter,async(req,
       );
     }
       await notifyJobCustomer(id, current.status, fields.scheduled_at);
+      await notifyJobWhatsApp(id, current.status, fields.scheduled_at);
 
     res.json({success:true,message:"Trabajo actualizado correctamente."});
   }catch(error){
@@ -4552,6 +4553,7 @@ app.put("/api/admin/jobs/:id(\\d+)/status",requireAdmin,adminMutationLimiter,asy
       notificationPriority
     );
     await notifyJobCustomer(id, next, next === "programado" ? job.scheduled_at : null);
+    await notifyJobWhatsApp(id, next, next === "programado" ? job.scheduled_at : null);
     await writeAudit(req,"job_status_changed","job",id,{old_status:job.status,new_status:next});
     res.json({success:true,status:next,message:messages[next]||"Estado actualizado correctamente."});
   }catch(error){
@@ -4791,6 +4793,30 @@ async function notifyRequestCustomer(request, subject, message) {
       error: error.message,
       quoteRequestId: request.id
     });
+    return false;
+  }
+}
+
+async function notifyJobWhatsApp(jobId, status, scheduledAt = null) {
+  try {
+    const settings=await whatsappBusinessEnabled();
+    if(!settings?.whatsapp_auto_notifications) return false;
+    const [rows]=await pool.query(
+      `SELECT j.id,qr.phone,qr.whatsapp,qr.name
+       FROM jobs j
+       INNER JOIN quotes q ON q.id=j.quote_id
+       INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       WHERE j.id=? LIMIT 1`,[jobId]
+    );
+    const job=rows[0];
+    const phone=job?.whatsapp || job?.phone;
+    if(!phone) return false;
+    let message=`JR Electricidad: el trabajo #${jobId} está en estado ${String(status).replace(/_/g," ")}.`;
+    if(scheduledAt) message+=` Programado para ${new Date(scheduledAt).toLocaleString("es-AR").replace(",", "")}.`;
+    await queueWhatsApp({to:phone,message,entityType:"job",entityId:jobId});
+    return true;
+  } catch(error) {
+    logError("No se pudo encolar WhatsApp del trabajo",{requestId:null,error:error.message,jobId});
     return false;
   }
 }
@@ -7537,6 +7563,23 @@ async function recordQuoteHistory(req, quoteId, action, oldStatus, newStatus, me
   );
 }
 
+async function notifyQuoteWhatsApp(quote) {
+  try {
+    const settings=await whatsappBusinessEnabled();
+    if(!settings?.whatsapp_auto_notifications || !quote?.phone) return false;
+    await queueWhatsApp({
+      to:quote.phone,
+      message:`JR Electricidad: tu presupuesto ${quote.quote_number} ya está disponible. Podés consultarlo en: ${(process.env.APP_URL || "")}/presupuesto/${encodeURIComponent(quote.access_token)}`,
+      entityType:"quote",
+      entityId:quote.id
+    });
+    return true;
+  } catch(error) {
+    logError("No se pudo encolar WhatsApp del presupuesto",{requestId:null,error:error.message,quoteId:quote?.id});
+    return false;
+  }
+}
+
 async function sendQuoteEmail(quote) {
   if (!quote?.email) return false;
   try {
@@ -7906,6 +7949,7 @@ app.patch("/api/admin/quotes/:id(\\d+)/status", requireAdmin, adminMutationLimit
 
     if(status==="enviado") {
       const sent=await sendQuoteEmail({...current,status,total:current.total});
+      await notifyQuoteWhatsApp({...current,status,total:current.total});
       await createAdminNotification({
         type: "quote_sent",
         quoteId: id,
