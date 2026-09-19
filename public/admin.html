@@ -157,6 +157,11 @@
       SISTEMA
     </div>
 
+   <a href="#auditSection" class="admin-nav-item">
+  <span>🛡️</span>
+  <span>Auditoría</span>
+</a>
+
    <a href="#settingsSection" class="admin-nav-item">
   <span>⚙️</span>
   <span>Configuración</span>
@@ -2408,6 +2413,47 @@
 </section>
 
 <!-- =========================================================
+     AUDITORÍA ADMINISTRATIVA — FASE 17
+========================================================= -->
+<section class="panel admin-audit-section" id="auditSection">
+  <div class="panel-heading">
+    <div>
+      <span class="eyebrow">SISTEMA</span>
+      <h2>Auditoría</h2>
+      <p class="muted">Registro de acciones administrativas, seguridad y cambios del sistema.</p>
+    </div>
+    <button type="button" class="btn" id="auditExportButton">⬇️ Exportar CSV</button>
+  </div>
+
+  <div class="admin-audit-toolbar">
+    <input type="search" id="auditSearch" placeholder="Buscar acción, usuario, IP, request ID..." autocomplete="off">
+    <select id="auditActionFilter"><option value="">Todas las acciones</option></select>
+    <select id="auditEntityFilter"><option value="">Todas las entidades</option></select>
+    <input type="date" id="auditDateFrom" title="Desde">
+    <input type="date" id="auditDateTo" title="Hasta">
+    <button type="button" class="btn tiny" id="auditRefreshButton">🔄 Actualizar</button>
+  </div>
+
+  <div id="auditSummary" class="admin-audit-summary"></div>
+  <div id="auditState" class="quote-state-box">Cargando auditoría...</div>
+
+  <div class="admin-audit-table-wrap">
+    <table class="admin-audit-table">
+      <thead><tr>
+        <th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>IP</th><th>Request ID</th><th>Detalles</th>
+      </tr></thead>
+      <tbody id="auditTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="admin-audit-pagination">
+    <button type="button" class="btn tiny" id="auditPrevButton">← Anterior</button>
+    <span id="auditPageInfo">Página 1</span>
+    <button type="button" class="btn tiny" id="auditNextButton">Siguiente →</button>
+  </div>
+</section>
+
+<!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
 
@@ -2747,6 +2793,7 @@
 <script src="/js/admin-jobs.js"></script>
 <script src="/js/admin-navigation.js"></script>\n<script src="/js/admin-documents.js"></script>
 <script src="/js/admin-search.js"></script>
+<script src="/js/admin-audit.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
 </body>
