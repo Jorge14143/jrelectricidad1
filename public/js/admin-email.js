@@ -176,6 +176,9 @@ async function loadEmailHistory() {
         <td>${message.sent_at ? h(message.sent_at) : "—"}</td>
       </tr>
     `).join("") || '<tr><td colspan="6">Sin correos registrados.</td></tr>';
+  } catch (error) {
+    showMsg(error.message, true);
+  }
 }
 
 async function initEmailAdmin() {
