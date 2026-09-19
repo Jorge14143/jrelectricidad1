@@ -15,6 +15,7 @@ const multer = require("multer");
 const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
 const { runMigrations } = require("./lib/migrations");
+const { configureEmailService, queueEmail } = require("./lib/email");
 const {
   PASSWORD_MIN,
   PASSWORD_MAX,
@@ -183,6 +184,8 @@ const pool = mysql.createPool({
   charset: "utf8mb4"
 
 });
+
+configureEmailService(pool);
 
 
 // =========================================================
@@ -538,86 +541,14 @@ function cleanUser(user) {
 // EMAIL DE RECUPERACIÓN
 // =========================================================
 
-async function sendResetEmail(
-  email,
-  token
-) {
-
-  const transporter =
-    nodemailer.createTransport({
-
-      host: process.env.SMTP_HOST,
-
-      port: Number(
-        process.env.SMTP_PORT || 465
-      ),
-
-      secure:
-        String(
-          process.env.SMTP_SECURE
-        ).toLowerCase() === "true",
-
-      auth: {
-
-        user:
-          process.env.SMTP_USER,
-
-        pass:
-          process.env.SMTP_PASSWORD
-
-      }
-
-    });
-
-
-  const link =
-    `${process.env.APP_URL}/reset-password.html?token=${encodeURIComponent(token)}`;
-
-
-  await transporter.sendMail({
-
-    from:
-      process.env.MAIL_FROM,
-
-    to:
-      email,
-
-    subject:
-      "Recuperación de contraseña - JR Electricidad",
-
-    html: `
-
-      <div style="font-family:Arial,sans-serif;line-height:1.6">
-
-        <h2>
-          JR Electricidad ⚡
-        </h2>
-
-        <p>
-          Recibimos una solicitud para cambiar tu contraseña.
-        </p>
-
-        <p>
-          <a href="${link}">
-            Restablecer contraseña
-          </a>
-        </p>
-
-        <p>
-          Este enlace vence en 30 minutos.
-        </p>
-
-        <p>
-          Si no solicitaste este cambio,
-          puedes ignorar este correo.
-        </p>
-
-      </div>
-
-    `
-
+async function sendResetEmail(email, token) {
+  const link = process.env.APP_URL + "/reset-password.html?token=" + encodeURIComponent(token);
+  await queueEmail({
+    to: email,
+    subject: "Recuperación de contraseña - JR Electricidad",
+    template: "password_reset",
+    data: { link, minutes: 30 }
   });
-
 }
 
 
@@ -847,30 +778,11 @@ function tokenHash(token) {
 }
 
 async function sendAccountMail({ to, subject, title, text, linkLabel, link }) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 465),
-    secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD
-    }
-  });
-
-  await transporter.sendMail({
-    from: process.env.MAIL_FROM,
+  return queueEmail({
     to,
     subject,
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
-        <h2>JR Electricidad ⚡</h2>
-        <h3>${title}</h3>
-        <p>${text}</p>
-        ${link ? `<p><a href="${link}">${linkLabel || "Continuar"}</a></p>` : ""}
-        <p>Este enlace vence en ${ACCOUNT_TOKEN_MINUTES} minutos y solo puede utilizarse una vez.</p>
-        <p>Si no solicitaste esta acción, podés ignorar este correo.</p>
-      </div>
-    `
+    template: "generic_account",
+    data: { title, text, linkLabel, link, minutes: ACCOUNT_TOKEN_MINUTES }
   });
 }
 
@@ -7567,45 +7479,21 @@ async function recordQuoteHistory(req, quoteId, action, oldStatus, newStatus, me
 
 async function sendQuoteEmail(quote) {
   if (!quote?.email) return false;
-
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER ||
-      !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) {
-    return false;
-  }
-
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
+    await queueEmail({
+      to: quote.email,
+      subject: "Presupuesto " + quote.quote_number + " - JR Electricidad",
+      template: "quote_sent",
+      data: {
+        name: quote.name || quote.client_name || "",
+        quoteNumber: quote.quote_number,
+        total: quoteMoney(quote.total),
+        link: (process.env.APP_URL || "") + "/presupuesto/" + encodeURIComponent(quote.access_token)
       }
     });
-
-    const publicUrl =
-      `${process.env.APP_URL || ""}/presupuesto/${encodeURIComponent(quote.access_token)}`;
-
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM,
-      to: quote.email,
-      subject: `Presupuesto ${quote.quote_number} - JR Electricidad`,
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
-          <h2>JR Electricidad ⚡</h2>
-          <p>Hola ${String(quote.name || "").replace(/[&<>"]/g, "")},</p>
-          <p>Tu presupuesto <strong>${String(quote.quote_number || "").replace(/[&<>"]/g, "")}</strong> ya está disponible.</p>
-          <p><strong>Total: ${quoteMoney(quote.total)}</strong></p>
-          <p><a href="${publicUrl}" style="display:inline-block;padding:12px 18px;background:#ffc400;color:#080a0f;text-decoration:none;border-radius:8px;font-weight:bold">Ver presupuesto</a></p>
-          <p>Saludos,<br>JR Electricidad · Electricista Matriculado Cat. 3</p>
-        </div>
-      `
-    });
-
     return true;
   } catch (error) {
-    logError("No se pudo enviar el presupuesto por email", {
+    logError("No se pudo encolar el presupuesto por email", {
       requestId: null,
       quoteId: quote.id,
       error: error.message
@@ -8157,30 +8045,21 @@ function publicQuoteToken(req) {
 }
 
 async function sendAcceptanceEmail({to,quoteNumber,decision,customerName}) {
-  if(!to||!process.env.SMTP_HOST||!process.env.SMTP_USER||!process.env.SMTP_PASSWORD||!process.env.MAIL_FROM) return false;
+  if (!to) return false;
   try {
-    const transporter=nodemailer.createTransport({
-      host:process.env.SMTP_HOST,
-      port:Number(process.env.SMTP_PORT||465),
-      secure:String(process.env.SMTP_SECURE).toLowerCase()==="true",
-      auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}
-    });
-    const accepted=decision==="aceptado";
-    await transporter.sendMail({
-      from:process.env.MAIL_FROM,
+    await queueEmail({
       to,
-      subject:`${accepted?"Aceptación":"Rechazo"} de presupuesto ${quoteNumber} - JR Electricidad`,
-      html:`<div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
-        <h2>JR Electricidad ⚡</h2>
-        <p>Hola ${String(customerName||"").replace(/[&<>"']/g,"")},</p>
-        <p>Registramos correctamente tu <strong>${accepted?"aceptación":"rechazo"}</strong> del presupuesto <strong>${String(quoteNumber||"").replace(/[&<>"']/g,"")}</strong>.</p>
-        <p>Fecha: ${new Date().toLocaleString("es-AR")}</p>
-        <p>Este correo es una constancia de la operación registrada.</p>
-      </div>`
+      subject: (decision==="aceptado"?"Aceptación":"Rechazo") + " de presupuesto " + quoteNumber + " - JR Electricidad",
+      template: "quote_decision",
+      data: { customerName, quoteNumber, decision }
     });
     return true;
   } catch(error) {
-    logError("No se pudo enviar confirmación de aceptación",{requestId:null,error:error.message,quoteNumber});
+    logError("No se pudo encolar confirmación de aceptación", {
+      requestId:null,
+      error:error.message,
+      quoteNumber
+    });
     return false;
   }
 }
