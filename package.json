@@ -35,7 +35,8 @@
     "migration:v1-v2": "node scripts/migrate-v1-to-v2.js --yes",
     "migration:v1-v2:dry-run": "node scripts/migrate-v1-to-v2.js --dry-run",
     "test:v2-migration": "node scripts/check-v2-migration.js",
-    "test:v3-foundation": "node scripts/check-v3-foundation.js"
+    "test:v3-foundation": "node scripts/check-v3-foundation.js",
+    "test:v3-public": "node scripts/check-v3-public.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
