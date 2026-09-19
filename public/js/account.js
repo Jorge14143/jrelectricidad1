@@ -14,7 +14,7 @@ function accountStatus(value) {
 }
 function accountEscape(value) {
   return String(value ?? "").replace(/[&<>"']/g, function(c) {
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 function accountEl(id) {
