@@ -44,6 +44,7 @@ async function loadUser() {
           <div class="user-dropdown-line"></div>
 
           <a href="/">🏠 Inicio</a>
+          <a href="/portal.html">⚡ Portal de cliente</a>
           <a href="/cuenta.html">👤 Mi cuenta</a>
           ${user.role === "admin" ? '<a href="/admin">⚙️ Panel de administración</a>' : ""}
           <button id="logout-btn" type="button">🚪 Cerrar sesión</button>
