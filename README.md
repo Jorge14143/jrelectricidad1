@@ -50,3 +50,20 @@ Sitio web para **JR Electricidad | Electricista Matriculado Cat. 3**, desarrolla
 ## Seguridad
 
 El proyecto incluye sesiones MySQL, bcrypt, Helmet, rate limiting, validación de uploads, tokens de acceso para presupuestos y controles de autorización para las rutas administrativas.
+
+## Migración V1 → V2
+
+Antes de migrar una base V1 existente:
+
+- Ejecutar `npm run migration:v1-v2:dry-run`.
+- Revisar las tablas detectadas y las migraciones pendientes.
+- Ejecutar `npm run migration:v1-v2` sólo sobre una copia/backup verificable de la base.
+- El proceso crea un backup obligatorio antes de modificar el esquema.
+- La ejecución queda registrada en `v2_migration_runs`.
+- La verificación compara los conteos de las tablas de negocio y valida las estructuras V2 principales.
+
+Para revisar la implementación de la fase:
+
+`npm run test:v2-migration`
+
+La migración real de una base de producción no se considera ejecutada hasta realizarla sobre la instancia MySQL correspondiente y comprobar su reporte.
