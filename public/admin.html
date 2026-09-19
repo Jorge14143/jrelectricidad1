@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/css/notifications-v3.css">
   <link rel="stylesheet" href="/css/configuration-v3.css">
   <link rel="stylesheet" href="/css/security-v3.css">
+  <link rel="stylesheet" href="/css/automation-v3.css">
 </head>
 
 <body class="admin-page">
@@ -2665,6 +2666,22 @@
  </div>
 </section>
 
+<!-- AUTOMATIZACIONES V3 -->
+<section class="admin-section" id="automationV3Section">
+ <div class="admin-section-header"><div><span class="admin-section-eyebrow">AUTOMATIZACIONES</span><h2>Automatizaciones V3</h2><p>Reglas para presupuestos, trabajos, pagos y recordatorios.</p></div></div>
+ <div class="automation-v3-grid">
+  <div class="automation-v3-card automation-v3-full"><h3>⚙️ Nueva regla</h3><form id="automationV3Form" class="automation-v3-form">
+   <input id="automationName" placeholder="Nombre de la regla" required>
+   <select id="automationEvent"><option value="quote_accepted">Presupuesto aceptado</option><option value="quote_rejected">Presupuesto rechazado</option><option value="job_started">Trabajo iniciado</option><option value="job_closed">Trabajo cerrado</option><option value="payment_received">Pago recibido</option><option value="quote_expiring">Presupuesto por vencer</option><option value="invoice_overdue">Factura vencida</option></select>
+   <select id="automationAction"><option value="notification">Notificación interna</option><option value="email">Email</option><option value="whatsapp">WhatsApp (preparar)</option></select>
+   <input id="automationDelay" type="number" min="0" max="10080" value="0" placeholder="Demora (minutos)">
+   <button class="btn" type="submit">Agregar regla</button>
+  </form></div>
+  <div class="automation-v3-card automation-v3-full"><h3>📋 Reglas activas</h3><div style="overflow:auto"><table class="automation-v3-table"><thead><tr><th>Nombre</th><th>Evento</th><th>Acción</th><th>Demora</th><th>Estado</th><th></th></tr></thead><tbody id="automationRulesList"></tbody></table></div></div>
+  <div class="automation-v3-card automation-v3-full"><h3>🕒 Historial</h3><div style="overflow:auto"><table class="automation-v3-table"><thead><tr><th>Fecha</th><th>Regla</th><th>Evento</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody id="automationLogsList"></tbody></table></div></div>
+ </div>
+</section>
+
 <!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
@@ -2933,6 +2950,7 @@
 <script src="/js/admin-notifications-v3.js"></script>
 <script src="/js/admin-configuration-v3.js"></script>
 <script src="/js/admin-security-v3.js"></script>
+<script src="/js/admin-automation-v3.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
