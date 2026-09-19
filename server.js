@@ -1031,14 +1031,6 @@ app.put(
 
       try {
         await sendEmailChangeConfirmation(userId, newEmail);
-
-        // Aviso adicional al correo actual. No contiene enlaces de cambio.
-        await sendAccountMail({
-          to: rows[0].email,
-          subject: "Solicitud de cambio de correo - JR Electricidad",
-          title: "Se solicitó un cambio de correo",
-          text: `Se solicitó cambiar el correo de tu cuenta a ${newEmail}. El cambio solo se aplicará después de confirmar la nueva dirección. Si no fuiste vos, iniciá sesión y cambiá tu contraseña.`
-        });
       } catch (mailError) {
         await pool.query(
           "UPDATE users SET pending_email=NULL WHERE id=? AND pending_email=?",
@@ -1054,6 +1046,23 @@ app.put(
           error: mailError.message
         });
         return res.status(503).json({ error: "No se pudo enviar el correo de confirmación." });
+      }
+
+      // El aviso al correo actual es complementario: si falla, no invalida
+      // una solicitud que ya fue enviada correctamente al nuevo correo.
+      try {
+        await sendAccountMail({
+          to: rows[0].email,
+          subject: "Solicitud de cambio de correo - JR Electricidad",
+          title: "Se solicitó un cambio de correo",
+          text: `Se solicitó cambiar el correo de tu cuenta a ${newEmail}. El cambio solo se aplicará después de confirmar la nueva dirección. Si no fuiste vos, iniciá sesión y cambiá tu contraseña.`
+        });
+      } catch (mailError) {
+        logError("No se pudo enviar aviso al correo actual", {
+          requestId: req.requestId,
+          userId,
+          error: mailError.message
+        });
       }
 
       await writeAudit(req, "email_change_requested", "user", userId, { pendingEmail: true });
