@@ -12,6 +12,19 @@ function registerWhatsappRoutes({ app, pool, requireAdmin }) {
     return String(body||"").replace(/\{([a-zA-Z0-9_]+)\}/g,(_,k)=>String(vars[k]??""));
   }
 
+  app.locals.prepareWhatsappMessage = async (data) => {
+    const phone=normalizePhone(data.phone), name=String(data.recipient_name||"").trim(), eventKey=String(data.event_key||"general").trim();
+    const vars=data.variables&&typeof data.variables==="object"?data.variables:{};
+    if(!phone||phone.length<10) throw new Error("Número de WhatsApp inválido.");
+    let template=null;
+    if(data.template_id){const [t]=await pool.query("SELECT * FROM whatsapp_templates WHERE id=? AND active=1 LIMIT 1",[Number(data.template_id)]);template=t[0]||null;}
+    else {const [t]=await pool.query("SELECT * FROM whatsapp_templates WHERE event_key=? AND active=1 ORDER BY id LIMIT 1",[eventKey]);template=t[0]||null;}
+    const text=applyTemplate(template?.body||String(data.message||""),{cliente:name,...vars});
+    if(!text.trim()) throw new Error("El mensaje no puede estar vacío.");
+    const [r]=await pool.query("INSERT INTO whatsapp_messages(template_id,event_key,recipient_name,recipient_phone,message_text,target_type,target_id) VALUES(?,?,?,?,?,?,?)",[template?.id||null,eventKey,name,phone,text,String(data.target_type||""),data.target_id?Number(data.target_id):null]);
+    return {id:r.insertId,url:"https://wa.me/"+phone+"?text="+encodeURIComponent(text),message:text,phone};
+  };
+
   app.get("/api/admin/whatsapp/templates",...admin,async(req,res)=>{
     try{const [rows]=await pool.query("SELECT * FROM whatsapp_templates ORDER BY event_key,name");res.json(rows);}
     catch(e){console.error(e);res.status(500).json({error:"No se pudieron cargar las plantillas."});}
