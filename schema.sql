@@ -492,3 +492,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   KEY idx_whatsapp_messages_target (target_type,target_id),
   KEY idx_whatsapp_messages_phone (recipient_phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- JR ELECTRICIDAD V3 — RESEÑAS REALES DE CLIENTES
+CREATE TABLE IF NOT EXISTS `customer_reviews` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `quote_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `rating` tinyint unsigned NOT NULL,
+  `comment` varchar(1000) NOT NULL,
+  `status` enum('approved','hidden') NOT NULL DEFAULT 'approved',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_customer_review_quote` (`quote_id`),
+  KEY `idx_customer_review_user` (`user_id`),
+  KEY `idx_customer_review_status_created` (`status`,`created_at`),
+  CONSTRAINT `fk_customer_review_quote` FOREIGN KEY (`quote_id`) REFERENCES `quotes`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_customer_review_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
