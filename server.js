@@ -17,6 +17,7 @@ const registerFinanceRoutes = require("./finance-routes");
 const registerMaterialRoutes = require("./materials-routes");
 const registerWhatsappRoutes = require("./whatsapp-routes");
 const registerEmailRoutes = require("./email-routes");
+const registerSignatureRoutes = require("./signature-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -335,6 +336,7 @@ registerFinanceRoutes({ app, pool, requireAdmin });
 registerMaterialRoutes({ app, pool, requireAdmin });
 registerWhatsappRoutes({ app, pool, requireAdmin });
 registerEmailRoutes({ app, pool, requireAdmin });
+registerSignatureRoutes({ app, pool, requireAdmin, requireAuth });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
