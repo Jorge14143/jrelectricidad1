@@ -17,6 +17,8 @@ assert(/attempts/.test(migration)&&/next_attempt_at/.test(migration),"falta rein
 assert(/provider_message_id/.test(migration),"falta ID del proveedor");
 assert(/configureEmailService/.test(server),"servicio central no inicializado");
 assert(/queueEmail/.test(server),"server no usa cola de email");
+assert(/\/api\/admin\/email\/status/.test(server),"falta estado administrativo del email");
+assert(/\/api\/admin\/email\/outbox/.test(server),"falta consulta de outbox");
 for(const template of ["password_reset","generic_account","quote_sent","quote_decision"]){
   assert(service.includes('case "'+template+'"'),"falta template "+template);
 }
