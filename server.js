@@ -785,7 +785,7 @@ app.put(
 
 
       await invalidateUserSessions(req.session.user.id, req.sessionID);
-
+      await writeAudit(req, "password_changed", "user", req.session.user.id);
 
       res.json({
 
@@ -1024,9 +1024,30 @@ app.put(
         [userId]
       );
 
+      await pool.query(
+        "UPDATE users SET pending_email=? WHERE id=?",
+        [newEmail, userId]
+      );
+
       try {
         await sendEmailChangeConfirmation(userId, newEmail);
+
+        // Aviso adicional al correo actual. No contiene enlaces de cambio.
+        await sendAccountMail({
+          to: rows[0].email,
+          subject: "Solicitud de cambio de correo - JR Electricidad",
+          title: "Se solicitó un cambio de correo",
+          text: `Se solicitó cambiar el correo de tu cuenta a ${newEmail}. El cambio solo se aplicará después de confirmar la nueva dirección. Si no fuiste vos, iniciá sesión y cambiá tu contraseña.`
+        });
       } catch (mailError) {
+        await pool.query(
+          "UPDATE users SET pending_email=NULL WHERE id=? AND pending_email=?",
+          [userId, newEmail]
+        );
+        await pool.query(
+          "DELETE FROM account_email_tokens WHERE user_id=? AND purpose='change'",
+          [userId]
+        );
         logError("No se pudo enviar confirmación de cambio de email", {
           requestId: req.requestId,
           userId,
@@ -1035,12 +1056,7 @@ app.put(
         return res.status(503).json({ error: "No se pudo enviar el correo de confirmación." });
       }
 
-      await pool.query(
-        "UPDATE users SET pending_email=? WHERE id=?",
-        [newEmail, userId]
-      );
-
-      await writeAudit(req, "email_change_requested", "user", userId, { newEmail });
+      await writeAudit(req, "email_change_requested", "user", userId, { pendingEmail: true });
       res.json({
         success: true,
         pending: true,
