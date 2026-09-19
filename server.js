@@ -4460,8 +4460,6 @@ app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
 
       if (status === "en_proceso" && app.locals.runAutomation) app.locals.runAutomation("job_started", {type:"job",id:jobId,quote_id:job.quote_id,message:"Se inició el trabajo asociado al presupuesto #"+job.quote_id+"."}).catch(console.error);
 
-      if (status === "cerrado" && app.locals.runAutomation) app.locals.runAutomation("job_closed", {type:"job",id:jobId,quote_id:job.quote_id,message:"Se cerró el trabajo asociado al presupuesto #"+job.quote_id+"."}).catch(console.error);
-
       return res.json({
         success: true,
         status: "en_proceso",
@@ -4499,6 +4497,8 @@ app.put("/api/admin/jobs/:id/status", requireAdmin, async (req, res) => {
         `,
         [job.quote_id, "Se cerró el trabajo asociado al presupuesto #" + job.quote_id + "."]
       );
+
+      if (app.locals.runAutomation) app.locals.runAutomation("job_closed", {type:"job",id:jobId,quote_id:job.quote_id,message:"Se cerró el trabajo asociado al presupuesto #"+job.quote_id+"."}).catch(console.error);
 
       return res.json({
         success: true,
