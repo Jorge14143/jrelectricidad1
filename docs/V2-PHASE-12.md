@@ -17,6 +17,8 @@
 - Verificación/cambio de correo y cuenta.
 - Envío de presupuesto.
 - Confirmación de aceptación/rechazo de presupuesto.
+- Confirmación de solicitud recibida y cambios de estado.
+- Actualizaciones de trabajos, programación, inicio y finalización.
 
 ## Seguridad
 - No se almacenan contraseñas SMTP en MySQL.
