@@ -14,6 +14,7 @@ const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
+const { createV3Router } = require("./lib/v3");
 const { runMigrations } = require("./lib/migrations");
 const { configureEmailService, queueEmail } = require("./lib/email");
 const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");
@@ -210,6 +211,9 @@ const pool = mysql.createPool({
 
 configureEmailService(pool);
 configureWhatsAppService(pool);
+
+// V3 — API versionada y base de compatibilidad
+app.use("/api/v3", createV3Router(express, pool));
 
 
 // =========================================================
