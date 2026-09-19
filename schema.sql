@@ -202,6 +202,58 @@ CREATE TABLE `quotes` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- JR ELECTRICIDAD V3 — FINANZAS DE SERVICIOS
+-- Sin venta de materiales.
+--
+
+CREATE TABLE IF NOT EXISTS `service_invoices` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `quote_id` int NOT NULL,
+  `invoice_number` varchar(40) NOT NULL,
+  `issue_date` date NOT NULL,
+  `due_date` date DEFAULT NULL,
+  `total` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `status` enum('emitida','parcial','pagada','vencida','anulada') NOT NULL DEFAULT 'emitida',
+  `notes` text,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_service_invoice_quote` (`quote_id`),
+  UNIQUE KEY `uq_service_invoice_number` (`invoice_number`),
+  KEY `idx_service_invoice_date` (`issue_date`),
+  KEY `idx_service_invoice_status` (`status`),
+  CONSTRAINT `fk_service_invoice_quote` FOREIGN KEY (`quote_id`) REFERENCES `quotes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `service_payments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `invoice_id` bigint unsigned NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `payment_date` date NOT NULL,
+  `method` enum('efectivo','transferencia','tarjeta','otro') NOT NULL DEFAULT 'otro',
+  `reference` varchar(150) DEFAULT NULL,
+  `notes` varchar(1000) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_service_payment_invoice` (`invoice_id`),
+  KEY `idx_service_payment_date` (`payment_date`),
+  CONSTRAINT `fk_service_payment_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `service_invoices` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `business_expenses` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `expense_date` date NOT NULL,
+  `category` varchar(100) NOT NULL DEFAULT 'general',
+  `description` varchar(500) NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `notes` varchar(1000) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_business_expense_date` (`expense_date`),
+  KEY `idx_business_expense_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
 -- Table structure for table `services`
 --
 
