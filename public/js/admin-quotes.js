@@ -189,6 +189,8 @@ async function loadQuotes() {
                       >
                         📄 PDF
                       </button>
+                      <button type="button" class="btn tiny" onclick="changeQuoteStatus(${quoteId},'enviado')" title="Enviar al cliente">📤 Enviar</button>
+                      <button type="button" class="btn tiny" onclick="deleteQuote(${quoteId})" title="Eliminar si está en borrador">🗑 Eliminar</button>
 
                       ${
                         hasPhone && quote.access_token
@@ -254,6 +256,48 @@ async function loadQuotes() {
     `;
   }
 }
+// =========================================================
+// GESTIÓN AVANZADA DE PRESUPUESTOS
+// =========================================================
+
+async function changeQuoteStatus(id, status) {
+  const labels = {
+    enviado: "enviar al cliente",
+    aceptado: "marcar como aceptado",
+    rechazado: "marcar como rechazado",
+    vencido: "marcar como vencido",
+    cerrado: "cerrar"
+  };
+
+  if (!confirm("¿Querés " + (labels[status] || "cambiar el estado de este presupuesto") + "?")) return;
+
+  try {
+    const result = await api("/api/admin/quotes/" + id + "/status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+
+    alert(result.message || "Estado actualizado correctamente.");
+    await loadQuotes();
+    await loadQuoteRequests();
+  } catch (error) {
+    alert("No se pudo cambiar el estado: " + error.message);
+  }
+}
+
+async function deleteQuote(id) {
+  if (!confirm("¿Eliminar este presupuesto en borrador? Esta acción no se puede deshacer.")) return;
+
+  try {
+    await api("/api/admin/quotes/" + id, { method: "DELETE" });
+    alert("Presupuesto eliminado.");
+    await loadQuotes();
+  } catch (error) {
+    alert("No se pudo eliminar: " + error.message);
+  }
+}
+
 // =========================================================
 // ACCIONES DE PRESUPUESTOS
 // =========================================================
