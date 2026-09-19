@@ -6,6 +6,7 @@ ALTER TABLE v3_appointments
   ADD COLUMN IF NOT EXISTS client_id BIGINT UNSIGNED NULL AFTER user_id,
   ADD COLUMN IF NOT EXISTS cancellation_reason VARCHAR(500) NULL AFTER cancelled_at,
   ADD COLUMN IF NOT EXISTS confirmed_at DATETIME NULL AFTER status,
+  ADD COLUMN IF NOT EXISTS cancelled_at DATETIME NULL AFTER confirmed_at,
   ADD COLUMN IF NOT EXISTS completed_at DATETIME NULL AFTER confirmed_at,
   ADD COLUMN IF NOT EXISTS reminder_sent_at DATETIME NULL AFTER completed_at,
   ADD COLUMN IF NOT EXISTS admin_notes VARCHAR(1000) NULL AFTER notes,
