@@ -2426,6 +2426,17 @@ app.post("/api/admin/gallery", requireAdmin, adminMutationLimiter, upload.single
       [title,description,imageUrl,altText,category,active,featured,sortOrder,clientId,jobId,quoteId]
     );
     await writeAudit(req,"gallery_created","gallery",result.insertId,{category,featured,jobId,quoteId,clientId});
+    if (active) {
+      await createAdminNotification({
+        type: "gallery_published",
+        message: `La galería publicó "${title}".`,
+        entityType: "gallery",
+        entityId: result.insertId,
+        quoteId,
+        linkUrl: "/admin.html#gallerySection",
+        priority: featured ? "high" : "normal"
+      }).catch(() => {});
+    }
     res.status(201).json({ok:true,message:"Trabajo agregado correctamente.",id:result.insertId,image_url:imageUrl});
   } catch(error) {
     if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});
@@ -2467,6 +2478,17 @@ app.put("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, uplo
     );
     if(req.file&&existing.image_url!==imageUrl&&!existing.source_job_attachment_id)await deleteGalleryFile(existing.image_url);
     await writeAudit(req,"gallery_updated","gallery",id,{category,featured,jobId,quoteId,clientId});
+    if (!Number(existing.active) && active) {
+      await createAdminNotification({
+        type: "gallery_published",
+        message: `La galería publicó "${title}".`,
+        entityType: "gallery",
+        entityId: id,
+        quoteId,
+        linkUrl: "/admin.html#gallerySection",
+        priority: featured ? "high" : "normal"
+      }).catch(() => {});
+    }
     res.json({ok:true,message:"Trabajo actualizado correctamente."});
   }catch(error){
     if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});
@@ -2546,6 +2568,17 @@ app.post("/api/admin/gallery/from-job-attachment/:attachmentId(\\d+)", requireAd
       [title,description,attachment.url,altText,category,active,featured,Number(orderRow.next_order||1),attachment.client_id||null,attachment.job_id,attachment.quote_id,attachmentId]
     );
     await writeAudit(req,"gallery_promoted_from_job_attachment","gallery",result.insertId,{attachmentId,jobId:attachment.job_id});
+    if (active) {
+      await createAdminNotification({
+        type: "gallery_published",
+        message: `La evidencia del trabajo #${attachment.job_id} fue publicada en la galería.`,
+        entityType: "gallery",
+        entityId: result.insertId,
+        quoteId: attachment.quote_id,
+        linkUrl: "/admin.html#gallerySection",
+        priority: featured ? "high" : "normal"
+      }).catch(() => {});
+    }
     res.status(201).json({ok:true,id:result.insertId,message:"La evidencia fue publicada en la galería."});
   }catch(error){
     logError("Error promocionando evidencia a galería",{requestId:req.requestId,error:error.message});
