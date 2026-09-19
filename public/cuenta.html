@@ -1,238 +1,170 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  >
-
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Mi cuenta | JR Electricidad</title>
-
-  <link
-    rel="stylesheet"
-    href="/css/style.css"
-  >
-
-  <link
-    rel="stylesheet"
-    href="/css/account.css"
-  >
-
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/account.css">
 </head>
-
-
 <body>
-
-
 <header class="nav">
-
-  <a class="logo" href="/">
-    ⚡ JR <span>ELECTRICIDAD</span>
-  </a>
-
+  <a class="logo" href="/">⚡ JR <span>ELECTRICIDAD</span></a>
   <nav>
-
-    <a href="/">
-      Inicio
-    </a>
-
-    <a href="/#servicios">
-      Servicios
-    </a>
-
-    <a href="/#nosotros">
-      Nosotros
-    </a>
-
-    <a href="/#contacto">
-      Contacto
-    </a>
-
+    <a href="/">Inicio</a>
+    <a href="/#servicios">Servicios</a>
+    <a href="/#nosotros">Nosotros</a>
+    <a href="/#contacto">Contacto</a>
   </nav>
-
 </header>
 
-
-
 <main class="account-page">
-
   <section class="account-card">
-
-    <div class="account-icon">👤</div>
-    <div class="eyebrow">MI CUENTA</div>
-    <h1 id="account-welcome-title">Mi cuenta</h1>
-    <p class="account-description">Consultá tus datos, solicitudes, presupuestos, trabajos y facturación desde un solo lugar.</p>
+    <div class="account-top">
+      <div>
+        <div class="account-kicker">MI CUENTA</div>
+        <h1 id="account-welcome-title">Mi cuenta</h1>
+        <p class="account-description">Tu servicio, documentos e historial en un solo lugar.</p>
+      </div>
+      <div class="account-avatar" aria-hidden="true">👤</div>
+    </div>
 
     <div id="account-message" class="account-message">Cargando información...</div>
 
     <div id="account-data" class="account-data" style="display:none;">
+      <div class="account-layout">
 
-      <section class="account-dashboard">
+        <aside class="account-profile">
+          <div class="profile-avatar" id="profile-avatar">J</div>
+          <h2 id="profile-card-name">Cliente</h2>
+          <p>Cliente de JR Electricidad</p>
 
-        <div class="account-welcome">
-          <div>
-            <div class="account-section-kicker">RESUMEN DE CLIENTE</div>
-            <h2>Hola, <span id="account-welcome-name">cliente</span> 👋</h2>
-            <p>Acá podés seguir el estado de tus solicitudes y trabajos.</p>
-          </div>
+          <nav class="account-menu" aria-label="Secciones de la cuenta">
+            <a class="active" href="#servicio">Resumen</a>
+            <a href="#solicitudes">Solicitudes</a>
+            <a href="#presupuestos">Presupuestos</a>
+            <a href="#trabajos">Trabajos</a>
+            <a href="#facturacion">Facturación</a>
+            <a href="#configuracion">Configuración</a>
+          </nav>
+        </aside>
+
+        <div class="account-main">
+
+          <section class="account-current" id="servicio">
+            <div class="account-section-kicker">SEGUIMIENTO DEL SERVICIO</div>
+            <h2>Seguimiento de tu servicio</h2>
+            <p class="section-description">El estado de tus solicitudes y trabajos aparecerá acá a medida que avances.</p>
+
+            <div class="service-progress">
+              <div class="progress-stage"><span class="progress-node">1</span><strong>Solicitud</strong><small>Recibida</small></div>
+              <div class="progress-stage"><span class="progress-node">2</span><strong>Presupuesto</strong><small>Emitido</small></div>
+              <div class="progress-stage"><span class="progress-node">3</span><strong>Trabajo</strong><small>Programado</small></div>
+              <div class="progress-stage"><span class="progress-node">4</span><strong>Finalizado</strong><small>Historial</small></div>
+            </div>
+
+            <div class="next-step">
+              <strong>Próximo paso</strong>
+              <span id="account-next-step">Cuando tengas una solicitud, su avance se mostrará acá.</span>
+            </div>
+          </section>
+
+          <section class="account-documents">
+            <a class="account-document" href="#solicitudes">
+              <span class="document-icon">⌁</span>
+              <span><strong>Solicitudes</strong><small>Pedidos enviados e historial</small></span>
+              <span class="document-count" id="doc-count-requests">—</span>
+            </a>
+            <a class="account-document" href="#presupuestos">
+              <span class="document-icon">▤</span>
+              <span><strong>Presupuestos</strong><small>Emitidos, aceptados o vencidos</small></span>
+              <span class="document-count" id="doc-count-quotes">—</span>
+            </a>
+            <a class="account-document" href="#trabajos">
+              <span class="document-icon">✓</span>
+              <span><strong>Trabajos</strong><small>Activos y finalizados</small></span>
+              <span class="document-count" id="doc-count-jobs">—</span>
+            </a>
+            <a class="account-document" href="#facturacion">
+              <span class="document-icon">$</span>
+              <span><strong>Facturación</strong><small>Facturas y pagos registrados</small></span>
+              <span class="document-count" id="doc-count-invoices">—</span>
+            </a>
+          </section>
+
+          <section class="account-history" id="solicitudes">
+            <div class="section-heading">
+              <div><div class="account-section-kicker">SOLICITUDES</div><h3>Historial de solicitudes</h3></div>
+            </div>
+            <div id="account-requests-list" class="account-list"></div>
+          </section>
+
+          <section class="account-history" id="presupuestos">
+            <div class="section-heading">
+              <div><div class="account-section-kicker">PRESUPUESTOS</div><h3>Presupuestos emitidos</h3></div>
+            </div>
+            <div id="account-quotes-list" class="account-list"></div>
+          </section>
+
+          <section class="account-history" id="trabajos">
+            <div class="section-heading">
+              <div><div class="account-section-kicker">TRABAJOS</div><h3>Trabajos realizados</h3></div>
+            </div>
+            <div id="account-jobs-list" class="account-list"></div>
+          </section>
+
+          <section class="account-history" id="facturacion">
+            <div class="section-heading">
+              <div><div class="account-section-kicker">FACTURACIÓN</div><h3>Facturas y pagos</h3></div>
+            </div>
+            <div id="account-invoices-list" class="account-list"></div>
+          </section>
+
+          <section class="account-history">
+            <div class="section-heading">
+              <div><div class="account-section-kicker">RESEÑAS</div><h3>Mis reseñas</h3></div>
+            </div>
+            <div id="account-reviews-list" class="account-list"></div>
+          </section>
+
+          <section class="account-settings" id="configuracion">
+            <div class="account-section-title">INFORMACIÓN DE LA CUENTA</div>
+
+            <div class="account-fields">
+              <div class="account-field"><span>👤</span><div><small>Nombre</small><strong id="account-name"></strong></div></div>
+              <div class="account-field"><span>✉️</span><div><small>Email</small><strong id="account-email"></strong></div></div>
+              <div class="account-field"><span>🔐</span><div><small>Tipo de cuenta</small><strong id="account-role"></strong></div></div>
+            </div>
+
+            <div class="account-section-title">DATOS PERSONALES</div>
+            <form id="profile-form" class="account-form">
+              <label>Nombre<input id="profile-name" type="text" maxlength="150" autocomplete="name" required></label>
+              <label>Email<input id="profile-email" type="email" maxlength="190" autocomplete="email" required></label>
+              <button class="btn" type="submit">💾 Guardar datos</button>
+              <div id="profile-message" class="account-form-message"></div>
+            </form>
+
+            <div class="account-section-title">CAMBIAR CONTRASEÑA</div>
+            <form id="password-form" class="account-form">
+              <label>Contraseña actual<input id="current-password" type="password" autocomplete="current-password" required></label>
+              <label>Nueva contraseña<input id="new-password" type="password" minlength="8" autocomplete="new-password" required></label>
+              <label>Repetir nueva contraseña<input id="confirm-password" type="password" minlength="8" autocomplete="new-password" required></label>
+              <button class="btn" type="submit">🔐 Cambiar contraseña</button>
+            </form>
+            <div id="password-message" class="account-form-message"></div>
+
+            <div class="account-actions">
+              <a class="btn ghost" href="/">← Volver al inicio</a>
+              <a id="admin-link" class="btn" href="/admin" style="display:none;">⚙️ Panel</a>
+            </div>
+          </section>
         </div>
-
-        <div class="account-stats">
-          <div class="account-stat">
-            <span>📋</span>
-            <small>Solicitudes</small>
-            <strong id="stat-requests">0</strong>
-          </div>
-          <div class="account-stat">
-            <span>💰</span>
-            <small>Presupuestos</small>
-            <strong id="stat-quotes">0</strong>
-          </div>
-          <div class="account-stat">
-            <span>🔧</span>
-            <small>Trabajos activos</small>
-            <strong id="stat-active-jobs">0</strong>
-          </div>
-          <div class="account-stat">
-            <span>💵</span>
-            <small>Saldo pendiente</small>
-            <strong id="stat-balance">$0</strong>
-          </div>
-        </div>
-
-        <section class="account-history-section">
-          <div class="account-history-heading">
-            <div>
-              <div class="account-section-kicker">SOLICITUDES</div>
-              <h2>Mis solicitudes</h2>
-            </div>
-          </div>
-          <div id="account-requests-list" class="account-list"></div>
-        </section>
-
-        <section class="account-history-section">
-          <div class="account-history-heading">
-            <div>
-              <div class="account-section-kicker">PRESUPUESTOS</div>
-              <h2>Mis presupuestos</h2>
-            </div>
-          </div>
-          <div id="account-quotes-list" class="account-list"></div>
-        </section>
-
-        <section class="account-history-section">
-          <div class="account-history-heading">
-            <div>
-              <div class="account-section-kicker">TRABAJOS</div>
-              <h2>Mis trabajos</h2>
-            </div>
-          </div>
-          <div id="account-jobs-list" class="account-list"></div>
-        </section>
-
-        <section class="account-history-section">
-          <div class="account-history-heading">
-            <div>
-              <div class="account-section-kicker">FACTURACIÓN</div>
-              <h2>Mis facturas</h2>
-            </div>
-          </div>
-          <div id="account-invoices-list" class="account-list"></div>
-        </section>
-
-        <section class="account-history-section">
-          <div class="account-history-heading">
-            <div>
-              <div class="account-section-kicker">RESEÑAS</div>
-              <h2>Mis reseñas</h2>
-            </div>
-          </div>
-          <div id="account-reviews-list" class="account-list"></div>
-        </section>
-
-      </section>
-
-      <div class="account-section-title">INFORMACIÓN DE LA CUENTA</div>
-
-      <div class="account-field">
-        <span>👤</span>
-        <div><small>Nombre</small><strong id="account-name"></strong></div>
       </div>
-
-      <div class="account-field">
-        <span>✉️</span>
-        <div><small>Email</small><strong id="account-email"></strong></div>
-      </div>
-
-      <div class="account-field">
-        <span>🔐</span>
-        <div><small>Tipo de cuenta</small><strong id="account-role"></strong></div>
-      </div>
-
-      <div class="account-section-title">DATOS PERSONALES</div>
-
-      <form id="profile-form" class="account-form">
-        <label>
-          Nombre
-          <input id="profile-name" type="text" maxlength="150" autocomplete="name" required>
-        </label>
-        <label>
-          Email
-          <input id="profile-email" type="email" maxlength="190" autocomplete="email" required>
-        </label>
-        <button class="btn" type="submit">💾 Guardar datos</button>
-        <div id="profile-message" class="account-form-message"></div>
-      </form>
-
-      <div class="account-section-title">CAMBIAR CONTRASEÑA</div>
-
-      <form id="password-form" class="account-form">
-        <label>
-          Contraseña actual
-          <input id="current-password" type="password" placeholder="Contraseña actual" autocomplete="current-password" required>
-        </label>
-        <label>
-          Nueva contraseña
-          <input id="new-password" type="password" placeholder="Mínimo 8 caracteres" minlength="8" autocomplete="new-password" required>
-        </label>
-        <label>
-          Repetir nueva contraseña
-          <input id="confirm-password" type="password" placeholder="Repetí la nueva contraseña" minlength="8" autocomplete="new-password" required>
-        </label>
-        <button class="btn" type="submit">🔐 Cambiar contraseña</button>
-      </form>
-
-      <div id="password-message" class="account-form-message"></div>
-
-      <div class="account-section-title">ACCIONES</div>
-
-      <div class="account-actions">
-        <a class="btn ghost" href="/">← Volver al inicio</a>
-        <a id="admin-link" class="btn" href="/admin" style="display:none;">⚙️ Panel</a>
-      </div>
-
     </div>
   </section>
 </main>
 
-
-
-<footer>
-
-  © 2026 JR Electricidad ·
-  Electricista Matriculado Cat. 3
-
-</footer>
-
-
-
+<footer>© 2026 JR Electricidad · Electricista Matriculado Cat. 3</footer>
 <script src="/js/account.js"></script>
-
-
 </body>
-
 </html>
