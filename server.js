@@ -1314,6 +1314,8 @@ app.put(
         legal_name: String(req.body.legal_name || "").trim(),
         phone: String(req.body.phone || "").trim(),
         whatsapp: String(req.body.whatsapp || "").trim(),
+        whatsapp_enabled: Boolean(req.body.whatsapp_enabled),
+        whatsapp_auto_notifications: Boolean(req.body.whatsapp_auto_notifications),
         email: String(req.body.email || "").trim().toLowerCase(),
         address: String(req.body.address || "").trim(),
         city: String(req.body.city || "").trim(),
@@ -1364,6 +1366,7 @@ app.put(
         `
         UPDATE business_settings
         SET business_name=?, legal_name=?, phone=?, whatsapp=?,
+            whatsapp_enabled=?, whatsapp_auto_notifications=?,
             email=?, address=?, city=?, hours=?, logo_url=?,
             pdf_footer=?, pdf_notes=?
         WHERE id=1
@@ -1373,6 +1376,8 @@ app.put(
           fields.legal_name,
           fields.phone,
           fields.whatsapp,
+          fields.whatsapp_enabled ? 1 : 0,
+          fields.whatsapp_auto_notifications ? 1 : 0,
           fields.email,
           fields.address,
           fields.city,
@@ -8213,6 +8218,26 @@ app.get("/api/admin/whatsapp/outbox", requireAdmin, async (req,res) => {
   } catch(error) {
     logError("Error obteniendo outbox de WhatsApp",{requestId:req.requestId,error:error.message});
     res.status(500).json({error:"No se pudo obtener la cola de WhatsApp."});
+  }
+});
+
+app.post("/api/admin/whatsapp/send", requireAdmin, adminMutationLimiter, async (req,res) => {
+  try {
+    const phone=String(req.body.phone||"").trim();
+    const message=String(req.body.message||"").trim();
+    if(!phone || !message) return res.status(400).json({error:"Teléfono y mensaje son obligatorios."});
+    const result=await queueWhatsApp({
+      to:phone,
+      message,
+      requestId:req.requestId,
+      entityType:String(req.body.entity_type||"manual").slice(0,50),
+      entityId:req.body.entity_id ? Number(req.body.entity_id) : null
+    });
+    await writeAudit(req,"whatsapp_queued","whatsapp",result.id,{phone:result.phone});
+    res.json({success:true,...result});
+  } catch(error) {
+    logError("Error encolando WhatsApp manual",{requestId:req.requestId,error:error.message});
+    res.status(400).json({error:error.message});
   }
 });
 
