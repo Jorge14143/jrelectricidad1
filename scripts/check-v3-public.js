@@ -8,6 +8,7 @@ const required=[
 const missing=required.filter(file=>!fs.existsSync(path.join(root,file)));
 if(missing.length){console.error("❌ Faltan:",missing.join(", "));process.exit(1);}
 const index=fs.readFileSync(path.join(root,"public/index.html"),"utf8");
+const frontend=fs.readFileSync(path.join(root,"public/js/v3-public.js"),"utf8");
 const api=fs.readFileSync(path.join(root,"lib/v3.js"),"utf8");
 const migration=fs.readFileSync(path.join(root,"migrations/017_v3_public.sql"),"utf8");
 const checks=[
