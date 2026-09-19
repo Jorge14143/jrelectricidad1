@@ -58,6 +58,13 @@
       return text;
     }
 
+    function formatDateTime(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString("es-AR");
+    }
+
     /*
       =========================================================
       FORMATO DE DINERO
@@ -282,36 +289,60 @@
         const showActions =
           !finalStatuses.includes(quote.status);
 
-        const actionsHtml = showActions
+        const hasAcceptance = Boolean(quote.acceptance);
+        const showActions =
+          quote.status === "enviado" && !hasAcceptance;
+
+        const actionsHtml = hasAcceptance
           ? `
-            <div id="quoteActions" class="quote-actions">
-
-              <button
-                type="button"
-                class="quote-reject-btn"
-                data-action="reject"
-              >
-                ✕ Rechazar presupuesto
-              </button>
-
-              <button
-                type="button"
-                class="quote-accept-btn"
-                data-action="accept"
-              >
-                ✓ Aceptar presupuesto
-              </button>
-
+            <div class="quote-response success">
+              ✓ Esta propuesta ya fue ${escapeHtml(
+                quote.acceptance.decision === "aceptado"
+                  ? "aceptada"
+                  : "rechazada"
+              )}.
+              <br>
+              Fecha: ${escapeHtml(formatDateTime(quote.acceptance.created_at))}
             </div>
-
-            <div
-              id="quoteResponse"
-              class="quote-response"
-            ></div>
           `
-          : "";
+          : showActions
+            ? `
+              <div id="quoteDecisionForm" class="quote-decision-form">
+                <div class="quote-decision-title">Confirmar tu decisión</div>
 
-        /*
+                <label class="quote-label" for="publicCustomerName">Nombre completo</label>
+                <input id="publicCustomerName" class="quote-input" type="text" maxlength="150" autocomplete="name" required>
+
+                <label class="quote-label" for="publicCustomerEmail">Email</label>
+                <input id="publicCustomerEmail" class="quote-input" type="email" maxlength="190" autocomplete="email" required>
+
+                <label class="quote-label" for="publicCustomerPhone">Teléfono</label>
+                <input id="publicCustomerPhone" class="quote-input" type="tel" maxlength="50" autocomplete="tel" required>
+
+                <label class="quote-label" for="publicSignatureName">Firma digital — escribí tu nombre completo</label>
+                <input id="publicSignatureName" class="quote-input" type="text" maxlength="150" autocomplete="name" required>
+
+                <label class="quote-label" for="publicCustomerNote">Observación (opcional)</label>
+                <textarea id="publicCustomerNote" class="quote-input" maxlength="2000"></textarea>
+
+                <label class="quote-consent">
+                  <input id="publicConsent" type="checkbox">
+                  <span>Declaro que revisé el presupuesto, sus conceptos, importes y condiciones, y autorizo a JR Electricidad a registrar digitalmente mi decisión.</span>
+                </label>
+
+                <div id="quoteActions" class="quote-actions">
+                  <button type="button" class="quote-reject-btn" data-action="reject">✕ Rechazar presupuesto</button>
+                  <button type="button" class="quote-accept-btn" data-action="accept">✓ Aceptar presupuesto</button>
+                </div>
+              </div>
+
+              <div id="quoteResponse" class="quote-response"></div>
+            `
+            : `
+              <div class="quote-response">
+                Este presupuesto no está disponible para una nueva decisión.
+              </div>
+            `;        /*
           =====================================================
           HTML PRINCIPAL
           =====================================================
@@ -481,121 +512,87 @@
                         ${escapeHtml(quote.notes)}
                       </div>
 
-                    </div>
-                  `
-                  : ""
-              }
+                  async function respondQuote(action) {
+      const actionContainer = document.getElementById("quoteActions");
+      const responseBox = document.getElementById("quoteResponse");
 
+      if (!actionContainer || !responseBox) return;
 
-              <div
-                style="
-                  margin-top:24px;
-                  color:#858e9b;
-                  font-size:12px;
-                "
-              >
+      if (!["accept","reject"].includes(action)) return;
 
-                <strong style="color:#b9c0ca;">
-                  Fecha de emisión:
-                </strong>
+      const name = document.getElementById("publicCustomerName")?.value.trim() || "";
+      const email = document.getElementById("publicCustomerEmail")?.value.trim() || "";
+      const phone = document.getElementById("publicCustomerPhone")?.value.trim() || "";
+      const signatureName = document.getElementById("publicSignatureName")?.value.trim() || "";
+      const note = document.getElementById("publicCustomerNote")?.value.trim() || "";
+      const consent = Boolean(document.getElementById("publicConsent")?.checked);
 
-                ${formatDate(quote.issue_date)}
-
-                ${
-                  quote.expiration_date
-                    ? `
-                      &nbsp;&nbsp;|&nbsp;&nbsp;
-
-                      <strong style="color:#b9c0ca;">
-                        Vencimiento:
-                      </strong>
-
-                      ${formatDate(quote.expiration_date)}
-                    `
-                    : ""
-                }
-
-                &nbsp;&nbsp;|&nbsp;&nbsp;
-
-                <strong style="color:#b9c0ca;">
-                  Estado:
-                </strong>
-
-                ${escapeHtml(
-                  getStatusText(quote.status)
-                )}
-
-              </div>
-
-
-              ${actionsHtml}
-
-            </section>
-
-          </div>
-        `;
-
-      } catch (error) {
-
-        console.error(
-          "Error cargando presupuesto:",
-          error
-        );
-
-        quoteContainer.innerHTML = `
-          <div class="quote-card">
-
-            <div class="quote-error">
-
-              <div style="
-                font-size:32px;
-                margin-bottom:12px;
-              ">
-                ⚠
-              </div>
-
-              <div style="
-                font-size:16px;
-                font-weight:800;
-                margin-bottom:8px;
-              ">
-                No se pudo cargar el presupuesto
-              </div>
-
-              <div>
-                ${escapeHtml(error.message)}
-              </div>
-
-            </div>
-
-          </div>
-        `;
-      }
-    }
-
-    /*
-      =========================================================
-      ACEPTAR / RECHAZAR
-      =========================================================
-    */
-
-    async function respondQuote(action) {
-
-      const actionContainer =
-        document.getElementById("quoteActions");
-
-      const responseBox =
-        document.getElementById("quoteResponse");
-
-      if (!actionContainer || !responseBox) {
-        console.error(
-          "No se encontraron los controles del presupuesto."
-        );
-
+      if (!name || !email || !phone || !signatureName) {
+        responseBox.className = "quote-response error";
+        responseBox.textContent = "Completá nombre, email, teléfono y firma digital.";
         return;
       }
 
-      let message = "";
+      if (action === "accept" && !consent) {
+        responseBox.className = "quote-response error";
+        responseBox.textContent = "Para aceptar debés confirmar el consentimiento digital.";
+        return;
+      }
+
+      const confirmed = confirm(
+        action === "accept"
+          ? "¿Querés aceptar este presupuesto y registrar esta decisión digitalmente?"
+          : "¿Querés rechazar este presupuesto y registrar esta decisión digitalmente?"
+      );
+      if (!confirmed) return;
+
+      const buttons = actionContainer.querySelectorAll("button");
+      buttons.forEach(button => { button.disabled = true; });
+      responseBox.className = "quote-response success";
+      responseBox.textContent = action === "accept"
+        ? "Registrando aceptación..."
+        : "Registrando rechazo...";
+
+      try {
+        const response = await fetch(
+          `/api/public/quotes/${encodeURIComponent(token)}/${action}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name,
+              email,
+              phone,
+              signatureName,
+              note,
+              consent
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "No se pudo registrar la decisión.");
+        }
+
+        responseBox.className = "quote-response success";
+        responseBox.textContent =
+          data.message || "Decisión registrada correctamente.";
+
+        actionContainer.style.display = "none";
+        document.querySelector(".quote-decision-form")?.classList.add("completed");
+      } catch (error) {
+        console.error("Error respondiendo presupuesto:", error);
+        responseBox.className = "quote-response error";
+        responseBox.textContent =
+          error.message || "No se pudo registrar la decisión.";
+
+        buttons.forEach(button => { button.disabled = false; });
+      }
+    }
+
+"";
 
       if (action === "accept") {
 
