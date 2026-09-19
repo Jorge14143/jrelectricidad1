@@ -27,7 +27,8 @@
     "test:v2-configuration": "node scripts/check-v2-configuration.js",
     "test:v2-audit": "node scripts/check-v2-audit.js",
     "backup:v2": "node scripts/backup-database.js",
-    "test:v2-backups": "node scripts/check-v2-backups.js"
+    "test:v2-backups": "node scripts/check-v2-backups.js",
+    "test:v2-production": "node scripts/check-v2-production.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
