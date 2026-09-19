@@ -1271,19 +1271,51 @@ app.get(
 // =========================================================
 
 async function ensureNotificationSchema() {
+  // La estructura V2 se instala mediante la migración 010.
   await pool.query("ALTER TABLE admin_notifications MODIFY quote_id INT NULL").catch(error => {
     if (!/Duplicate|already exists/i.test(error.message)) throw error;
   });
-
-  await pool.query(
-    "ALTER TABLE admin_notifications MODIFY type ENUM('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed') NOT NULL"
-  );
 
   await pool.query(
     "ALTER TABLE admin_notifications ADD INDEX idx_notifications_read_created (is_read, created_at)"
   ).catch(error => {
     if (!/Duplicate key name|already exists/i.test(error.message)) throw error;
   });
+}
+
+async function createAdminNotification({
+  type,
+  message,
+  userId = null,
+  quoteId = null,
+  entityType = null,
+  entityId = null,
+  linkUrl = null,
+  priority = "normal"
+}) {
+  const allowedTypes = new Set([
+    "quote_accepted","quote_rejected","quote_request_created","quote_request_status",
+    "quote_sent","job_assigned","job_scheduled","job_started","job_status_changed",
+    "job_finished","job_closed","gallery_published","security","system"
+  ]);
+  const allowedPriorities = new Set(["low","normal","high","urgent"]);
+  if (!allowedTypes.has(type)) throw new Error("Tipo de notificación inválido.");
+  if (!allowedPriorities.has(priority)) priority = "normal";
+
+  const [result] = await pool.query(
+    "INSERT INTO admin_notifications (user_id,type,quote_id,entity_type,entity_id,message,link_url,priority,is_read,read_at,archived_at) VALUES (?,?,?,?,?,?,?,?,0,NULL,NULL)",
+    [
+      userId == null ? null : Number(userId),
+      type,
+      quoteId == null ? null : Number(quoteId),
+      entityType,
+      entityId == null ? null : Number(entityId),
+      String(message || "").slice(0, 500),
+      linkUrl ? String(linkUrl).slice(0, 500) : null,
+      priority
+    ]
+  );
+  return result.insertId;
 }
 
 async function ensureServiceColumns() {
@@ -2190,21 +2222,21 @@ app.post(
     );
 
     // La solicitud ya fue guardada correctamente. La notificación
-    // administrativa no debe hacer fallar el envío al cliente si su
-    // tabla/estructura presenta un problema puntual.
+    // nunca debe hacer fallar el envío de la solicitud.
     try {
-      await pool.query(
-        `
-        INSERT INTO admin_notifications (type, quote_id, message)
-        VALUES ('quote_request_created', NULL, ?)
-        `,
-        [`Nueva solicitud de presupuesto de ${cleanName}.`]
-      );
+      await createAdminNotification({
+        type: "quote_request_created",
+        message: `Nueva solicitud de presupuesto de ${cleanName}.`,
+        entityType: "quote_request",
+        entityId: result.insertId,
+        linkUrl: "/admin.html#quoteRequestsSection",
+        priority: "high"
+      });
     } catch (notificationError) {
-      console.error(
-        "Solicitud guardada, pero no se pudo crear la notificación:",
-        notificationError
-      );
+      logError("Solicitud guardada, pero no se pudo crear la notificación", {
+        requestId: req.requestId,
+        error: notificationError.message
+      });
     }
 
     res.status(201).json({
@@ -4318,11 +4350,21 @@ async function recordJobHistory(req,jobId,action,oldStatus=null,newStatus=null,m
   );
 }
 
-async function createJobNotification(type,quoteId,message){
-  await pool.query(
-    "INSERT INTO admin_notifications (type,quote_id,message) VALUES (?,?,?)",
-    [type,quoteId,message]
-  ).catch(error=>logError("No se pudo crear notificación de trabajo",{error:error.message,quoteId}));
+async function createJobNotification(type,quoteId,message,jobId,userId=null,priority="normal"){
+  try {
+    await createAdminNotification({
+      type,
+      quoteId,
+      message,
+      userId,
+      entityType: "job",
+      entityId: jobId,
+      linkUrl: "/admin.html#jobsSection",
+      priority
+    });
+  } catch(error) {
+    logError("No se pudo crear notificación de trabajo",{error:error.message,quoteId,jobId,userId});
+  }
 }
 
 // Lista de trabajos.
@@ -4490,7 +4532,22 @@ app.put("/api/admin/jobs/:id(\\d+)/status",requireAdmin,adminMutationLimiter,asy
       cerrado:"Trabajo cerrado correctamente.",
       cancelado:"Trabajo cancelado correctamente."
     };
-    await createJobNotification(next==="cerrado"?"job_closed":"job_status_changed",job.quote_id,`El trabajo #${id} pasó de ${job.status} a ${next}.`);
+    const notificationType =
+      next === "cerrado" ? "job_closed" :
+      next === "finalizado" ? "job_finished" :
+      next === "en_proceso" ? "job_started" :
+      "job_status_changed";
+    const notificationPriority =
+      ["finalizado","cerrado","en_proceso"].includes(next) ? "high" :
+      ["programado","pausado"].includes(next) ? "normal" : "low";
+    await createJobNotification(
+      notificationType,
+      job.quote_id,
+      `El trabajo #${id} pasó de ${job.status} a ${next}.`,
+      id,
+      job.assigned_user_id || null,
+      notificationPriority
+    );
     await writeAudit(req,"job_status_changed","job",id,{old_status:job.status,new_status:next});
     res.json({success:true,status:next,message:messages[next]||"Estado actualizado correctamente."});
   }catch(error){
@@ -4998,11 +5055,14 @@ app.patch("/api/admin/quote-requests/:id(\\d+)", requireAdmin, adminMutationLimi
     });
 
     if (String(current.status) !== status) {
-      await pool.query(
-        `INSERT INTO admin_notifications (type, quote_id, message)
-         VALUES ('quote_request_status', NULL, ?)`,
-        [`La solicitud #${id} cambió de "${current.status}" a "${status}".`]
-      ).catch(() => {});
+      await createAdminNotification({
+        type: "quote_request_status",
+        message: `La solicitud #${id} cambió de "${current.status}" a "${status}".`,
+        entityType: "quote_request",
+        entityId: id,
+        linkUrl: "/admin.html#quoteRequestsSection",
+        priority: ["urgente","alta"].includes(String(priority)) ? "high" : "normal"
+      }).catch(() => {});
 
       const [requestRows] = await pool.query(
         "SELECT id,name,email,status FROM quote_requests WHERE id=? LIMIT 1",
@@ -5061,11 +5121,14 @@ app.patch("/api/admin/quote-requests/:id(\\d+)/status", requireAdmin, adminMutat
       new_status: status
     });
 
-    await pool.query(
-      `INSERT INTO admin_notifications (type, quote_id, message)
-       VALUES ('quote_request_status', NULL, ?)`,
-      [`La solicitud #${id} cambió al estado "${status}".`]
-    ).catch(() => {});
+    await createAdminNotification({
+      type: "quote_request_status",
+      message: `La solicitud #${id} cambió al estado "${status}".`,
+      entityType: "quote_request",
+      entityId: id,
+      linkUrl: "/admin.html#quoteRequestsSection",
+      priority: "normal"
+    }).catch(() => {});
 
     res.json({ success: true, message: "Estado de la solicitud actualizado.", status });
   } catch (error) {
@@ -7819,6 +7882,15 @@ app.patch("/api/admin/quotes/:id(\\d+)/status", requireAdmin, adminMutationLimit
 
     if(status==="enviado") {
       const sent=await sendQuoteEmail({...current,status,total:current.total});
+      await createAdminNotification({
+        type: "quote_sent",
+        quoteId: id,
+        entityType: "quote",
+        entityId: id,
+        message: `El presupuesto ${current.quote_number} fue marcado como enviado.`,
+        linkUrl: "/admin.html#quotesSection",
+        priority: "normal"
+      }).catch(() => {});
       res.json({success:true,status,email_sent:sent,message:sent?"Presupuesto enviado al cliente.":"Presupuesto marcado como enviado; email no disponible o no configurado."});
       return;
     }
@@ -8061,12 +8133,15 @@ async function processPublicQuoteDecision(req,res,decision) {
     );
 
     await connection.query(
-      `INSERT INTO admin_notifications (type,quote_id,message)
-       VALUES (?,?,?)`,
+      "INSERT INTO admin_notifications (user_id,type,quote_id,entity_type,entity_id,message,link_url,priority,is_read,read_at,archived_at) VALUES (NULL,?,?,?,?,?,?,?,0,NULL,NULL)",
       [
         decision==="aceptado"?"quote_accepted":"quote_rejected",
         quote.id,
-        `El cliente ${quote.client_name} registró ${decision==="aceptado"?"la aceptación":"el rechazo"} del presupuesto ${quote.quote_number}.`
+        "quote",
+        quote.id,
+        `El cliente ${quote.client_name} registró ${decision==="aceptado"?"la aceptación":"el rechazo"} del presupuesto ${quote.quote_number}.`,
+        "/admin.html#quotesSection",
+        "high"
       ]
     );
 
