@@ -158,6 +158,7 @@ DROP TABLE IF EXISTS `quote_requests`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quote_requests` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int DEFAULT NULL,
   `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `phone` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -167,7 +168,8 @@ CREATE TABLE `quote_requests` (
   `image_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` enum('pendiente','contactado','presupuestado','cerrado') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pendiente',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_quote_requests_user` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
