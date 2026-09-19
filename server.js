@@ -4485,6 +4485,7 @@ app.put("/api/admin/jobs/:id(\\d+)",requireAdmin,adminMutationLimiter,async(req,
         "high"
       );
     }
+      await notifyJobCustomer(id, current.status, fields.scheduled_at);
 
     res.json({success:true,message:"Trabajo actualizado correctamente."});
   }catch(error){
@@ -4548,6 +4549,7 @@ app.put("/api/admin/jobs/:id(\\d+)/status",requireAdmin,adminMutationLimiter,asy
       job.assigned_user_id || null,
       notificationPriority
     );
+    await notifyJobCustomer(id, next, next === "programado" ? job.scheduled_at : null);
     await writeAudit(req,"job_status_changed","job",id,{old_status:job.status,new_status:next});
     res.json({success:true,status:next,message:messages[next]||"Estado actualizado correctamente."});
   }catch(error){
@@ -4767,6 +4769,40 @@ async function notifyRequestCustomer(request, subject, message) {
       requestId: null,
       error: error.message,
       quoteRequestId: request.id
+    });
+    return false;
+  }
+}
+
+async function notifyJobCustomer(jobId, status, scheduledAt = null) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT j.id,j.status,qr.name,qr.email
+       FROM jobs j
+       INNER JOIN quotes q ON q.id=j.quote_id
+       INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       WHERE j.id=? LIMIT 1`,
+      [jobId]
+    );
+    const job=rows[0];
+    if(!job?.email) return false;
+    await queueEmail({
+      to: job.email,
+      subject: "Actualización de trabajo #" + jobId + " - JR Electricidad",
+      template: "job_update",
+      data: {
+        name: job.name,
+        jobId,
+        status,
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toLocaleString("es-AR") : null
+      }
+    });
+    return true;
+  } catch(error) {
+    logError("No se pudo encolar actualización del trabajo al cliente", {
+      requestId:null,
+      jobId,
+      error:error.message
     });
     return false;
   }
