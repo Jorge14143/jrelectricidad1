@@ -2160,6 +2160,18 @@ app.post(
       });
     }
 
+    const [createdRequestRows] = await pool.query(
+      "SELECT id,name,email,service,status FROM quote_requests WHERE id=? LIMIT 1",
+      [result.insertId]
+    );
+    if (createdRequestRows.length) {
+      await notifyRequestCustomer(
+        createdRequestRows[0],
+        "Solicitud recibida - JR Electricidad",
+        "Recibimos correctamente tu solicitud de presupuesto."
+      );
+    }
+
     res.status(201).json({
       success: true,
       message: "Solicitud enviada correctamente.",
@@ -4732,39 +4744,26 @@ async function recordRequestHistory(req, requestId, action, oldStatus, newStatus
 
 async function notifyRequestCustomer(request, subject, message) {
   if (!request?.email) return false;
-
   try {
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) {
-      return false;
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM,
+    const template = String(subject || "").toLowerCase().includes("recibida")
+      ? "request_received"
+      : "request_status";
+    await queueEmail({
       to: request.email,
       subject,
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
-          <h2>JR Electricidad ⚡</h2>
-          <p>Hola ${String(request.name || "").replace(/[&<>"]/g, "")},</p>
-          <p>${String(message || "").replace(/[&<>"]/g, "")}</p>
-          <p>Saludos,<br>JR Electricidad · Electricista Matriculado Cat. 3</p>
-        </div>
-      `
+      template,
+      data: {
+        name: request.name,
+        requestId: request.id,
+        status: request.status,
+        service: request.service,
+        message
+      },
+      requestId: null
     });
-
     return true;
   } catch (error) {
-    logError("No se pudo notificar al cliente", {
+    logError("No se pudo encolar notificación al cliente", {
       requestId: null,
       error: error.message,
       quoteRequestId: request.id
