@@ -1,5 +1,7 @@
 # JR Electricidad
 
+**V3.0.0 — Fundación V3 en desarrollo sobre la rama `v2-development`.**
+
 Sitio web para **JR Electricidad | Electricista Matriculado Cat. 3**, desarrollado con Node.js, Express y MySQL.
 
 ## Requisitos
@@ -67,3 +69,11 @@ Para revisar la implementación de la fase:
 `npm run test:v2-migration`
 
 La migración real de una base de producción no se considera ejecutada hasta realizarla sobre la instancia MySQL correspondiente y comprobar su reporte.
+
+## V3.0 — Bloque A
+
+La Fundación V3 establece la arquitectura modular, la migración base, la capa de seguridad inicial y el API versionado en /api/v3. La API V2 existente permanece compatible.
+
+Ver: docs/V3-PHASE-01-04.md
+
+Comprobación: npm run test:v3-foundation
