@@ -787,6 +787,15 @@ app.put(
 
       await invalidateUserSessions(req.session.user.id, req.sessionID);
       await writeAudit(req, "password_changed", "user", req.session.user.id);
+      await createAdminNotification({
+        type: "security",
+        message: "Tu contraseña fue actualizada correctamente.",
+        userId: req.session.user.id,
+        entityType: "user",
+        entityId: req.session.user.id,
+        linkUrl: "/cuenta.html",
+        priority: "high"
+      }).catch(() => {});
 
       res.json({
 
