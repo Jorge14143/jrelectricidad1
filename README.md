@@ -50,3 +50,19 @@ Sitio web para **JR Electricidad | Electricista Matriculado Cat. 3**, desarrolla
 ## Seguridad
 
 El proyecto incluye sesiones MySQL, bcrypt, Helmet, rate limiting, validación de uploads, tokens de acceso para presupuestos y controles de autorización para las rutas administrativas.
+
+## V3.0
+
+La versión V3 integra gestión de clientes, presupuestos, trabajos, agenda, finanzas de servicios, materiales técnicos, comunicaciones, firma electrónica, evidencias, dashboard, notificaciones, configuración, seguridad, automatizaciones y controles de producción.
+
+### Regla comercial
+JR Electricidad comercializa servicios eléctricos. Los materiales son información técnica asociada a trabajos y no son productos de venta.
+
+### Calidad y producción
+- `npm test` — calidad V3.
+- `npm run prod:check` — preparación de producción.
+- `npm run prod:preflight` — variables y entorno.
+- `npm run backup` — backup MySQL.
+- `npm run health` — monitorización del endpoint de salud.
+
+Documentación completa en `docs/`.
