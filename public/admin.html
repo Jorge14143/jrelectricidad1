@@ -223,6 +223,22 @@
 
     <div class="admin-topbar-right">
 
+      <div class="admin-global-search">
+        <label class="sr-only" for="globalAdminSearch">Búsqueda global</label>
+        <span class="global-search-symbol">⌕</span>
+        <input
+          type="search"
+          id="globalAdminSearch"
+          placeholder="Buscar clientes, solicitudes, presupuestos..."
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Búsqueda global"
+        >
+        <div id="globalSearchResults" class="global-search-results" hidden></div>
+      </div>
+
+      
+
       <!-- NOTIFICACIONES -->
 
       <div class="admin-notifications">
@@ -2676,6 +2692,7 @@
 <script src="/js/admin-quotes.js"></script>
 <script src="/js/admin-jobs.js"></script>
 <script src="/js/admin-navigation.js"></script>\n<script src="/js/admin-documents.js"></script>
+<script src="/js/admin-search.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
 </body>
