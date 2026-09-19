@@ -31,7 +31,10 @@
     "test:v2-production": "node scripts/check-v2-production.js",
     "test:v2-responsive": "node scripts/check-v2-responsive.js",
     "test:v2-unit": "node --test scripts/test-v2-unit.js",
-    "test:v2-all": "node scripts/test-v2-all.js"
+    "test:v2-all": "node scripts/test-v2-all.js",
+    "migration:v1-v2": "node scripts/migrate-v1-to-v2.js --yes",
+    "migration:v1-v2:dry-run": "node scripts/migrate-v1-to-v2.js --dry-run",
+    "test:v2-migration": "node scripts/check-v2-migration.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
