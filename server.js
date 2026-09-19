@@ -520,19 +520,16 @@ async function recordLoginAttempt(req, email, success, userId = null) {
 }
 
 function cleanUser(user) {
-
   return {
-
     id: user.id,
-
     name: user.name,
-
     email: user.email,
-
-    role: user.role
-
+    role: user.role,
+    email_verified: Boolean(user.email_verified ?? user.email_verified_at),
+    email_verified_at: user.email_verified_at || null,
+    avatar_url: user.avatar_url || null,
+    totp_enabled: Boolean(user.totp_enabled)
   };
-
 }
 
 
@@ -821,182 +818,424 @@ app.put(
 // CUENTA DEL USUARIO - EMAIL
 // =========================================================
 
+// =========================================================
+// CUENTA DEL USUARIO - CAMBIO DE EMAIL SEGURO
+// =========================================================
+
+const ACCOUNT_TOKEN_MINUTES = 30;
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function validEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 190;
+}
+
+function tokenHash(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
+
+async function sendAccountMail({ to, subject, title, text, linkLabel, link }) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD
+    }
+  });
+
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM,
+    to,
+    subject,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
+        <h2>JR Electricidad ⚡</h2>
+        <h3>${title}</h3>
+        <p>${text}</p>
+        ${link ? `<p><a href="${link}">${linkLabel || "Continuar"}</a></p>` : ""}
+        <p>Este enlace vence en ${ACCOUNT_TOKEN_MINUTES} minutos y solo puede utilizarse una vez.</p>
+        <p>Si no solicitaste esta acción, podés ignorar este correo.</p>
+      </div>
+    `
+  });
+}
+
+async function createAccountEmailToken(userId, email, purpose) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const hash = tokenHash(token);
+  await pool.query(
+    `DELETE FROM account_email_tokens WHERE user_id=? AND purpose=?`,
+    [userId, purpose]
+  );
+  await pool.query(
+    `INSERT INTO account_email_tokens
+      (user_id, email, purpose, token_hash, expires_at)
+     VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+    [userId, email, purpose, hash, ACCOUNT_TOKEN_MINUTES]
+  );
+  return token;
+}
+
+async function getValidAccountEmailToken(token, purpose) {
+  const hash = tokenHash(token);
+  const [rows] = await pool.query(
+    `SELECT id, user_id, email, purpose, expires_at
+     FROM account_email_tokens
+     WHERE token_hash=? AND purpose=? AND used_at IS NULL AND expires_at > NOW()
+     LIMIT 1`,
+    [hash, purpose]
+  );
+  return rows[0] || null;
+}
+
+async function sendEmailVerification(userId, email) {
+  const token = await createAccountEmailToken(userId, email, "verify");
+  const link = `${process.env.APP_URL}/api/account/email/verify?token=${encodeURIComponent(token)}`;
+  await sendAccountMail({
+    to: email,
+    subject: "Confirmá tu correo - JR Electricidad",
+    title: "Confirmación de correo electrónico",
+    text: "Confirmá tu dirección de correo para completar la configuración de tu cuenta.",
+    linkLabel: "Confirmar correo",
+    link
+  });
+}
+
+async function sendEmailChangeConfirmation(userId, newEmail) {
+  const token = await createAccountEmailToken(userId, newEmail, "change");
+  const link = `${process.env.APP_URL}/api/account/email/confirm-change?token=${encodeURIComponent(token)}`;
+  await sendAccountMail({
+    to: newEmail,
+    subject: "Confirmá el cambio de correo - JR Electricidad",
+    title: "Confirmación de cambio de correo",
+    text: "Recibimos una solicitud para cambiar el correo de tu cuenta. Confirmá la nueva dirección para aplicar el cambio.",
+    linkLabel: "Confirmar nuevo correo",
+    link
+  });
+  return token;
+}
+
+// Solicita una verificación inicial o reenvío.
+app.post(
+  "/api/account/email/verify/request",
+  requireAuth,
+  authLimiter,
+  async (req, res) => {
+    try {
+      const userId = Number(req.session.user.id);
+      const [rows] = await pool.query(
+        "SELECT id, email, email_verified_at FROM users WHERE id=? LIMIT 1",
+        [userId]
+      );
+      if (!rows.length) return res.status(404).json({ error: "Usuario no encontrado." });
+      if (rows[0].email_verified_at) {
+        return res.json({ success: true, verified: true, message: "El correo ya está confirmado." });
+      }
+
+      try {
+        await sendEmailVerification(userId, rows[0].email);
+      } catch (mailError) {
+        logError("No se pudo enviar verificación de correo", {
+          requestId: req.requestId,
+          userId,
+          error: mailError.message
+        });
+        return res.status(503).json({ error: "No se pudo enviar el correo de confirmación." });
+      }
+
+      await writeAudit(req, "email_verification_requested", "user", userId);
+      res.json({ success: true, verified: false, message: "Te enviamos un correo de confirmación." });
+    } catch (error) {
+      logError("Error solicitando verificación de correo", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo solicitar la verificación." });
+    }
+  }
+);
+
+app.get("/api/account/email/verify", async (req, res) => {
+  try {
+    const token = String(req.query.token || "");
+    if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).send("Enlace de verificación inválido o vencido.");
+
+    const record = await getValidAccountEmailToken(token, "verify");
+    if (!record) return res.status(400).send("Enlace de verificación inválido, vencido o ya utilizado.");
+
+    await pool.query("UPDATE users SET email_verified_at=NOW() WHERE id=? AND email=?", [record.user_id, record.email]);
+    await pool.query("UPDATE account_email_tokens SET used_at=NOW() WHERE id=?", [record.id]);
+
+    await pool.query(
+      "DELETE FROM account_email_tokens WHERE user_id=? AND purpose='verify' AND id<>?",
+      [record.user_id, record.id]
+    );
+
+    res.send(`
+      <!doctype html><html lang="es"><head><meta charset="utf-8"><title>Correo confirmado</title></head>
+      <body style="font-family:Arial,sans-serif;padding:40px;text-align:center;background:#080a0f;color:#f5f7fb">
+        <h1>✅ Correo confirmado</h1>
+        <p>Tu dirección de correo fue confirmada correctamente.</p>
+        <p><a href="/" style="color:#ffc400">Volver a JR Electricidad</a></p>
+      </body></html>
+    `);
+  } catch (error) {
+    logError("Error verificando correo", { requestId: req.requestId, error: error.message });
+    res.status(500).send("No se pudo confirmar el correo.");
+  }
+});
+
+// Solicita el cambio: el email actual no se modifica hasta confirmar el nuevo.
 app.put(
   "/api/account/email",
   requireAuth,
   authLimiter,
   async (req, res) => {
-
     try {
+      const userId = Number(req.session.user.id);
+      const newEmail = normalizeEmail(req.body.newEmail);
+      const currentPassword = String(req.body.currentPassword || "");
 
-      const newEmail =
-        String(
-          req.body.newEmail || ""
-        )
-        .trim()
-        .toLowerCase();
-
-
-      const currentPassword =
-        String(
-          req.body.currentPassword || ""
-        );
-
-
-      if (
-        !newEmail ||
-        !currentPassword
-      ) {
-
-        return res.status(400).json({
-          error:
-            "Completa todos los campos."
-        });
-
+      if (!validEmail(newEmail)) return res.status(400).json({ error: "Ingresá un email válido." });
+      if (!currentPassword) return res.status(400).json({ error: "Ingresá tu contraseña actual." });
+      if (newEmail === normalizeEmail(req.session.user.email)) {
+        return res.status(400).json({ error: "El nuevo correo es igual al actual." });
       }
 
+      const [rows] = await pool.query(
+        "SELECT id, email, password_hash FROM users WHERE id=? LIMIT 1",
+        [userId]
+      );
+      if (!rows.length) return res.status(404).json({ error: "Usuario no encontrado." });
 
-      const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const validPassword = await bcrypt.compare(currentPassword, rows[0].password_hash);
+      if (!validPassword) return res.status(401).json({ error: "La contraseña actual es incorrecta." });
 
-
-      if (!emailRegex.test(newEmail)) {
-
-        return res.status(400).json({
-          error:
-            "Ingresá un correo electrónico válido."
-        });
-
-      }
-
-
-      if (
-        newEmail ===
-        req.session.user.email
-      ) {
-
-        return res.status(400).json({
-          error:
-            "El nuevo correo es igual al actual."
-        });
-
-      }
-
-
-      const [existing] =
-        await pool.query(
-          `
-          SELECT id
-          FROM users
-          WHERE email=?
-          AND id<>?
-          LIMIT 1
-          `,
-          [
-            newEmail,
-            req.session.user.id
-          ]
-        );
-
-
-      if (existing.length) {
-
-        return res.status(409).json({
-          error:
-            "Ese correo ya está registrado."
-        });
-
-      }
-
-
-      const [rows] =
-        await pool.query(
-          `
-          SELECT
-            id,
-            password_hash
-          FROM users
-          WHERE id=?
-          LIMIT 1
-          `,
-          [
-            req.session.user.id
-          ]
-        );
-
-
-      if (!rows.length) {
-
-        return res.status(404).json({
-          error:
-            "Usuario no encontrado."
-        });
-
-      }
-
-
-      const validPassword =
-        await bcrypt.compare(
-          currentPassword,
-          rows[0].password_hash
-        );
-
-
-      if (!validPassword) {
-
-        return res.status(401).json({
-          error:
-            "La contraseña actual es incorrecta."
-        });
-
-      }
-
+      const [existing] = await pool.query(
+        "SELECT id FROM users WHERE email=? AND id<>? LIMIT 1",
+        [newEmail, userId]
+      );
+      if (existing.length) return res.status(409).json({ error: "Ese email ya está registrado." });
 
       await pool.query(
-        `
-        UPDATE users
-        SET email=?
-        WHERE id=?
-        `,
-        [
-          newEmail,
-          req.session.user.id
-        ]
+        `DELETE FROM account_email_tokens
+         WHERE user_id=? AND purpose='change'`,
+        [userId]
       );
 
+      try {
+        await sendEmailChangeConfirmation(userId, newEmail);
+      } catch (mailError) {
+        logError("No se pudo enviar confirmación de cambio de email", {
+          requestId: req.requestId,
+          userId,
+          error: mailError.message
+        });
+        return res.status(503).json({ error: "No se pudo enviar el correo de confirmación." });
+      }
 
-      req.session.user.email =
-        newEmail;
+      await pool.query(
+        "UPDATE users SET pending_email=? WHERE id=?",
+        [newEmail, userId]
+      );
 
-
+      await writeAudit(req, "email_change_requested", "user", userId, { newEmail });
       res.json({
-
-        ok: true,
-
-        message:
-          "Correo electrónico actualizado correctamente.",
-
-        user:
-          cleanUser(
-            req.session.user
-          )
-
+        success: true,
+        pending: true,
+        email: rows[0].email,
+        pending_email: newEmail,
+        message: "Te enviamos un correo al nuevo email. El cambio se aplicará cuando lo confirmes."
       });
+    } catch (error) {
+      logError("Error solicitando cambio de email", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo solicitar el cambio de correo." });
+    }
+  }
+);
 
+app.get("/api/account/email/confirm-change", async (req, res) => {
+  try {
+    const token = String(req.query.token || "");
+    if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).send("Enlace de cambio inválido o vencido.");
 
-    } catch (e) {
+    const record = await getValidAccountEmailToken(token, "change");
+    if (!record) return res.status(400).send("Enlace de cambio inválido, vencido o ya utilizado.");
 
-      console.error(e);
-
-      res.status(500).json({
-
-        error:
-          "No se pudo cambiar el correo electrónico."
-
-      });
-
+    const [users] = await pool.query(
+      "SELECT id, email, pending_email FROM users WHERE id=? LIMIT 1",
+      [record.user_id]
+    );
+    if (!users.length || users[0].pending_email !== record.email) {
+      return res.status(409).send("El cambio de correo ya no es válido.");
     }
 
+    const [conflict] = await pool.query(
+      "SELECT id FROM users WHERE email=? AND id<>? LIMIT 1",
+      [record.email, record.user_id]
+    );
+    if (conflict.length) {
+      await pool.query("DELETE FROM account_email_tokens WHERE id=?", [record.id]);
+      await pool.query("UPDATE users SET pending_email=NULL WHERE id=?", [record.user_id]);
+      return res.status(409).send("Ese correo ya fue registrado por otra cuenta.");
+    }
+
+    await pool.query(
+      "UPDATE users SET email=?, pending_email=NULL, email_verified_at=NOW() WHERE id=?",
+      [record.email, record.user_id]
+    );
+    await pool.query("UPDATE account_email_tokens SET used_at=NOW() WHERE id=?", [record.id]);
+
+    // El cambio de correo invalida todas las sesiones por seguridad.
+    await invalidateUserSessions(record.user_id);
+    await writeAudit(req, "email_changed", "user", record.user_id, { emailChanged: true });
+
+    res.send(`
+      <!doctype html><html lang="es"><head><meta charset="utf-8"><title>Correo actualizado</title></head>
+      <body style="font-family:Arial,sans-serif;padding:40px;text-align:center;background:#080a0f;color:#f5f7fb">
+        <h1>✅ Correo actualizado</h1>
+        <p>Tu correo fue actualizado y por seguridad cerramos tus sesiones.</p>
+        <p>Ahora podés volver a iniciar sesión.</p>
+        <p><a href="/login.html" style="color:#ffc400">Iniciar sesión</a></p>
+      </body></html>
+    `);
+  } catch (error) {
+    logError("Error confirmando cambio de email", { requestId: req.requestId, error: error.message });
+    res.status(500).send("No se pudo completar el cambio de correo.");
+  }
+});
+
+// =========================================================
+// CUENTA DEL USUARIO - PERFIL
+// =========================================================
+
+app.put(
+  "/api/account/profile",
+  requireAuth,
+  authLimiter,
+  async (req, res) => {
+    try {
+      const userId = Number(req.session.user.id);
+      const name = String(req.body.name || "").trim();
+
+      if (!name || name.length > 100) {
+        return res.status(400).json({ error: "El nombre es obligatorio y no puede superar 100 caracteres." });
+      }
+
+      await pool.query("UPDATE users SET name=? WHERE id=?", [name, userId]);
+      req.session.user.name = name;
+
+      await writeAudit(req, "profile_updated", "user", userId, { fields: ["name"] });
+
+      const [rows] = await pool.query(
+        "SELECT id, name, email, role, email_verified_at, pending_email, avatar_url, totp_enabled FROM users WHERE id=? LIMIT 1",
+        [userId]
+      );
+
+      res.json({
+        success: true,
+        message: "Datos personales actualizados correctamente.",
+        user: cleanUser(rows[0])
+      });
+    } catch (error) {
+      logError("Error actualizando perfil", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudieron actualizar los datos personales." });
+    }
+  }
+);
+
+// =========================================================
+// AVATAR OPCIONAL
+// =========================================================
+
+app.put(
+  "/api/account/avatar",
+  requireAuth,
+  authLimiter,
+  async (req, res) => {
+    try {
+      const avatarUrl = String(req.body.avatar_url || "").trim();
+      if (avatarUrl && (avatarUrl.length > 500 || !/^https:\/\//i.test(avatarUrl))) {
+        return res.status(400).json({ error: "El avatar debe ser una URL HTTPS válida." });
+      }
+
+      const userId = Number(req.session.user.id);
+      await pool.query("UPDATE users SET avatar_url=? WHERE id=?", [avatarUrl || null, userId]);
+      await writeAudit(req, "avatar_updated", "user", userId, { hasAvatar: Boolean(avatarUrl) });
+
+      const [rows] = await pool.query(
+        "SELECT id, name, email, role, email_verified_at, avatar_url, totp_enabled FROM users WHERE id=? LIMIT 1",
+        [userId]
+      );
+      res.json({ success: true, message: avatarUrl ? "Avatar actualizado." : "Avatar eliminado.", user: cleanUser(rows[0]) });
+    } catch (error) {
+      logError("Error actualizando avatar", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo actualizar el avatar." });
+    }
+  }
+);
+
+// =========================================================
+// HISTORIAL PERSONAL DE ACTIVIDAD
+// =========================================================
+
+app.get(
+  "/api/account/activity",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 100);
+      const [rows] = await pool.query(
+        `SELECT id, action, entity_type, entity_id, created_at, request_id, metadata
+         FROM audit_log
+         WHERE actor_user_id=?
+         ORDER BY created_at DESC
+         LIMIT ${limit}`,
+        [Number(req.session.user.id)]
+      );
+
+      const activity = rows.map(row => ({
+        id: row.id,
+        action: row.action,
+        entity_type: row.entity_type,
+        entity_id: row.entity_id,
+        created_at: row.created_at,
+        request_id: row.request_id,
+        metadata: (() => {
+          try { return row.metadata ? JSON.parse(row.metadata) : null; } catch { return null; }
+        })()
+      }));
+
+      res.json({ success: true, activity });
+    } catch (error) {
+      logError("Error obteniendo actividad personal", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo obtener el historial de actividad." });
+    }
+  }
+);
+
+app.get(
+  "/api/account/email/status",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        "SELECT email, email_verified_at, pending_email FROM users WHERE id=? LIMIT 1",
+        [Number(req.session.user.id)]
+      );
+      if (!rows.length) return res.status(404).json({ error: "Usuario no encontrado." });
+      res.json({
+        success: true,
+        email: rows[0].email,
+        verified: Boolean(rows[0].email_verified_at),
+        email_verified_at: rows[0].email_verified_at || null,
+        pending_email: rows[0].pending_email || null
+      });
+    } catch (error) {
+      logError("Error obteniendo estado del email", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo obtener el estado del correo." });
+    }
   }
 );
 
@@ -1261,19 +1500,30 @@ app.put(
 
 app.get(
   "/api/me",
-  (req, res) => {
+  async (req, res) => {
+    if (!req.session.user) return res.json({ user: null });
 
-    res.json({
+    try {
+      const [rows] = await pool.query(
+        `SELECT id, name, email, role, email_verified_at, pending_email, avatar_url, totp_enabled
+         FROM users WHERE id=? LIMIT 1`,
+        [Number(req.session.user.id)]
+      );
+      if (!rows.length) return res.json({ user: null });
 
-      user:
-        req.session.user
-          ? cleanUser(
-              req.session.user
-            )
-          : null
+      req.session.user = {
+        ...req.session.user,
+        id: rows[0].id,
+        name: rows[0].name,
+        email: rows[0].email,
+        role: rows[0].role
+      };
 
-    });
-
+      res.json({ user: cleanUser(rows[0]) });
+    } catch (error) {
+      logError("Error obteniendo usuario actual", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo obtener la cuenta." });
+    }
   }
 );
 
@@ -1379,6 +1629,15 @@ app.post(
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
       await registerActiveSession(req, result.insertId);
       await writeAudit(req, "register", "user", result.insertId);
+      try {
+        await sendEmailVerification(result.insertId, normalized);
+      } catch (mailError) {
+        logError("No se pudo enviar verificación tras registro", {
+          requestId: req.requestId,
+          userId: result.insertId,
+          error: mailError.message
+        });
+      }
 
       res.json({
 
@@ -1447,7 +1706,10 @@ app.post(
             email,
             password_hash,
             role,
-            created_at
+            created_at,
+            email_verified_at,
+            avatar_url,
+            totp_enabled
           FROM users
           WHERE email=?
           LIMIT 1
