@@ -1,5 +1,8 @@
 # Release V3 — JR Electricidad
 
+## Estado
+V3.0.0 queda cerrada como versión final de desarrollo. A partir de este punto, los cambios normales se gestionan como correcciones, mantenimiento y mejoras V3.x. Una V4 requiere una evolución funcional o arquitectónica mayor.
+
 ## Alcance
 V3 consolida la gestión del servicio eléctrico desde la solicitud hasta el cobro, con administración, trabajos, agenda, comunicaciones, firma, evidencias, materiales técnicos, finanzas, seguridad, automatizaciones y controles de calidad/producción.
 
