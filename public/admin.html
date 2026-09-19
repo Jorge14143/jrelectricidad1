@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/materials.css">
   <link rel="stylesheet" href="/css/whatsapp.css">
+  <link rel="stylesheet" href="/css/email.css">
 </head>
 
 <body class="admin-page">
@@ -158,6 +159,11 @@
     <a href="#whatsappSection" class="admin-nav-item">
       <span>💬</span>
       <span>WhatsApp</span>
+    </a>
+
+    <a href="#emailSection" class="admin-nav-item">
+      <span>✉️</span>
+      <span>Email</span>
     </a>
 
     <a href="#materialsSection" class="admin-nav-item">
@@ -2295,6 +2301,121 @@
 </section>
 
 <!-- =========================================================
+     EMAIL — BLOQUE J
+========================================================= -->
+<section id="emailSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">COMUNICACIONES</span>
+      <h2>✉️ Email</h2>
+      <p>Envío de presupuestos, turnos, trabajos y avisos de pago por correo electrónico.</p>
+    </div>
+  </div>
+
+  <div class="email-admin-grid">
+    <div class="email-card">
+      <h3>Enviar correo</h3>
+      <form id="emailSendForm" class="email-form-grid">
+        <div>
+          <label for="emailRecipient">Correo del cliente</label>
+          <input id="emailRecipient" type="email" required placeholder="cliente@email.com">
+        </div>
+        <div>
+          <label for="emailClient">Cliente</label>
+          <input id="emailClient" placeholder="Nombre del cliente">
+        </div>
+        <div>
+          <label for="emailTemplate">Plantilla</label>
+          <select id="emailTemplate" required></select>
+        </div>
+        <div>
+          <label for="emailQuote">Presupuesto</label>
+          <input id="emailQuote" placeholder="PRES-001">
+        </div>
+        <div>
+          <label for="emailTotal">Total</label>
+          <input id="emailTotal" placeholder="$ 0,00">
+        </div>
+        <div>
+          <label for="emailDate">Fecha</label>
+          <input id="emailDate" placeholder="dd/mm/aaaa">
+        </div>
+        <div>
+          <label for="emailTime">Hora</label>
+          <input id="emailTime" placeholder="10:00">
+        </div>
+        <div>
+          <label for="emailJob">Trabajo</label>
+          <input id="emailJob" placeholder="Trabajo / servicio">
+        </div>
+        <div>
+          <label for="emailDetail">Detalle</label>
+          <input id="emailDetail" placeholder="Actualización">
+        </div>
+        <div class="full">
+          <label for="emailUrl">URL</label>
+          <input id="emailUrl" placeholder="https://...">
+        </div>
+        <div>
+          <label for="emailTargetType">Tipo de destino</label>
+          <input id="emailTargetType" placeholder="quote / job / payment">
+        </div>
+        <div>
+          <label for="emailTargetId">ID destino</label>
+          <input id="emailTargetId" type="number" min="1">
+        </div>
+        <div class="full">
+          <button class="btn" type="submit">✉️ Enviar correo</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="email-card">
+      <h3>Plantillas</h3>
+      <form id="emailTemplateForm" class="email-form-grid">
+        <div>
+          <label for="emailTemplateName">Nombre</label>
+          <input id="emailTemplateName" required maxlength="150">
+        </div>
+        <div>
+          <label for="emailTemplateEvent">Evento</label>
+          <input id="emailTemplateEvent" required maxlength="80" placeholder="quote_sent">
+        </div>
+        <div class="full">
+          <label for="emailTemplateSubject">Asunto</label>
+          <input id="emailTemplateSubject" required maxlength="255">
+        </div>
+        <div class="full">
+          <label for="emailTemplateBody">Mensaje</label>
+          <textarea id="emailTemplateBody" required placeholder="Hola {cliente}..."></textarea>
+        </div>
+        <div class="full">
+          <button class="btn" type="submit">➕ Crear plantilla</button>
+        </div>
+      </form>
+      <div id="emailTemplatesList" style="margin-top:16px"></div>
+      <p class="muted">Variables: {cliente}, {presupuesto}, {total}, {url}, {fecha}, {hora}, {trabajo}, {detalle}.</p>
+    </div>
+  </div>
+
+  <div class="email-card" style="margin-top:18px">
+    <div class="panel-heading">
+      <div>
+        <h3>Historial de correos</h3>
+        <p class="muted">Registro de correos preparados, enviados o fallidos.</p>
+      </div>
+      <button id="refreshEmailHistory" type="button" class="btn tiny">🔄 Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table class="materials-table">
+        <thead><tr><th>Fecha</th><th>Cliente</th><th>Email</th><th>Asunto</th><th>Estado</th><th>Enviado</th></tr></thead>
+        <tbody id="emailHistoryList"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
      MATERIALES TÉCNICOS — BLOQUE H
 ========================================================= -->
 <section id="materialsSection" class="admin-section">
@@ -2622,6 +2743,7 @@
 <script src="/js/admin-jobs.js"></script>
 <script src="/js/admin-materials.js"></script>
 <script src="/js/admin-whatsapp.js"></script>
+<script src="/js/admin-email.js"></script>
 <script src="/js/admin-navigation.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
