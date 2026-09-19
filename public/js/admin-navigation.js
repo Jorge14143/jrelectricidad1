@@ -17,6 +17,7 @@ function setupAdminNavigation() {
     "gallerySection",
     "materialsSection",
     "whatsappSection",
+    "emailSection",
     "settingsSection"
   ];
 
