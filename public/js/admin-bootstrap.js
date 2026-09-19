@@ -65,4 +65,6 @@ setupAccountSettings();
 setupBusinessSettings();
 
 setupUsers();
+setupAdminReviews();
+loadAdminReviews();
 setupGalleryFilters();
