@@ -15,7 +15,8 @@
     "test:v2-clients": "node scripts/check-v2-clients.js",
     "test:v2-requests": "node scripts/check-v2-requests.js",
     "test:v2-quotes": "node scripts/check-v2-quotes.js",
-    "test:v2-acceptance": "node scripts/check-v2-acceptance.js"
+    "test:v2-acceptance": "node scripts/check-v2-acceptance.js",
+    "test:v2-jobs": "node scripts/check-v2-jobs.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
