@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/css/email.css">
   <link rel="stylesheet" href="/css/signatures.css">
   <link rel="stylesheet" href="/css/dashboard-v3.css">
+  <link rel="stylesheet" href="/css/notifications-v3.css">
 </head>
 
 <body class="admin-page">
@@ -2587,6 +2588,23 @@
   </div>
 </section>
 
+<!-- NOTIFICACIONES V3 -->
+<section class="panel" id="notificationSettingsSection">
+  <div class="panel-heading">
+    <div><span class="eyebrow">SISTEMA</span><h2>Notificaciones</h2><p class="muted">Configurá qué eventos administrativos querés recibir.</p></div>
+  </div>
+  <form id="notificationPreferencesForm">
+    <div class="notification-preferences-grid">
+      <label class="notification-preference"><input type="checkbox" id="notification_quote_requests"><span><strong>Nuevas solicitudes</strong><small>Cuando un cliente solicita un presupuesto.</small></span></label>
+      <label class="notification-preference"><input type="checkbox" id="notification_quote_status"><span><strong>Presupuestos</strong><small>Aceptaciones, rechazos y cambios de estado.</small></span></label>
+      <label class="notification-preference"><input type="checkbox" id="notification_jobs"><span><strong>Trabajos</strong><small>Inicio y cierre de trabajos.</small></span></label>
+      <label class="notification-preference"><input type="checkbox" id="notification_payments"><span><strong>Pagos</strong><small>Nuevos cobros registrados de servicios.</small></span></label>
+      <label class="notification-preference"><input type="checkbox" id="notification_system"><span><strong>Sistema</strong><small>Eventos administrativos generales.</small></span></label>
+    </div>
+    <button class="btn" type="submit" style="margin-top:14px">💾 Guardar preferencias</button>
+  </form>
+</section>
+
 <!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
@@ -2852,6 +2870,7 @@
 
 <script src="/js/admin-core.js"></script>
 <script src="/js/admin-notifications.js"></script>
+<script src="/js/admin-notifications-v3.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
