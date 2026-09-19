@@ -29,7 +29,7 @@ DROP TABLE IF EXISTS `admin_notifications`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `type` enum('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed','payment_received','invoice_created','system') COLLATE utf8mb4_unicode_ci NOT NULL,
   `quote_id` int DEFAULT NULL,
   `message` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT '0',
@@ -425,3 +425,16 @@ CREATE TABLE IF NOT EXISTS `digital_signatures` (
   PRIMARY KEY (`id`), KEY `idx_signature_quote` (`quote_id`), KEY `idx_signature_document` (`document_type`,`document_id`), KEY `idx_signature_date` (`signed_at`), UNIQUE KEY `uq_signature_quote_type` (`quote_id`,`document_type`),
   CONSTRAINT `fk_signature_quote` FOREIGN KEY (`quote_id`) REFERENCES `quotes`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- V3 notification preferences
+CREATE TABLE IF NOT EXISTS notification_preferences (
+  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+  quote_requests TINYINT(1) NOT NULL DEFAULT 1,
+  quote_status TINYINT(1) NOT NULL DEFAULT 1,
+  jobs TINYINT(1) NOT NULL DEFAULT 1,
+  payments TINYINT(1) NOT NULL DEFAULT 1,
+  system TINYINT(1) NOT NULL DEFAULT 1,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO notification_preferences (id) VALUES (1) ON DUPLICATE KEY UPDATE id=id;
