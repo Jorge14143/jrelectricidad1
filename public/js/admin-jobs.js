@@ -216,9 +216,15 @@ async function renderJobManagement(job,content){
         <button class="btn btn-small" type="submit">📎 Adjuntar</button>
       </form>
       <div id="jobAttachmentsList">${attachments.length?attachments.map(file=>`
-        <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)">
-          <a href="${jobEscape(file.url)}" target="_blank" rel="noopener noreferrer">${jobEscape(file.original_name)}</a>
-          <span>${jobEscape(file.category)} · ${Math.round(Number(file.size_bytes||0)/1024)} KB <button class="btn btn-small" type="button" onclick="deleteJobAttachment(${job.id},${file.id})">🗑</button></span>
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)">
+          <div>
+            <a href="${jobEscape(file.url)}" target="_blank" rel="noopener noreferrer">${jobEscape(file.original_name)}</a>
+            <small style="display:block">${jobEscape(file.category)} · ${Math.round(Number(file.size_bytes||0)/1024)} KB</small>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            ${["image/jpeg","image/png","image/webp","image/gif"].includes(file.mime_type)&&["finalizado","cerrado"].includes(job.status)?`<button class="btn btn-small" type="button" onclick="promoteJobAttachment(${file.id},${job.id})">🖼️ Publicar en galería</button>`:""}
+            <button class="btn btn-small" type="button" onclick="deleteJobAttachment(${job.id},${file.id})">🗑</button>
+          </div>
         </div>`).join(""):"<p>Sin archivos.</p>"}</div>
     </div>
 
