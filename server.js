@@ -13,6 +13,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const fs = require("fs");
+const registerFinanceRoutes = require("./finance-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -326,6 +327,8 @@ function cleanUser(user) {
 
 }
 
+
+registerFinanceRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
@@ -6975,6 +6978,16 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
     );
 
     await connection.commit();
+
+    // Finanzas V3: un presupuesto aceptado genera el registro de facturación del servicio.
+    try {
+      await app.locals.ensureServiceInvoice(pool, quote.id, {
+        issueDate: new Date().toISOString().slice(0, 10),
+        notes: "Generado automáticamente al aceptar el presupuesto."
+      });
+    } catch (financeError) {
+      console.error("Error creando registro financiero del servicio:", financeError);
+    }
 
     res.json({
       success: true,
