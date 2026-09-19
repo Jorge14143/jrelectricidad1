@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/css/dashboard-v3.css">
   <link rel="stylesheet" href="/css/notifications-v3.css">
   <link rel="stylesheet" href="/css/configuration-v3.css">
+  <link rel="stylesheet" href="/css/security-v3.css">
 </head>
 
 <body class="admin-page">
@@ -174,6 +175,8 @@
     <div class="admin-nav-label">
       SISTEMA
     </div>
+
+   <a href="#securityV3Section" class="admin-nav-item"><span>🛡️</span><span>Seguridad</span></a>
 
    <a href="#settingsSection" class="admin-nav-item">
   <span>⚙️</span>
@@ -2633,6 +2636,31 @@
  </form>
 </section>
 
+<!-- SEGURIDAD AVANZADA V3 -->
+<section class="admin-section" id="securityV3Section">
+ <div class="admin-section-header"><div><span class="admin-section-eyebrow">SEGURIDAD</span><h2>Seguridad avanzada</h2><p>Protección de acceso, sesiones, autenticación de dos factores y auditoría.</p></div></div>
+ <div class="security-v3-grid">
+  <div class="security-v3-card">
+   <h3>🔐 Autenticación de dos factores</h3>
+   <p>Estado: <strong id="security2faStatus">—</strong></p>
+   <button class="btn" type="button" onclick="setup2FA()">Generar nueva clave 2FA</button>
+   <div id="security2faSecret" class="security-v3-secret">Generá una clave para comenzar.</div>
+   <label>URI para aplicación autenticadora</label>
+   <textarea id="security2faUri" class="security-v3-uri" readonly></textarea>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" type="button" onclick="enable2FA()">Activar 2FA</button><button class="btn btn-secondary" type="button" onclick="disable2FA()">Desactivar 2FA</button></div>
+  </div>
+  <div class="security-v3-card">
+   <h3>🛡️ Protección API</h3>
+   <p>Helmet, sesiones HTTP-only, SameSite, rate limiting y validación de autenticación administrativa.</p>
+   <p class="muted">Las mutaciones administrativas tienen limitación de frecuencia y los eventos quedan registrados en auditoría.</p>
+  </div>
+  <div class="security-v3-card security-v3-full">
+   <h3>📋 Auditoría avanzada</h3>
+   <div style="overflow:auto"><table class="security-v3-table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>HTTP</th><th>IP</th></tr></thead><tbody id="securityAuditList"><tr><td colspan="5">Cargando...</td></tr></tbody></table></div>
+  </div>
+ </div>
+</section>
+
 <!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
@@ -2900,6 +2928,7 @@
 <script src="/js/admin-notifications.js"></script>
 <script src="/js/admin-notifications-v3.js"></script>
 <script src="/js/admin-configuration-v3.js"></script>
+<script src="/js/admin-security-v3.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
