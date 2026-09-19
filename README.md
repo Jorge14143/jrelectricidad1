@@ -133,3 +133,15 @@ Presupuestos V3 implementados al 100% estructuralmente: cálculo, descuentos/imp
 - Documentación: `docs/V3-BLOCK-E.md`
 
 **Nota:** la migración 020 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
+
+## V3.0 — Bloque F completado
+
+Gestión de Trabajos V3 implementada al 100% estructuralmente: motor y ciclo de estados, asignación/programación, detalle operativo, checklist, costos, registro de tiempos, notas, eventos e integración con el portal cliente.
+
+- Administración: `/trabajos-v3.html`
+- API: `/api/v3/admin/jobs` y `/api/v3/client/jobs/:id`
+- Migración: `migrations/021_v3_jobs.sql`
+- Checker: `npm run test:v3-jobs`
+- Documentación: `docs/V3-BLOCK-F.md`
+
+**Nota:** la migración 021 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
