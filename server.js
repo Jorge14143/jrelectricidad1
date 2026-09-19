@@ -2144,6 +2144,24 @@ app.post(
       });
     }
 
+    // V2: vincular automáticamente la solicitud con un cliente existente.
+    let clientId = null;
+    const clientQuery = await pool.query("SELECT id FROM clients WHERE phone=? LIMIT 1", [cleanPhone]);
+    const clientRows = clientQuery[0];
+    if (clientRows.length) {
+      clientId = clientRows[0].id;
+      await pool.query(
+        `UPDATE clients SET name=?, email=COALESCE(NULLIF(?, ''), email) WHERE id=?`,
+        [cleanName, cleanEmail || "", clientId]
+      );
+    } else {
+      const clientQueryResult = await pool.query(
+        `INSERT INTO clients (name, phone, email) VALUES (?, ?, ?)`,
+        [cleanName, cleanPhone, cleanEmail || null]
+      );
+      clientId = clientQueryResult[0].insertId;
+    }
+
     const [result] = await pool.query(
       `
       INSERT INTO quote_requests
@@ -2154,9 +2172,10 @@ app.post(
         service,
         description,
         preferred_date,
-        image_url
+        image_url,
+        client_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         cleanName,
@@ -2165,7 +2184,8 @@ app.post(
         cleanService,
         cleanDescription,
         preferred_date || null,
-        imageUrl
+        imageUrl,
+        clientId
       ]
     );
 
