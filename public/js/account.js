@@ -1,89 +1,248 @@
 "use strict";
 
-async function loadAccount() {
-  const message = document.getElementById("account-message");
-  const dataBox = document.getElementById("account-data");
-  try {
-    const response = await fetch("/api/me", { credentials: "same-origin" });
-    if (!response.ok) { window.location.href = "/login.html"; return; }
-    const data = await response.json();
-    if (!data.user) { window.location.href = "/login.html"; return; }
-    const user = data.user;
+function setMessage(id, text, ok = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = "account-form-message" + (ok ? " success" : "");
+}
 
-    document.getElementById("account-name").textContent = user.name || "-";
-    document.getElementById("account-email").textContent = user.email || "-";
-    document.getElementById("account-role").textContent = user.role === "admin" ? "Administrador" : "Usuario";
-    document.getElementById("profile-name").value = user.name || "";
-    document.getElementById("profile-email").value = user.email || "";
+function renderUser(user) {
+  document.getElementById("account-name").textContent = user.name || "-";
+  document.getElementById("account-email").textContent = user.email || "-";
+  document.getElementById("account-role").textContent =
+    user.role === "admin" ? "Administrador" : "Usuario";
 
-    if (user.role === "admin") document.getElementById("admin-link").style.display = "inline-block";
-    if (message) message.style.display = "none";
-    if (dataBox) dataBox.style.display = "grid";
-  } catch (error) {
-    console.error(error);
-    if (message) message.textContent = "No se pudo cargar la información.";
+  const name = document.getElementById("profile-name");
+  if (name) name.value = user.name || "";
+
+  const avatar = document.getElementById("avatar-url");
+  if (avatar) avatar.value = user.avatar_url || "";
+
+  const preview = document.getElementById("avatar-preview");
+  if (preview) {
+    preview.src = user.avatar_url || "";
+    preview.style.display = user.avatar_url ? "block" : "none";
+  }
+
+  const status = document.getElementById("email-status");
+  if (status) {
+    status.textContent = user.email_verified
+      ? "✅ Correo confirmado"
+      : "⚠️ Correo sin confirmar";
+  }
+
+  if (user.pending_email) {
+    const pending = document.getElementById("pending-email");
+    if (pending) pending.textContent = "Pendiente de confirmación: " + user.pending_email;
+  }
+
+  if (user.role === "admin") {
+    const admin = document.getElementById("admin-link");
+    if (admin) admin.style.display = "inline-block";
   }
 }
 
-const profileForm = document.getElementById("profile-form");
-profileForm?.addEventListener("submit", async event => {
-  event.preventDefault();
-  const message = document.getElementById("profile-message");
-  const button = profileForm.querySelector("button[type=submit]");
-  const name = document.getElementById("profile-name").value.trim();
-  const email = document.getElementById("profile-email").value.trim();
-  if (!name || !email) { message.textContent = "Completá nombre y email."; return; }
-  if (button) button.disabled = true;
-  message.textContent = "Guardando...";
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    ...options,
+    headers: {
+      ...(options.body ? {"Content-Type": "application/json"} : {}),
+      ...(options.headers || {})
+    }
+  });
+  let data = {};
+  try { data = await response.json(); } catch {}
+  if (!response.ok) throw new Error(data.error || "No se pudo completar la operación.");
+  return data;
+}
+
+async function loadAccount() {
   try {
-    const response = await fetch("/api/account/profile", {
-      method: "PUT", headers: {"Content-Type":"application/json"}, credentials:"same-origin",
-      body: JSON.stringify({name,email})
+    const data = await api("/api/me");
+    if (!data.user) {
+      window.location.href = "/login.html";
+      return;
+    }
+    renderUser(data.user);
+    document.getElementById("account-message").style.display = "none";
+    document.getElementById("account-data").style.display = "grid";
+    await Promise.all([loadEmailStatus(), loadActivity()]);
+  } catch (error) {
+    console.error(error);
+    setMessage("account-message", error.message);
+  }
+}
+
+async function loadEmailStatus() {
+  try {
+    const data = await api("/api/account/email/status");
+    const status = document.getElementById("email-status");
+    const pending = document.getElementById("pending-email");
+    const resend = document.getElementById("verify-email-button");
+
+    if (status) status.textContent = data.verified ? "✅ Correo confirmado" : "⚠️ Correo sin confirmar";
+    if (pending) pending.textContent = data.pending_email
+      ? "Pendiente de confirmación: " + data.pending_email
+      : "";
+    if (resend) resend.style.display = data.verified ? "none" : "inline-block";
+  } catch (error) {
+    setMessage("email-message", error.message);
+  }
+}
+
+async function loadActivity() {
+  const box = document.getElementById("activity-list");
+  if (!box) return;
+  try {
+    const data = await api("/api/account/activity?limit=30");
+    box.innerHTML = "";
+    if (!data.activity?.length) {
+      box.textContent = "Todavía no hay actividad registrada.";
+      return;
+    }
+
+    for (const item of data.activity) {
+      const row = document.createElement("div");
+      row.className = "account-field";
+      const date = item.created_at
+        ? new Date(item.created_at).toLocaleString("es-AR")
+        : "";
+      row.innerHTML = "<span>•</span><div><strong></strong><small></small></div>";
+      row.querySelector("strong").textContent = item.action || "Actividad";
+      row.querySelector("small").textContent = date;
+      box.appendChild(row);
+    }
+  } catch (error) {
+    box.textContent = "No se pudo cargar el historial.";
+  }
+}
+
+document.getElementById("profile-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector("button[type=submit]");
+  const name = document.getElementById("profile-name").value.trim();
+
+  if (!name) {
+    setMessage("profile-message", "El nombre es obligatorio.");
+    return;
+  }
+
+  button.disabled = true;
+  setMessage("profile-message", "Guardando...");
+  try {
+    const data = await api("/api/account/profile", {
+      method: "PUT",
+      body: JSON.stringify({ name })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "No se pudieron actualizar los datos.");
-    document.getElementById("account-name").textContent = data.user.name;
-    document.getElementById("account-email").textContent = data.user.email;
-    message.textContent = "✅ Datos personales actualizados correctamente.";
-  } catch(error) { message.textContent = "❌ " + error.message; }
-  finally { if (button) button.disabled = false; }
+    renderUser(data.user);
+    setMessage("profile-message", "✅ Datos personales actualizados.", true);
+    await loadActivity();
+  } catch (error) {
+    setMessage("profile-message", "❌ " + error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
-const emailForm = document.getElementById("email-form");
-emailForm?.addEventListener("submit", async event => {
+document.getElementById("email-form")?.addEventListener("submit", async event => {
   event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
   const newEmail = document.getElementById("new-email").value.trim();
   const currentPassword = document.getElementById("email-current-password").value;
-  const message = document.getElementById("email-message");
-  message.textContent = "Actualizando...";
+
+  button.disabled = true;
+  setMessage("email-message", "Enviando confirmación...");
   try {
-    const response = await fetch("/api/account/email", {method:"PUT",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({newEmail,currentPassword})});
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "No se pudo cambiar el correo.");
-    document.getElementById("account-email").textContent = data.user.email;
-    document.getElementById("profile-email").value = data.user.email;
-    emailForm.reset();
-    message.textContent = "✅ Correo actualizado correctamente.";
-  } catch(error) { message.textContent = "❌ " + error.message; }
+    const data = await api("/api/account/email", {
+      method: "PUT",
+      body: JSON.stringify({ newEmail, currentPassword })
+    });
+    form.reset();
+    setMessage("email-message", "✅ " + data.message, true);
+    await loadEmailStatus();
+    await loadActivity();
+  } catch (error) {
+    setMessage("email-message", "❌ " + error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
-const passwordForm = document.getElementById("password-form");
-passwordForm?.addEventListener("submit", async event => {
+document.getElementById("verify-email-button")?.addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  setMessage("email-message", "Enviando correo...");
+  try {
+    const data = await api("/api/account/email/verify/request", {
+      method: "POST",
+      body: JSON.stringify({})
+    });
+    setMessage("email-message", "✅ " + data.message, true);
+    await loadEmailStatus();
+  } catch (error) {
+    setMessage("email-message", "❌ " + error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("avatar-form")?.addEventListener("submit", async event => {
   event.preventDefault();
+  const button = event.currentTarget.querySelector("button[type=submit]");
+  const avatar_url = document.getElementById("avatar-url").value.trim();
+
+  button.disabled = true;
+  setMessage("avatar-message", "Guardando...");
+  try {
+    const data = await api("/api/account/avatar", {
+      method: "PUT",
+      body: JSON.stringify({ avatar_url })
+    });
+    renderUser(data.user);
+    setMessage("avatar-message", "✅ " + data.message, true);
+    await loadActivity();
+  } catch (error) {
+    setMessage("avatar-message", "❌ " + error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("password-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
   const currentPassword = document.getElementById("current-password").value;
   const newPassword = document.getElementById("new-password").value;
   const confirmPassword = document.getElementById("confirm-password").value;
-  const message = document.getElementById("password-message");
-  if (newPassword.length < 8) { message.textContent = "❌ La nueva contraseña debe tener al menos 8 caracteres."; return; }
-  if (newPassword !== confirmPassword) { message.textContent = "❌ Las nuevas contraseñas no coinciden."; return; }
-  message.textContent = "Actualizando...";
+
+  if (newPassword.length < 12) {
+    setMessage("password-message", "❌ La nueva contraseña debe tener al menos 12 caracteres.");
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    setMessage("password-message", "❌ Las nuevas contraseñas no coinciden.");
+    return;
+  }
+
+  button.disabled = true;
+  setMessage("password-message", "Actualizando...");
   try {
-    const response = await fetch("/api/account/password", {method:"PUT",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({currentPassword,newPassword})});
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "No se pudo cambiar la contraseña.");
-    passwordForm.reset();
-    message.textContent = "✅ Contraseña actualizada correctamente. Las demás sesiones fueron cerradas.";
-  } catch(error) { message.textContent = "❌ " + error.message; }
+    const data = await api("/api/account/password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    form.reset();
+    setMessage("password-message", "✅ " + data.message, true);
+    await loadActivity();
+  } catch (error) {
+    setMessage("password-message", "❌ " + error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 loadAccount();
