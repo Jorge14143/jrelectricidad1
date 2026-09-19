@@ -77,3 +77,18 @@ La Fundación V3 establece la arquitectura modular, la migración base, la capa 
 Ver: docs/V3-PHASE-01-04.md
 
 Comprobación: npm run test:v3-foundation
+
+
+## V3.0 — Bloque B: Página pública V3
+
+La rama `v2-development` incorpora el rediseño público V3: Home, servicios, galería, testimonios aprobados, solicitud de presupuesto, agenda online, SEO, contacto y PWA.
+
+Migración requerida para agenda y testimonios:
+
+`npm run migrate`
+
+Verificación estructural:
+
+`npm run test:v3-public`
+
+La migración y la validación operativa sobre la instancia MySQL/servidor real deben ejecutarse antes del despliegue de producción.
