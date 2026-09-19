@@ -6977,6 +6977,12 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
       ]
     );
 
+    // Finanzas V3: un presupuesto aceptado genera el registro de facturación del servicio.
+    await app.locals.ensureServiceInvoice(connection, quote.id, {
+      issueDate: new Date().toISOString().slice(0, 10),
+      notes: "Generado automáticamente al aceptar el presupuesto."
+    });
+
     await connection.commit();
 
     // Finanzas V3: un presupuesto aceptado genera el registro de facturación del servicio.
