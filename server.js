@@ -1212,6 +1212,56 @@ app.get(
 
 
 // =========================================================
+// BÚSQUEDA GLOBAL ADMIN — FASE 15
+// =========================================================
+
+app.get("/api/admin/search", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().replace(/\s+/g, " ");
+    if (q.length < 2) return res.json({ query: q, results: [] });
+
+    const term = "%" + q.slice(0, 100) + "%";
+    const sql = `
+      SELECT * FROM (
+        SELECT u.id,'user' AS result_type,u.name AS title,u.email AS subtitle,'Usuarios' AS section,'#usersSection' AS link
+        FROM users u WHERE u.name LIKE ? OR u.email LIKE ?
+        UNION ALL
+        SELECT c.id,'client',c.name,CONCAT_WS(' · ',c.phone,c.email),'Clientes','#clientsSection'
+        FROM clients c WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR c.address LIKE ? OR c.locality LIKE ?
+        UNION ALL
+        SELECT qr.id,'request',CONCAT('Solicitud #',qr.id,' · ',qr.name),CONCAT_WS(' · ',qr.service,qr.phone,qr.email,qr.status),'Solicitudes','#quoteRequestsSection'
+        FROM quote_requests qr WHERE qr.name LIKE ? OR qr.phone LIKE ? OR qr.email LIKE ? OR qr.service LIKE ? OR qr.description LIKE ?
+        UNION ALL
+        SELECT q.id,'quote',CONCAT('Presupuesto ',q.quote_number),CONCAT_WS(' · ',qr.name,qr.phone,q.status),'Presupuestos','#quotesSection'
+        FROM quotes q INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+        WHERE q.quote_number LIKE ? OR qr.name LIKE ? OR qr.phone LIKE ? OR q.status LIKE ? OR q.notes LIKE ?
+        UNION ALL
+        SELECT j.id,'job',CONCAT('Trabajo #',j.id),CONCAT_WS(' · ',qr.name,j.status,j.location),'Trabajos','#jobsSection'
+        FROM jobs j INNER JOIN quotes q ON q.id=j.quote_id INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+        WHERE CAST(j.id AS CHAR) LIKE ? OR qr.name LIKE ? OR j.status LIKE ? OR j.location LIKE ? OR j.internal_notes LIKE ? OR j.execution_notes LIKE ? OR j.completion_notes LIKE ?
+        UNION ALL
+        SELECT s.id,'service',s.title,CONCAT_WS(' · ',s.description,s.category),'Servicios','#servicesSection'
+        FROM services s WHERE s.title LIKE ? OR s.description LIKE ? OR s.category LIKE ?
+        UNION ALL
+        SELECT g.id,'gallery',g.title,CONCAT_WS(' · ',g.description,g.category,g.alt_text),'Galería','#gallerySection'
+        FROM gallery g WHERE g.title LIKE ? OR g.description LIKE ? OR g.category LIKE ? OR g.alt_text LIKE ?
+        UNION ALL
+        SELECT d.id,'document',d.title,CONCAT_WS(' · ',d.document_type,d.description),'Documentos','#documentsSection'
+        FROM documents d WHERE d.title LIKE ? OR d.description LIKE ? OR d.document_type LIKE ?
+      ) results
+      ORDER BY title ASC
+      LIMIT 50
+    `;
+    const params = Array(33).fill(term);
+    const [rows] = await pool.query(sql, params);
+    res.json({ query:q, count:rows.length, results:rows });
+  } catch (error) {
+    logError("Error en búsqueda global", {requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo realizar la búsqueda global."});
+  }
+});
+
+// =========================================================
 // CONFIGURACIÓN DEL NEGOCIO
 // =========================================================
 
