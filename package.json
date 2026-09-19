@@ -1,7 +1,7 @@
 {
   "name": "jr-electricidad",
-  "version": "1.0.0",
-  "description": "Sitio web para empresa de electricidad con usuarios y panel administrador",
+  "version": "3.0.0",
+  "description": "Sistema profesional de gestión de servicios eléctricos JR Electricidad V3",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
