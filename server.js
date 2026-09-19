@@ -318,6 +318,14 @@ async function invalidateUserSessions(userId, keepSessionId = null) {
 }
 
 async function isLoginLocked(email, ip) {
+  const [userRows] = await pool.query(
+    "SELECT locked_until FROM users WHERE email=? LIMIT 1",
+    [email]
+  );
+  if (userRows[0]?.locked_until && new Date(userRows[0].locked_until).getTime() > Date.now()) {
+    return true;
+  }
+
   const [rows] = await pool.query(
     `SELECT COUNT(*) AS failures
      FROM login_attempts
@@ -478,6 +486,34 @@ async function recordLoginAttempt(req, email, success, userId = null) {
         String(req.get("user-agent") || "").slice(0, 512) || null
       ]
     );
+
+    if (userId) {
+      if (success) {
+        await pool.query(
+          "UPDATE users SET failed_login_count=0, locked_until=NULL WHERE id=?",
+          [userId]
+        );
+      } else {
+        const [rows] = await pool.query(
+          `SELECT COUNT(*) AS failures
+           FROM login_attempts
+           WHERE user_id=? AND success=0
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)`,
+          [userId]
+        );
+        if (Number(rows[0]?.failures || 0) >= 5) {
+          await pool.query(
+            "UPDATE users SET failed_login_count=failed_login_count+1, locked_until=DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id=?",
+            [userId]
+          );
+        } else {
+          await pool.query(
+            "UPDATE users SET failed_login_count=failed_login_count+1 WHERE id=?",
+            [userId]
+          );
+        }
+      }
+    }
   } catch (error) {
     logError("No se pudo registrar intento de login", { requestId: req.requestId, error: error.message });
   }
