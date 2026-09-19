@@ -225,9 +225,23 @@ module.exports = function registerFinanceRoutes({ app, pool, requireAdmin }) {
       ).catch(error => console.error("No se pudo crear notificación de cobro:", error));
 
       await connection.commit();
-      if (app.locals.runAutomation) { const [clientRows]=await pool.query("SELECT qr.name,qr.email,qr.phone FROM service_invoices i JOIN quotes q ON q.id=i.quote_id JOIN quote_requests qr ON qr.id=q.quote_request_id WHERE i.id=? LIMIT 1",[invoiceId]); const client=clientRows[0]||{}; app.locals.runAutomation("payment_received",{type:"payment",id:invoiceId,quote_id:rows[0].quote_id,name:client.name,email:client.email,phone:client.phone,message:"Se registró un cobro de $ "+amount.toFixed(2)+".",}).catch(console.error); }
+      if (app.locals.runAutomation) {
+        const [clientRows] = await pool.query(
+          "SELECT qr.name,qr.email,qr.phone FROM service_invoices i JOIN quotes q ON q.id=i.quote_id JOIN quote_requests qr ON qr.id=q.quote_request_id WHERE i.id=? LIMIT 1",
+          [invoiceId]
+        );
+        const client = clientRows[0] || {};
+        app.locals.runAutomation("payment_received", {
+          type: "payment",
+          id: invoiceId,
+          quote_id: rows[0].quote_id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          message: "Se registró un cobro de $ " + amount.toFixed(2) + "."
+        }).catch(console.error);
+      }
 
-      if (app.locals.runAutomation) app.locals.runAutomation("payment_received", {type:"payment",id:invoiceId,quote_id:rows[0].quote_id,name:"",message:`Se registró un cobro de $ ${amount.toFixed(2)}.`}).catch(console.error);
       res.status(201).json({success:true,paid,balance:Math.max(0,total-paid),status});
     }catch(error){
       await connection.rollback().catch(()=>{});
