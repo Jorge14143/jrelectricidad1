@@ -18,7 +18,8 @@
     "test:v2-acceptance": "node scripts/check-v2-acceptance.js",
     "test:v2-jobs": "node scripts/check-v2-jobs.js",
     "test:v2-gallery": "node scripts/check-v2-gallery.js",
-    "test:v2-dashboard": "node scripts/check-v2-dashboard.js"
+    "test:v2-dashboard": "node scripts/check-v2-dashboard.js",
+    "test:v2-notifications": "node scripts/check-v2-notifications.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
