@@ -20,7 +20,8 @@
     "test:v2-gallery": "node scripts/check-v2-gallery.js",
     "test:v2-dashboard": "node scripts/check-v2-dashboard.js",
     "test:v2-notifications": "node scripts/check-v2-notifications.js",
-    "test:v2-email": "node scripts/check-v2-email.js"
+    "test:v2-email": "node scripts/check-v2-email.js",
+    "test:v2-whatsapp": "node scripts/check-v2-whatsapp.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
