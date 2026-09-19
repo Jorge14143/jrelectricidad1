@@ -631,10 +631,27 @@
 
         <select id="quoteRequestStatusFilter">
           <option value="">Todos los estados</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="contactado">Contactados</option>
-          <option value="presupuestado">Presupuestados</option>
-          <option value="cerrado">Cerrados</option>
+          <option value="nueva">🟡 Nueva</option>
+          <option value="en_revision">🔵 En revisión</option>
+          <option value="presupuestando">🟣 Presupuestando</option>
+          <option value="presupuestada">🟢 Presupuestada</option>
+          <option value="aceptada">🟢 Aceptada</option>
+          <option value="programada">📅 Programada</option>
+          <option value="en_trabajo">🔧 En trabajo</option>
+          <option value="finalizada">✅ Finalizada</option>
+          <option value="cerrada">⚫ Cerrada</option>
+        </select>
+
+        <select id="quoteRequestPriorityFilter" aria-label="Filtrar prioridad">
+          <option value="">Todas las prioridades</option>
+          <option value="urgente">🚨 Urgente</option>
+          <option value="alta">Alta</option>
+          <option value="normal">Normal</option>
+          <option value="baja">Baja</option>
+        </select>
+
+        <select id="quoteRequestAssignedFilter" aria-label="Filtrar técnico">
+          <option value="">Todos los técnicos</option>
         </select>
 
         <input
