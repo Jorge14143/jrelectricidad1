@@ -360,6 +360,7 @@ registerDashboardRoutes({ app, pool, requireAdmin });
 registerNotificationRoutes({ app, pool, requireAdmin });
 registerConfigurationRoutes({ app, pool, requireAdmin });
 registerSecurityRoutes({ app, pool, requireAdmin, cleanUser, authLimiter });
+registerAutomationRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
@@ -7035,6 +7036,8 @@ app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
     await connection.commit();
 
     // Finanzas V3: un presupuesto aceptado genera el registro de facturación del servicio.
+    if (app.locals.runAutomation) app.locals.runAutomation("quote_accepted", {type:"quote",id:quote.id,quote_id:quote.id,name:quote.client_name,message:`El cliente ${quote.client_name} aceptó el presupuesto ${quote.quote_number}.`}).catch(console.error);
+
     try {
       await app.locals.ensureServiceInvoice(pool, quote.id, {
         issueDate: new Date().toISOString().slice(0, 10),
@@ -7178,6 +7181,8 @@ app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
     );
 
     await connection.commit();
+
+    if (app.locals.runAutomation) app.locals.runAutomation("quote_rejected", {type:"quote",id:quote.id,quote_id:quote.id,name:quote.client_name,message:`El cliente ${quote.client_name} rechazó el presupuesto ${quote.quote_number}.`}).catch(console.error);
 
     res.json({
       success: true,
