@@ -1249,6 +1249,8 @@ app.post(
       await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
       req.session.user = registeredUser;
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+      await writeAudit(req, "register", "user", result.insertId);
+
       res.json({
 
         ok: true,
@@ -1327,15 +1329,13 @@ app.post(
         );
 
 
-      if (
-        !rows.length ||
-        !(
-          await bcrypt.compare(
-            password,
-            rows[0].password_hash
-          )
-        )
-      ) {
+      const passwordValid = rows.length
+        ? await bcrypt.compare(password, rows[0].password_hash)
+        : false;
+
+      await recordLoginAttempt(req, email, passwordValid, rows[0]?.id || null);
+
+      if (!rows.length || !passwordValid) {
 
         return res.status(401).json({
           error:
@@ -1349,6 +1349,8 @@ app.post(
       await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
       req.session.user = loggedUser;
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+      await writeAudit(req, "login", "user", loggedUser.id);
+
       res.json({
 
         ok: true,
