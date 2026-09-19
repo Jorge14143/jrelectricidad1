@@ -40,7 +40,8 @@
     "test:v3-client": "node scripts/check-v3-client.js",
     "test:v3-agenda": "node scripts/check-v3-agenda.js",
     "test:v3-quotes": "node scripts/check-v3-quotes.js",
-    "test:v3-jobs": "node scripts/check-v3-jobs.js"
+    "test:v3-jobs": "node scripts/check-v3-jobs.js",
+    "test:v3-finance": "node scripts/check-v3-finance.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
