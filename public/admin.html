@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/css/signatures.css">
   <link rel="stylesheet" href="/css/dashboard-v3.css">
   <link rel="stylesheet" href="/css/notifications-v3.css">
+  <link rel="stylesheet" href="/css/configuration-v3.css">
 </head>
 
 <body class="admin-page">
@@ -2596,6 +2597,42 @@
   </form>
 </section>
 
+<!-- CONFIGURACIÓN V3 -->
+<section class="admin-section" id="configurationV3Section">
+ <div class="admin-section-header"><div><span class="admin-section-eyebrow">SISTEMA</span><h2>Configuración V3</h2><p>Configurá el funcionamiento general de presupuestos, facturación y comunicaciones.</p></div></div>
+ <form id="configurationV3Form">
+  <div class="configuration-v3-grid">
+   <div class="configuration-v3-card">
+    <h3>📋 Presupuestos</h3>
+    <div class="form-group"><label for="configQuoteValidity">Validez predeterminada (días)</label><input id="configQuoteValidity" type="number" min="1" max="365"></div>
+    <div class="form-group"><label for="configQuoteNotes">Observaciones predeterminadas</label><textarea id="configQuoteNotes" maxlength="5000"></textarea></div>
+   </div>
+   <div class="configuration-v3-card">
+    <h3>🧾 Facturación</h3>
+    <div class="form-group"><label for="configInvoicePrefix">Prefijo de facturas/registros</label><input id="configInvoicePrefix" maxlength="20"></div>
+    <div class="form-group"><label for="configInvoiceTaxRate">Tasa impositiva (%)</label><input id="configInvoiceTaxRate" type="number" min="0" max="100" step="0.01"></div>
+    <label class="configuration-v3-check"><input id="configInvoiceTaxEnabled" type="checkbox"> Activar cálculo impositivo configurable</label>
+    <small class="muted">Esta opción queda preparada para futuras reglas fiscales. No modifica automáticamente los presupuestos actuales.</small>
+   </div>
+   <div class="configuration-v3-card">
+    <h3>💬 Comunicaciones</h3>
+    <label class="configuration-v3-check"><input id="configEmailEnabled" type="checkbox"> Email habilitado</label>
+    <label class="configuration-v3-check"><input id="configWhatsappEnabled" type="checkbox"> WhatsApp habilitado</label>
+   </div>
+   <div class="configuration-v3-card">
+    <h3>⚙️ Preferencias</h3>
+    <div class="form-group"><label for="configTheme">Tema del panel</label><select id="configTheme"><option value="dark">Oscuro JR Electricidad</option></select></div>
+    <div class="form-group"><label for="configTimezone">Zona horaria</label><input id="configTimezone" value="America/Argentina/Buenos_Aires" maxlength="80"></div>
+   </div>
+   <div class="configuration-v3-card configuration-v3-full">
+    <h3>🔐 Administración y permisos</h3>
+    <p class="muted">Los permisos de acceso continúan controlados por el rol administrativo existente. Esta sección centraliza las preferencias sin alterar los roles actuales.</p>
+    <button class="btn" type="submit">💾 Guardar configuración V3</button>
+   </div>
+  </div>
+ </form>
+</section>
+
 <!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
@@ -2862,6 +2899,7 @@
 <script src="/js/admin-core.js"></script>
 <script src="/js/admin-notifications.js"></script>
 <script src="/js/admin-notifications-v3.js"></script>
+<script src="/js/admin-configuration-v3.js"></script>
 <script src="/js/admin-dashboard.js"></script>
 <script src="/js/admin-dashboard-v3.js"></script>
 <script src="/js/admin-services.js"></script>
