@@ -105,3 +105,17 @@ Portal Cliente V3 implementado al 100% estructuralmente: dashboard, perfil, soli
 - Documentación: `docs/V3-BLOCK-C.md`
 
 **Nota:** la migración 018 todavía debe ejecutarse en la base de datos real antes de usar estas funciones en producción.
+
+
+## V3.0 — Bloque D completado
+
+Agenda y Turnos V3 implementados al 100% estructuralmente: disponibilidad, agenda pública, turnos del cliente, calendario administrativo, confirmación/cancelación/reprogramación y recordatorios.
+
+- Cliente: `/portal.html`
+- Administración: `/agenda.html`
+- API: `/api/v3/client/appointments` y `/api/v3/admin/appointments`
+- Migración: `migrations/019_v3_appointments.sql`
+- Checker: `npm run test:v3-agenda`
+- Documentación: `docs/V3-BLOCK-D.md`
+
+**Nota:** la migración 019 todavía debe ejecutarse en la base de datos real antes de usar todas las funciones del bloque.
