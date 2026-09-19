@@ -2,10 +2,8 @@
 -- FASE 13 — WHATSAPP
 -- =========================================================
 
-ALTER TABLE business_settings
-  ADD COLUMN whatsapp_enabled TINYINT(1) NOT NULL DEFAULT 0,
-  ADD COLUMN whatsapp_auto_notifications TINYINT(1) NOT NULL DEFAULT 0;
-
+-- whatsapp_enabled y whatsapp_auto_notifications son agregadas por
+-- 011_v2_configuration.sql antes de esta migración.
 CREATE TABLE IF NOT EXISTS whatsapp_outbox (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   to_phone VARCHAR(30) NOT NULL,
