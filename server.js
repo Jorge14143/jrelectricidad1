@@ -8529,7 +8529,7 @@ async function createStoredDocument({
     await connection.query(
       `INSERT INTO document_versions
         (document_id,version_number,original_name,stored_name,storage_path,mime_type,size_bytes,sha256,created_by_user_id)
-       VALUES (1,1,?,?,?,?,?,?,?)`,
+       VALUES (?,1,?,?,?,?,?,?,?)`,
       [documentId, safeName, storedName, "documents/" + storedName, mimeType, stat.size, sha256, createdByUserId || null]
     );
     await connection.commit();
