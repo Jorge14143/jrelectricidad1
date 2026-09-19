@@ -5479,7 +5479,7 @@ app.get("/api/admin/quote-requests", requireAdmin, async (req, res) => {
 });
 
 // Obtener una solicitud completa.
-app.get("/api/admin/quote-requests/:id", requireAdmin, async (req, res) => {
+app.get("/api/admin/quote-requests/:id(\\d+)", requireAdmin, async (req, res) => {
   try {
     const id = validateRequestId(req.params.id);
     if (!id) return res.status(400).json({ error: "ID de solicitud inválido." });
@@ -5534,7 +5534,7 @@ app.get("/api/admin/quote-requests/:id", requireAdmin, async (req, res) => {
 });
 
 // Actualizar estado/prioridad/técnico/agenda/notas.
-app.patch("/api/admin/quote-requests/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.patch("/api/admin/quote-requests/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req, res) => {
   const connection = await pool.getConnection();
 
   try {
@@ -5683,7 +5683,7 @@ app.patch("/api/admin/quote-requests/:id", requireAdmin, adminMutationLimiter, a
 });
 
 // Compatibilidad V1 para cambio de estado.
-app.patch("/api/admin/quote-requests/:id/status", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.patch("/api/admin/quote-requests/:id(\\d+)/status", requireAdmin, adminMutationLimiter, async (req, res) => {
   try {
     const id = validateRequestId(req.params.id);
     const statusMap = {
@@ -5731,7 +5731,7 @@ app.patch("/api/admin/quote-requests/:id/status", requireAdmin, adminMutationLim
 });
 
 // Historial independiente.
-app.get("/api/admin/quote-requests/:id/history", requireAdmin, async (req, res) => {
+app.get("/api/admin/quote-requests/:id(\\d+)/history", requireAdmin, async (req, res) => {
   try {
     const id = validateRequestId(req.params.id);
     if (!id) return res.status(400).json({ error: "ID de solicitud inválido." });
@@ -5797,7 +5797,7 @@ const requestAttachmentUpload = multer({
   }
 });
 
-app.post("/api/admin/quote-requests/:id/attachments", requireAdmin, requestAttachmentUpload.single("file"), async (req, res) => {
+app.post("/api/admin/quote-requests/:id(\\d+)/attachments", requireAdmin, requestAttachmentUpload.single("file"), async (req, res) => {
   try {
     const id = validateRequestId(req.params.id);
     if (!id) {
@@ -5857,7 +5857,7 @@ app.post("/api/admin/quote-requests/:id/attachments", requireAdmin, requestAttac
   }
 });
 
-app.delete("/api/admin/quote-requests/:id/attachments/:attachmentId", requireAdmin, async (req, res) => {
+app.delete("/api/admin/quote-requests/:id(\\d+)/attachments/:attachmentId(\\d+)", requireAdmin, async (req, res) => {
   try {
     const id = validateRequestId(req.params.id);
     const attachmentId = validateRequestId(req.params.attachmentId);
@@ -5890,7 +5890,7 @@ app.delete("/api/admin/quote-requests/:id/attachments/:attachmentId", requireAdm
 });
 
 // Convertir solicitud a presupuesto borrador.
-app.post("/api/admin/quote-requests/:id/convert-to-quote", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.post("/api/admin/quote-requests/:id(\\d+)/convert-to-quote", requireAdmin, adminMutationLimiter, async (req, res) => {
   const connection = await pool.getConnection();
 
   try {
@@ -5986,7 +5986,7 @@ app.post("/api/admin/quote-requests/:id/convert-to-quote", requireAdmin, adminMu
 });
 
 // Convertir solicitud a trabajo. Si no existe presupuesto, crea uno borrador primero.
-app.post("/api/admin/quote-requests/:id/convert-to-job", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.post("/api/admin/quote-requests/:id(\\d+)/convert-to-job", requireAdmin, adminMutationLimiter, async (req, res) => {
   const connection = await pool.getConnection();
 
   try {
