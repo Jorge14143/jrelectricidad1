@@ -9,9 +9,9 @@ registerForm?.addEventListener("submit", async (event) => {
   const email = registerForm.elements.email?.value.trim() || "";
   const password = registerForm.elements.password?.value || "";
 
-  if (password.length < 8) {
+  if (password.length < 12) {
     if (message) {
-      message.textContent = "❌ La contraseña debe tener al menos 8 caracteres.";
+      message.textContent = "❌ La contraseña debe tener al menos 12 caracteres.";
       message.className = "notice error";
     }
     return;
