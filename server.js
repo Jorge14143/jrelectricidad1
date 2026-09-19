@@ -19,6 +19,7 @@ const registerWhatsappRoutes = require("./whatsapp-routes");
 const registerEmailRoutes = require("./email-routes");
 const registerSignatureRoutes = require("./signature-routes");
 const registerDashboardRoutes = require("./dashboard-routes");
+const registerNotificationRoutes = require("./notification-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -339,6 +340,7 @@ registerWhatsappRoutes({ app, pool, requireAdmin });
 registerEmailRoutes({ app, pool, requireAdmin });
 registerSignatureRoutes({ app, pool, requireAdmin, requireAuth });
 registerDashboardRoutes({ app, pool, requireAdmin });
+registerNotificationRoutes({ app, pool, requireAdmin });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
@@ -819,7 +821,7 @@ async function ensureNotificationSchema() {
   });
 
   await pool.query(
-    "ALTER TABLE admin_notifications MODIFY type ENUM('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed') NOT NULL"
+    "ALTER TABLE admin_notifications MODIFY type ENUM('quote_accepted','quote_rejected','quote_request_created','quote_request_status','job_started','job_closed','payment_received','invoice_created','system') NOT NULL"
   );
 
   await pool.query(
