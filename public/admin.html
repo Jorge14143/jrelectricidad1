@@ -7,6 +7,7 @@
   <title>Administración | JR Electricidad</title>
 
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/materials.css">
 </head>
 
 <body class="admin-page">
@@ -151,6 +152,11 @@
     <a href="/finanzas.html" class="admin-nav-item">
       <span>💰</span>
       <span>Finanzas</span>
+    </a>
+
+    <a href="#materialsSection" class="admin-nav-item">
+      <span>🧰</span>
+      <span>Materiales técnicos</span>
     </a>
 
     <div class="admin-nav-label">
@@ -2240,6 +2246,61 @@
 
     </div>
 <!-- =========================================================
+     MATERIALES TÉCNICOS — BLOQUE H
+========================================================= -->
+<section id="materialsSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">OPERATIVO</span>
+      <h2>🧰 Materiales técnicos</h2>
+      <p>Biblioteca técnica para planificar trabajos. Los materiales no tienen precio y no participan del cálculo financiero.</p>
+    </div>
+  </div>
+
+  <div class="materials-grid">
+    <div class="materials-card">
+      <h3>Biblioteca de materiales</h3>
+      <form id="materialForm">
+        <input type="hidden" id="materialId">
+        <div class="materials-form-grid">
+          <div><label>Material</label><input id="materialName" maxlength="180" required placeholder="Ej. Cable unipolar 2,5 mm²"></div>
+          <div><label>Unidad</label><select id="materialUnit" required></select></div>
+          <div><label>Categoría</label><select id="materialCategory"></select></div>
+          <div><label>Estado</label><label><input type="checkbox" id="materialActive" checked> Activo</label></div>
+          <div class="full"><label>Descripción técnica</label><textarea id="materialDescription" maxlength="500" placeholder="Uso o especificación técnica"></textarea></div>
+        </div>
+        <div class="materials-actions"><button class="btn" type="submit">💾 Guardar material</button></div>
+      </form>
+      <div class="table-wrap" style="margin-top:18px">
+        <table class="materials-table"><thead><tr><th>Material</th><th>Categoría</th><th>Unidad</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="materialsCatalog"></tbody></table>
+      </div>
+    </div>
+
+    <div class="materials-card">
+      <h3>Categorías</h3>
+      <form id="materialCategoryForm" class="materials-actions"><input id="newMaterialCategory" placeholder="Nueva categoría" maxlength="100" required><button class="btn tiny">Agregar</button></form>
+      <div id="materialCategoriesList"></div>
+      <h3 style="margin-top:24px">Unidades de medida</h3>
+      <form id="materialUnitForm" class="materials-actions"><input id="newMaterialUnit" placeholder="Nombre" maxlength="50" required><input id="newMaterialUnitSymbol" placeholder="Símbolo" maxlength="20" required><button class="btn tiny">Agregar</button></form>
+      <div id="materialUnitsList"></div>
+    </div>
+  </div>
+
+  <div class="materials-card" style="margin-top:18px">
+    <h3>Lista técnica por presupuesto</h3>
+    <p>Asociá cantidades necesarias a un presupuesto y generá un PDF independiente para la ejecución del trabajo.</p>
+    <select id="materialQuoteSelect"><option value="">Seleccionar presupuesto...</option></select>
+    <form id="materialQuoteForm" class="materials-form-grid" style="margin-top:12px">
+      <div><label>Material</label><select id="quoteMaterialSelect" required></select></div>
+      <div><label>Cantidad</label><input id="quoteMaterialQuantity" type="number" min="0.001" step="0.001" value="1" required></div>
+      <div class="full"><label>Nota técnica</label><input id="quoteMaterialNotes" maxlength="500" placeholder="Ej. recorrido estimado / ubicación"></div>
+      <div class="materials-actions full"><button class="btn" type="submit">➕ Agregar a la lista</button><button class="btn btn-secondary" type="button" id="materialQuotePdf">📄 PDF de materiales</button></div>
+    </form>
+    <div id="quoteMaterialsList" style="margin-top:16px"><p class="muted">Seleccioná un presupuesto para ver su lista técnica.</p></div>
+  </div>
+</section>
+
+<!-- =========================================================
      CONFIGURACIÓN DE CUENTA
 ========================================================= -->
 
@@ -2510,6 +2571,7 @@
 <script src="/js/admin-gallery.js"></script>
 <script src="/js/admin-quotes.js"></script>
 <script src="/js/admin-jobs.js"></script>
+<script src="/js/admin-materials.js"></script>
 <script src="/js/admin-navigation.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
