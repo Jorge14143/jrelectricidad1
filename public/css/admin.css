@@ -10670,3 +10670,158 @@ body.lightbox-open {
 .document-admin-actions{display:flex;gap:6px;flex-wrap:wrap}
 .document-admin-actions .btn{font-size:10px;padding:7px 9px}
 @media(max-width:800px){.documents-toolbar,.documents-upload-grid{grid-template-columns:1fr}.document-admin-card{align-items:flex-start;flex-wrap:wrap}.document-admin-main{width:calc(100% - 55px)}.document-admin-actions{width:100%}}
+
+
+/* =========================================================
+   BÚSQUEDA GLOBAL — FASE 15
+========================================================= */
+
+.admin-global-search {
+  position: relative;
+  width: min(430px, 38vw);
+  z-index: 1300;
+}
+
+.admin-global-search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 13px 9px 36px;
+  border: 1px solid var(--line, #202733);
+  border-radius: 11px;
+  background: #0d1219;
+  color: var(--text, #f5f7fb);
+  outline: none;
+}
+
+.admin-global-search input:focus {
+  border-color: var(--accent, #ffc400);
+  box-shadow: 0 0 0 3px rgba(255,196,0,.08);
+}
+
+.global-search-symbol {
+  position: absolute;
+  left: 12px;
+  top: 9px;
+  color: var(--muted, #9ca6b5);
+  font-size: 20px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 430px;
+  overflow-y: auto;
+  padding: 7px;
+  background: #10141c;
+  border: 1px solid #2a313d;
+  border-radius: 13px;
+  box-shadow: 0 22px 70px rgba(0,0,0,.45);
+}
+
+.global-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 9px;
+  color: var(--text, #f5f7fb);
+  text-decoration: none;
+}
+
+.global-search-result:hover,
+.global-search-result:focus {
+  background: rgba(255,196,0,.08);
+  outline: none;
+}
+
+.global-search-icon {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 31px;
+  border-radius: 8px;
+  background: #171d26;
+}
+
+.global-search-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.global-search-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.global-search-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted, #9ca6b5);
+  font-size: 9px;
+}
+
+.global-search-loading,
+.global-search-empty,
+.global-search-error {
+  padding: 18px 12px;
+  color: var(--muted, #9ca6b5);
+  font-size: 11px;
+  text-align: center;
+}
+
+.global-search-error {
+  color: #ff7b7b;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-global-search {
+    width: min(320px, 42vw);
+  }
+}
+
+@media (max-width: 680px) {
+  .admin-global-search {
+    width: 42px;
+  }
+
+  .admin-global-search input {
+    width: 42px;
+    padding-left: 34px;
+    cursor: pointer;
+  }
+
+  .admin-global-search input::placeholder {
+    color: transparent;
+  }
+
+  .admin-global-search:focus-within,
+  .admin-global-search:has(input:not(:placeholder-shown)) {
+    width: min(270px, 72vw);
+  }
+
+  .admin-global-search:focus-within input,
+  .admin-global-search input:not(:placeholder-shown) {
+    width: 100%;
+  }
+}
