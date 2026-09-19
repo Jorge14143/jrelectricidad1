@@ -5,6 +5,7 @@ const { spawnSync } = require("child_process");
 const root = path.resolve(__dirname, "..");
 const required = [
   "server.js",
+  "finance-routes.js",
   "schema.sql",
   "public/index.html",
   "public/admin.html",
@@ -13,6 +14,7 @@ const required = [
   "public/forgot-password.html",
   "public/reset-password.html",
   "public/cuenta.html",
+  "public/finanzas.html",
   "public/presupuesto.html",
   "public/js/auth-core.js",
   "public/js/auth-login.js",
@@ -29,6 +31,7 @@ const required = [
   "public/js/admin-quotes.js",
   "public/js/admin-services.js",
   "public/js/admin-users.js",
+  "public/js/finanzas.js",
   "public/js/gallery.js",
   "public/js/home-services.js",
   "public/js/public-quote.js",
