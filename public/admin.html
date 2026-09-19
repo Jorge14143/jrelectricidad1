@@ -2503,6 +2503,60 @@
             <label for="pdfNotes">Texto adicional para PDF</label>
             <textarea id="pdfNotes" rows="4" maxlength="5000"></textarea>
           </div>
+          <div class="form-group">
+            <label for="currencyCode">Moneda (código)</label>
+            <input id="currencyCode" maxlength="10" placeholder="ARS">
+          </div>
+          <div class="form-group">
+            <label for="currencySymbol">Símbolo</label>
+            <input id="currencySymbol" maxlength="10" placeholder="$">
+          </div>
+          <div class="form-group settings-field-full">
+            <label class="settings-toggle">
+              <input id="taxEnabled" type="checkbox">
+              <span>Aplicar impuesto configurable a nuevos presupuestos</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="taxName">Nombre del impuesto</label>
+            <input id="taxName" maxlength="80" placeholder="IVA">
+          </div>
+          <div class="form-group">
+            <label for="taxRate">Tasa (%)</label>
+            <input id="taxRate" type="number" min="0" max="100" step="0.001" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="quotePrefix">Prefijo presupuestos</label>
+            <input id="quotePrefix" maxlength="20" placeholder="PR-">
+          </div>
+          <div class="form-group">
+            <label for="quoteNextNumber">Próximo número</label>
+            <input id="quoteNextNumber" type="number" min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label for="jobPrefix">Prefijo trabajos</label>
+            <input id="jobPrefix" maxlength="20" placeholder="TR-">
+          </div>
+          <div class="form-group">
+            <label for="jobNextNumber">Próximo número</label>
+            <input id="jobNextNumber" type="number" min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label for="quoteValidityDays">Vigencia (días)</label>
+            <input id="quoteValidityDays" type="number" min="0" max="3650" step="1">
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="quoteDefaultNotes">Notas predeterminadas de presupuestos</label>
+            <textarea id="quoteDefaultNotes" rows="4" maxlength="10000"></textarea>
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="quoteTerms">Condiciones de presupuestos</label>
+            <textarea id="quoteTerms" rows="5" maxlength="10000"></textarea>
+          </div>
+          <div class="form-group settings-field-full">
+            <label for="commercialConditions">Condiciones comerciales</label>
+            <textarea id="commercialConditions" rows="5" maxlength="10000"></textarea>
+          </div>
         </div>
 
         <button type="submit" class="btn">💾 Guardar configuración</button>
