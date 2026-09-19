@@ -2168,7 +2168,7 @@ app.post(
     }
 
     const [createdRequestRows] = await pool.query(
-      "SELECT id,name,email,service,status FROM quote_requests WHERE id=? LIMIT 1",
+      "SELECT id,name,email,phone,whatsapp,service,status FROM quote_requests WHERE id=? LIMIT 1",
       [result.insertId]
     );
     if (createdRequestRows.length) {
@@ -2176,6 +2176,10 @@ app.post(
         createdRequestRows[0],
         "Solicitud recibida - JR Electricidad",
         "Recibimos correctamente tu solicitud de presupuesto."
+      );
+      await notifyRequestWhatsApp(
+        createdRequestRows[0],
+        `JR Electricidad: recibimos tu solicitud #${createdRequestRows[0].id}. Te contactaremos luego de revisarla.`
       );
     }
 
