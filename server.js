@@ -5280,240 +5280,825 @@ app.get("/presupuesto/:token", (req, res) => {
 // ADMIN
 // ================================
 // ========================================
-// PRESUPUESTOS - ADMIN
+// SOLICITUDES - ADMIN V2
 // ========================================
 
-// Obtener todas las solicitudes de presupuesto
-app.get(
-  "/api/admin/quote-requests",
-  requireAdmin,
-  async (req, res) => {
+const REQUEST_STATUSES = [
+  "nueva",
+  "en_revision",
+  "presupuestando",
+  "presupuestada",
+  "aceptada",
+  "programada",
+  "en_trabajo",
+  "finalizada",
+  "cerrada"
+];
 
-    try {
-      const {
-        search = "",
-        status = "",
-        date_from = "",
-        date_to = ""
-      } = req.query;
+const REQUEST_PRIORITIES = [
+  "baja",
+  "normal",
+  "alta",
+  "urgente"
+];
 
-      const params = [];
-      let sql = `
-        SELECT
-          id,
-          name,
-          phone,
-          email,
-          service,
-          description,
-          preferred_date,
-          image_url,
-          status,
-          created_at
-        FROM quote_requests
-        WHERE 1=1
-      `;
+function validateRequestId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
 
-      const cleanSearch = String(search || "").trim();
+function validateRequestStatus(status) {
+  return REQUEST_STATUSES.includes(String(status || "").trim());
+}
 
-      if (cleanSearch) {
-        sql += `
-          AND (
-            name LIKE ?
-            OR phone LIKE ?
-            OR email LIKE ?
-            OR service LIKE ?
-            OR description LIKE ?
-          )
-        `;
+function validateRequestPriority(priority) {
+  return REQUEST_PRIORITIES.includes(String(priority || "").trim());
+}
 
-        const value = `%${cleanSearch}%`;
-        params.push(value, value, value, value, value);
-      }
-
-      const allowedStatuses = [
-        "pendiente",
-        "contactado",
-        "presupuestado",
-        "cerrado"
-      ];
-
-      if (status) {
-        if (!allowedStatuses.includes(status)) {
-          return res.status(400).json({
-            error: "Estado de solicitud inválido."
-          });
-        }
-
-        sql += " AND status = ?";
-        params.push(status);
-      }
-
-      if (date_from) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_from))) {
-          return res.status(400).json({
-            error: "La fecha desde no es válida."
-          });
-        }
-
-        sql += " AND DATE(created_at) >= ?";
-        params.push(date_from);
-      }
-
-      if (date_to) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_to))) {
-          return res.status(400).json({
-            error: "La fecha hasta no es válida."
-          });
-        }
-
-        sql += " AND DATE(created_at) <= ?";
-        params.push(date_to);
-      }
-
-      sql += " ORDER BY created_at DESC";
-
-      const [rows] = await pool.query(sql, params);
-
-      res.json(rows);
-
-    } catch (error) {
-
-      console.error(
-        "Error obteniendo solicitudes:",
-        error
-      );
-
-      res.status(500).json({
-        error: "No se pudieron obtener las solicitudes."
-      });
-    }
+function validateOptionalDateTime(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const text = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(text) &&
+      !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(text)) {
+    return undefined;
   }
-);
+  return text.replace("T", " ");
+}
 
-app.patch(
-  "/api/admin/quote-requests/:id/status",
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      const status = String(req.body.status || "").trim();
+async function recordRequestHistory(req, requestId, action, oldStatus, newStatus, metadata = null) {
+  await pool.query(
+    `INSERT INTO quote_request_history
+      (quote_request_id, actor_user_id, action, old_status, new_status, metadata)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      requestId,
+      req.session?.user?.id || null,
+      action,
+      oldStatus || null,
+      newStatus || null,
+      metadata ? JSON.stringify(metadata) : null
+    ]
+  );
+}
 
-      const allowedStatuses = [
-        "pendiente",
-        "contactado",
-        "presupuestado",
-        "cerrado"
-      ];
+async function notifyRequestCustomer(request, subject, message) {
+  if (!request?.email) return false;
 
+  try {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) {
+      return false;
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.MAIL_FROM,
+      to: request.email,
+      subject,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
+          <h2>JR Electricidad ⚡</h2>
+          <p>Hola ${String(request.name || "").replace(/[&<>"]/g, "")},</p>
+          <p>${String(message || "").replace(/[&<>"]/g, "")}</p>
+          <p>Saludos,<br>JR Electricidad · Electricista Matriculado Cat. 3</p>
+        </div>
+      `
+    });
+
+    return true;
+  } catch (error) {
+    logError("No se pudo notificar al cliente", {
+      requestId: null,
+      error: error.message,
+      quoteRequestId: request.id
+    });
+    return false;
+  }
+}
+
+// Listar solicitudes con búsqueda, estado, prioridad, técnico y fechas.
+app.get("/api/admin/quote-requests", requireAdmin, async (req, res) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const status = String(req.query.status || "").trim();
+    const priority = String(req.query.priority || "").trim();
+    const assignedUserId = String(req.query.assigned_user_id || "").trim();
+    const dateFrom = String(req.query.date_from || "").trim();
+    const dateTo = String(req.query.date_to || "").trim();
+
+    if (status && !validateRequestStatus(status)) {
+      return res.status(400).json({ error: "Estado de solicitud inválido." });
+    }
+    if (priority && !validateRequestPriority(priority)) {
+      return res.status(400).json({ error: "Prioridad inválida." });
+    }
+
+    const params = [];
+    let sql = `
+      SELECT
+        qr.id, qr.client_id, qr.name, qr.phone, qr.email, qr.service,
+        qr.description, qr.preferred_date, qr.image_url, qr.status,
+        qr.priority, qr.assigned_user_id, qr.scheduled_at,
+        qr.internal_notes, qr.closed_at, qr.created_at, qr.updated_at,
+        u.name AS assigned_user_name,
+        c.locality AS client_locality,
+        (SELECT COUNT(*) FROM quote_request_attachments a WHERE a.quote_request_id=qr.id) AS attachments_count,
+        (SELECT COUNT(*) FROM quote_request_history h WHERE h.quote_request_id=qr.id) AS history_count,
+        q.id AS quote_id,
+        q.quote_number,
+        j.id AS job_id,
+        j.status AS job_status
+      FROM quote_requests qr
+      LEFT JOIN users u ON u.id=qr.assigned_user_id
+      LEFT JOIN clients c ON c.id=qr.client_id
+      LEFT JOIN quotes q ON q.quote_request_id=qr.id
+      LEFT JOIN jobs j ON j.quote_id=q.id
+      WHERE 1=1
+    `;
+
+    if (search) {
+      const value = `%${search}%`;
+      sql += ` AND (
+        qr.name LIKE ? OR qr.phone LIKE ? OR qr.email LIKE ? OR
+        qr.service LIKE ? OR qr.description LIKE ? OR c.locality LIKE ?
+      )`;
+      params.push(value, value, value, value, value, value);
+    }
+
+    if (status) {
+      sql += " AND qr.status=?";
+      params.push(status);
+    }
+
+    if (priority) {
+      sql += " AND qr.priority=?";
+      params.push(priority);
+    }
+
+    if (assignedUserId) {
+      const id = Number(assignedUserId);
       if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({
-          error: "ID de solicitud inválido."
-        });
+        return res.status(400).json({ error: "Técnico asignado inválido." });
       }
-
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          error: "Estado de solicitud inválido."
-        });
-      }
-
-      const [result] = await pool.query(
-        `
-        UPDATE quote_requests
-        SET status = ?
-        WHERE id = ?
-        `,
-        [status, id]
-      );
-
-      if (!result.affectedRows) {
-        return res.status(404).json({
-          error: "Solicitud no encontrada."
-        });
-      }
-
-      await pool.query(
-        `
-        INSERT INTO admin_notifications (type, quote_id, message)
-        SELECT 'quote_request_status', NULL, ?
-        FROM quote_requests
-        WHERE id = ?
-        `,
-        [`La solicitud #${id} cambió al estado "${status}".`, id]
-      );
-
-      res.json({
-        ok: true,
-        message: "Estado de la solicitud actualizado."
-      });
-
-    } catch (error) {
-      console.error(
-        "Error actualizando solicitud:",
-        error
-      );
-
-      res.status(500).json({
-        error: "No se pudo actualizar la solicitud."
-      });
+      sql += " AND qr.assigned_user_id=?";
+      params.push(id);
     }
+
+    if (dateFrom) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+        return res.status(400).json({ error: "La fecha desde no es válida." });
+      }
+      sql += " AND DATE(qr.created_at)>=?";
+      params.push(dateFrom);
+    }
+
+    if (dateTo) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+        return res.status(400).json({ error: "La fecha hasta no es válida." });
+      }
+      sql += " AND DATE(qr.created_at)<=?";
+      params.push(dateTo);
+    }
+
+    sql += " ORDER BY FIELD(qr.priority,'urgente','alta','normal','baja'), qr.created_at DESC, qr.id DESC";
+
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo solicitudes V2", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudieron obtener las solicitudes." });
   }
-);
+});
 
+// Obtener una solicitud completa.
+app.get("/api/admin/quote-requests/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de solicitud inválido." });
 
-// Obtener una solicitud específica
-app.get(
-  "/api/admin/quote-requests/:id",
-  requireAdmin,
-  async (req, res) => {
+    const [rows] = await pool.query(
+      `SELECT
+        qr.*,
+        u.name AS assigned_user_name,
+        c.locality AS client_locality,
+        c.address AS client_address,
+        q.id AS quote_id,
+        q.quote_number,
+        j.id AS job_id,
+        j.status AS job_status
+       FROM quote_requests qr
+       LEFT JOIN users u ON u.id=qr.assigned_user_id
+       LEFT JOIN clients c ON c.id=qr.client_id
+       LEFT JOIN quotes q ON q.quote_request_id=qr.id
+       LEFT JOIN jobs j ON j.quote_id=q.id
+       WHERE qr.id=? LIMIT 1`,
+      [id]
+    );
 
-    try {
+    if (!rows.length) return res.status(404).json({ error: "Solicitud no encontrada." });
 
-      const [rows] = await pool.query(
-        `
-        SELECT
+    const [history] = await pool.query(
+      `SELECT h.*, u.name AS actor_name
+       FROM quote_request_history h
+       LEFT JOIN users u ON u.id=h.actor_user_id
+       WHERE h.quote_request_id=?
+       ORDER BY h.created_at DESC, h.id DESC`,
+      [id]
+    );
+
+    const [attachments] = await pool.query(
+      `SELECT id, original_name, url, mime_type, size_bytes, created_at
+       FROM quote_request_attachments
+       WHERE quote_request_id=?
+       ORDER BY created_at DESC, id DESC`,
+      [id]
+    );
+
+    res.json({
+      ...rows[0],
+      history,
+      attachments
+    });
+  } catch (error) {
+    logError("Error obteniendo detalle de solicitud", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo obtener la solicitud." });
+  }
+});
+
+// Actualizar estado/prioridad/técnico/agenda/notas.
+app.patch("/api/admin/quote-requests/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) {
+      connection.release();
+      return res.status(400).json({ error: "ID de solicitud inválido." });
+    }
+
+    const [existingRows] = await connection.query(
+      "SELECT * FROM quote_requests WHERE id=? LIMIT 1 FOR UPDATE",
+      [id]
+    );
+
+    if (!existingRows.length) {
+      connection.release();
+      return res.status(404).json({ error: "Solicitud no encontrada." });
+    }
+
+    const current = existingRows[0];
+    const body = req.body || {};
+
+    let status = body.status === undefined ? current.status : String(body.status || "").trim();
+    let priority = body.priority === undefined ? current.priority : String(body.priority || "").trim();
+
+    if (!validateRequestStatus(status)) {
+      connection.release();
+      return res.status(400).json({ error: "Estado de solicitud inválido." });
+    }
+
+    if (!validateRequestPriority(priority)) {
+      connection.release();
+      return res.status(400).json({ error: "Prioridad inválida." });
+    }
+
+    let assignedUserId = current.assigned_user_id;
+    if (body.assigned_user_id !== undefined && body.assigned_user_id !== null && String(body.assigned_user_id).trim() !== "") {
+      assignedUserId = Number(body.assigned_user_id);
+      if (!Number.isInteger(assignedUserId) || assignedUserId <= 0) {
+        connection.release();
+        return res.status(400).json({ error: "Técnico asignado inválido." });
+      }
+      const [userRows] = await connection.query("SELECT id FROM users WHERE id=? LIMIT 1", [assignedUserId]);
+      if (!userRows.length) {
+        connection.release();
+        return res.status(400).json({ error: "El técnico asignado no existe." });
+      }
+    } else if (body.assigned_user_id === null || String(body.assigned_user_id || "").trim() === "") {
+      assignedUserId = null;
+    }
+
+    const scheduledAt = body.scheduled_at === undefined
+      ? current.scheduled_at
+      : validateOptionalDateTime(body.scheduled_at);
+
+    if (scheduledAt === undefined) {
+      connection.release();
+      return res.status(400).json({ error: "La fecha programada no es válida." });
+    }
+
+    const internalNotes = body.internal_notes === undefined
+      ? String(current.internal_notes || "")
+      : String(body.internal_notes || "").trim();
+
+    if (internalNotes.length > 10000) {
+      connection.release();
+      return res.status(400).json({ error: "Las notas internas no pueden superar 10000 caracteres." });
+    }
+
+    const closedAt = status === "cerrada" || status === "finalizada"
+      ? (current.closed_at || new Date())
+      : null;
+
+    await connection.beginTransaction();
+
+    await connection.query(
+      `UPDATE quote_requests
+       SET status=?, priority=?, assigned_user_id=?, scheduled_at=?, internal_notes=?, closed_at=?
+       WHERE id=?`,
+      [status, priority, assignedUserId, scheduledAt, internalNotes || null, closedAt, id]
+    );
+
+    if (
+      String(current.status) !== status ||
+      String(current.priority || "normal") !== priority ||
+      Number(current.assigned_user_id || 0) !== Number(assignedUserId || 0) ||
+      String(current.scheduled_at || "") !== String(scheduledAt || "") ||
+      String(current.internal_notes || "") !== internalNotes
+    ) {
+      await connection.query(
+        `INSERT INTO quote_request_history
+          (quote_request_id, actor_user_id, action, old_status, new_status, metadata)
+         VALUES (?, ?, 'request_updated', ?, ?, ?)`,
+        [
           id,
-          name,
-          phone,
-          email,
-          service,
-          description,
-          preferred_date,
-          image_url,
+          req.session.user.id,
+          current.status,
           status,
-          created_at
-        FROM quote_requests
-        WHERE id = ?
-        `,
-        [req.params.id]
+          JSON.stringify({
+            priority,
+            assigned_user_id: assignedUserId,
+            scheduled_at: scheduledAt,
+            internal_notes_changed: String(current.internal_notes || "") !== internalNotes
+          })
+        ]
       );
-
-      if (!rows.length) {
-
-        return res.status(404).json({
-          error: "Solicitud no encontrada."
-        });
-
-      }
-
-      res.json(rows[0]);
-
-    } catch (error) {
-
-      console.error(
-        "Error obteniendo solicitud:",
-        error
-      );
-
-      res.status(500).json({
-        error: "No se pudo obtener la solicitud."
-      });
-
     }
-  }
-);
 
+    await connection.commit();
+    connection.release();
+
+    await writeAudit(req, "request_updated", "quote_request", id, {
+      status,
+      priority,
+      assigned_user_id: assignedUserId,
+      scheduled_at: scheduledAt
+    });
+
+    if (String(current.status) !== status) {
+      await pool.query(
+        `INSERT INTO admin_notifications (type, quote_id, message)
+         VALUES ('quote_request_status', NULL, ?)`,
+        [`La solicitud #${id} cambió de "${current.status}" a "${status}".`]
+      ).catch(() => {});
+
+      const [requestRows] = await pool.query(
+        "SELECT id,name,email,status FROM quote_requests WHERE id=? LIMIT 1",
+        [id]
+      );
+      if (requestRows.length) {
+        await notifyRequestCustomer(
+          requestRows[0],
+          `Actualización de tu solicitud #${id} - JR Electricidad`,
+          `El estado de tu solicitud cambió a: ${status.replace(/_/g, " ")}.`
+        );
+      }
+    }
+
+    res.json({ success: true, message: "Solicitud actualizada correctamente." });
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    connection.release();
+    logError("Error actualizando solicitud V2", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo actualizar la solicitud." });
+  }
+});
+
+// Compatibilidad V1 para cambio de estado.
+app.patch("/api/admin/quote-requests/:id/status", requireAdmin, adminMutationLimiter, async (req, res) => {
+  try {
+    const id = validateRequestId(req.params.id);
+    const statusMap = {
+      pendiente: "nueva",
+      contactado: "en_revision",
+      presupuestado: "presupuestada",
+      cerrado: "cerrada"
+    };
+    const incoming = String(req.body.status || "").trim();
+    const status = statusMap[incoming] || incoming;
+
+    if (!id || !validateRequestStatus(status)) {
+      return res.status(400).json({ error: "Estado de solicitud inválido." });
+    }
+
+    const [currentRows] = await pool.query("SELECT status FROM quote_requests WHERE id=? LIMIT 1", [id]);
+    if (!currentRows.length) return res.status(404).json({ error: "Solicitud no encontrada." });
+
+    await pool.query("UPDATE quote_requests SET status=?, closed_at=? WHERE id=?",
+      [status, status === "cerrada" ? new Date() : null, id]);
+
+    await pool.query(
+      `INSERT INTO quote_request_history
+        (quote_request_id, actor_user_id, action, old_status, new_status)
+       VALUES (?, ?, 'status_changed', ?, ?)`,
+      [id, req.session.user.id, currentRows[0].status, status]
+    );
+
+    await writeAudit(req, "request_status_changed", "quote_request", id, {
+      old_status: currentRows[0].status,
+      new_status: status
+    });
+
+    await pool.query(
+      `INSERT INTO admin_notifications (type, quote_id, message)
+       VALUES ('quote_request_status', NULL, ?)`,
+      [`La solicitud #${id} cambió al estado "${status}".`]
+    ).catch(() => {});
+
+    res.json({ success: true, message: "Estado de la solicitud actualizado.", status });
+  } catch (error) {
+    logError("Error actualizando estado de solicitud", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo actualizar el estado." });
+  }
+});
+
+// Historial independiente.
+app.get("/api/admin/quote-requests/:id/history", requireAdmin, async (req, res) => {
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de solicitud inválido." });
+
+    const [rows] = await pool.query(
+      `SELECT h.id,h.action,h.old_status,h.new_status,h.metadata,h.created_at,u.name AS actor_name
+       FROM quote_request_history h
+       LEFT JOIN users u ON u.id=h.actor_user_id
+       WHERE h.quote_request_id=?
+       ORDER BY h.created_at DESC,h.id DESC`,
+      [id]
+    );
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo historial de solicitud", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo obtener el historial." });
+  }
+});
+
+// Técnicos disponibles.
+app.get("/api/admin/quote-requests/assignees", requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT id,name,email,role FROM users ORDER BY name ASC"
+    );
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo técnicos", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudieron obtener los técnicos." });
+  }
+});
+
+// Adjuntar imágenes/documentos.
+const requestAttachmentsDir = path.join(uploadsDir, "requests");
+if (!fs.existsSync(requestAttachmentsDir)) fs.mkdirSync(requestAttachmentsDir, { recursive: true });
+
+const requestAttachmentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, requestAttachmentsDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, Date.now() + "-" + crypto.randomBytes(10).toString("hex") + ext);
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain"
+    ];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error("Tipo de archivo no permitido."));
+    }
+    cb(null, true);
+  }
+});
+
+app.post("/api/admin/quote-requests/:id/attachments", requireAdmin, requestAttachmentUpload.single("file"), async (req, res) => {
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) {
+      if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: "ID de solicitud inválido." });
+    }
+
+    if (!req.file) return res.status(400).json({ error: "Seleccioná un archivo." });
+
+    const [rows] = await pool.query("SELECT id FROM quote_requests WHERE id=? LIMIT 1", [id]);
+    if (!rows.length) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(404).json({ error: "Solicitud no encontrada." });
+    }
+
+    const url = "/uploads/requests/" + req.file.filename;
+
+    const [result] = await pool.query(
+      `INSERT INTO quote_request_attachments
+        (quote_request_id, uploaded_by_user_id, original_name, stored_name, url, mime_type, size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        req.session.user.id,
+        String(req.file.originalname || "").slice(0, 255),
+        req.file.filename,
+        url,
+        req.file.mimetype,
+        Number(req.file.size || 0)
+      ]
+    );
+
+    await recordRequestHistory(req, id, "attachment_added", null, null, {
+      attachment_id: result.insertId,
+      original_name: req.file.originalname
+    });
+
+    await writeAudit(req, "request_attachment_added", "quote_request", id, {
+      attachment_id: result.insertId,
+      original_name: req.file.originalname
+    });
+
+    res.status(201).json({
+      success: true,
+      attachment: {
+        id: result.insertId,
+        original_name: req.file.originalname,
+        url,
+        mime_type: req.file.mimetype,
+        size_bytes: req.file.size
+      }
+    });
+  } catch (error) {
+    if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});
+    logError("Error adjuntando archivo a solicitud", { requestId: req.requestId, error: error.message });
+    res.status(400).json({ error: error.message || "No se pudo adjuntar el archivo." });
+  }
+});
+
+app.delete("/api/admin/quote-requests/:id/attachments/:attachmentId", requireAdmin, async (req, res) => {
+  try {
+    const id = validateRequestId(req.params.id);
+    const attachmentId = validateRequestId(req.params.attachmentId);
+    if (!id || !attachmentId) return res.status(400).json({ error: "ID de solicitud o archivo inválido." });
+
+    const [rows] = await pool.query(
+      "SELECT * FROM quote_request_attachments WHERE id=? AND quote_request_id=? LIMIT 1",
+      [attachmentId, id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Archivo no encontrado." });
+
+    const filePath = path.join(requestAttachmentsDir, rows[0].stored_name);
+    await fs.promises.unlink(filePath).catch(() => {});
+    await pool.query("DELETE FROM quote_request_attachments WHERE id=?", [attachmentId]);
+
+    await recordRequestHistory(req, id, "attachment_deleted", null, null, {
+      attachment_id: attachmentId,
+      original_name: rows[0].original_name
+    });
+
+    await writeAudit(req, "request_attachment_deleted", "quote_request", id, {
+      attachment_id: attachmentId
+    });
+
+    res.json({ success: true, message: "Archivo eliminado." });
+  } catch (error) {
+    logError("Error eliminando archivo de solicitud", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo eliminar el archivo." });
+  }
+});
+
+// Convertir solicitud a presupuesto borrador.
+app.post("/api/admin/quote-requests/:id/convert-to-quote", requireAdmin, adminMutationLimiter, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) {
+      connection.release();
+      return res.status(400).json({ error: "ID de solicitud inválido." });
+    }
+
+    await connection.beginTransaction();
+
+    const [requestRows] = await connection.query(
+      "SELECT * FROM quote_requests WHERE id=? LIMIT 1 FOR UPDATE",
+      [id]
+    );
+    if (!requestRows.length) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ error: "Solicitud no encontrada." });
+    }
+
+    const request = requestRows[0];
+
+    const [existingQuotes] = await connection.query(
+      "SELECT id,quote_number,status FROM quotes WHERE quote_request_id=? ORDER BY id DESC LIMIT 1",
+      [id]
+    );
+
+    if (existingQuotes.length) {
+      await connection.commit();
+      connection.release();
+      return res.json({
+        success: true,
+        already_exists: true,
+        quote_id: existingQuotes[0].id,
+        quote_number: existingQuotes[0].quote_number,
+        status: existingQuotes[0].status
+      });
+    }
+
+    const quoteNumber = `PR-${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}-${id}`;
+    const accessToken = crypto.randomBytes(24).toString("hex");
+
+    const [quoteResult] = await connection.query(
+      `INSERT INTO quotes
+        (quote_request_id, quote_number, access_token, issue_date, expiration_date, notes, status, subtotal, discount, total)
+       VALUES (?, ?, ?, CURDATE(), NULL, ?, 'borrador', 0, 0, 0)`,
+      [id, quoteNumber, accessToken, request.internal_notes || request.description || ""]
+    );
+
+    await connection.query(
+      `INSERT INTO quote_items
+        (quote_id, description, quantity, unit, unit_price, total)
+       VALUES (?, ?, 1, 'global', 0, 0)`,
+      [quoteResult.insertId, request.service || request.description || "Trabajo solicitado"]
+    );
+
+    const newStatus = request.status === "nueva" || request.status === "en_revision" || request.status === "presupuestando"
+      ? "presupuestada"
+      : request.status;
+
+    await connection.query(
+      "UPDATE quote_requests SET status=? WHERE id=?",
+      [newStatus, id]
+    );
+
+    await connection.query(
+      `INSERT INTO quote_request_history
+        (quote_request_id, actor_user_id, action, old_status, new_status, metadata)
+       VALUES (?, ?, 'converted_to_quote', ?, ?, ?)`,
+      [id, req.session.user.id, request.status, newStatus, JSON.stringify({ quote_id: quoteResult.insertId })]
+    );
+
+    await connection.commit();
+    connection.release();
+
+    await writeAudit(req, "request_converted_to_quote", "quote_request", id, {
+      quote_id: quoteResult.insertId
+    });
+
+    res.status(201).json({
+      success: true,
+      quote_id: quoteResult.insertId,
+      quote_number: quoteNumber,
+      status: "borrador"
+    });
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    connection.release();
+    logError("Error convirtiendo solicitud a presupuesto", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo convertir la solicitud en presupuesto." });
+  }
+});
+
+// Convertir solicitud a trabajo. Si no existe presupuesto, crea uno borrador primero.
+app.post("/api/admin/quote-requests/:id/convert-to-job", requireAdmin, adminMutationLimiter, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const id = validateRequestId(req.params.id);
+    if (!id) {
+      connection.release();
+      return res.status(400).json({ error: "ID de solicitud inválido." });
+    }
+
+    await connection.beginTransaction();
+
+    const [requestRows] = await connection.query(
+      "SELECT * FROM quote_requests WHERE id=? LIMIT 1 FOR UPDATE",
+      [id]
+    );
+    if (!requestRows.length) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ error: "Solicitud no encontrada." });
+    }
+
+    const request = requestRows[0];
+
+    const [quoteRows] = await connection.query(
+      "SELECT id,quote_number FROM quotes WHERE quote_request_id=? ORDER BY id DESC LIMIT 1",
+      [id]
+    );
+
+    let quoteId;
+    let quoteNumber;
+
+    if (quoteRows.length) {
+      quoteId = quoteRows[0].id;
+      quoteNumber = quoteRows[0].quote_number;
+    } else {
+      quoteNumber = `PR-${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}-${id}`;
+      const accessToken = crypto.randomBytes(24).toString("hex");
+
+      const [quoteResult] = await connection.query(
+        `INSERT INTO quotes
+          (quote_request_id, quote_number, access_token, issue_date, expiration_date, notes, status, subtotal, discount, total)
+         VALUES (?, ?, ?, CURDATE(), NULL, ?, 'borrador', 0, 0, 0)`,
+        [id, quoteNumber, accessToken, request.internal_notes || request.description || ""]
+      );
+
+      quoteId = quoteResult.insertId;
+
+      await connection.query(
+        `INSERT INTO quote_items
+          (quote_id, description, quantity, unit, unit_price, total)
+         VALUES (?, ?, 1, 'global', 0, 0)`,
+        [quoteId, request.service || request.description || "Trabajo solicitado"]
+      );
+    }
+
+    const [jobRows] = await connection.query(
+      "SELECT id,status FROM jobs WHERE quote_id=? LIMIT 1",
+      [quoteId]
+    );
+
+    if (jobRows.length) {
+      await connection.commit();
+      connection.release();
+      return res.json({
+        success: true,
+        already_exists: true,
+        job_id: jobRows[0].id,
+        quote_id: quoteId,
+        quote_number: quoteNumber,
+        status: jobRows[0].status
+      });
+    }
+
+    const [jobResult] = await connection.query(
+      "INSERT INTO jobs (quote_id,status) VALUES (?, 'pendiente_presupuesto')",
+      [quoteId]
+    );
+
+    await connection.query(
+      `INSERT INTO quote_request_history
+        (quote_request_id, actor_user_id, action, old_status, new_status, metadata)
+       VALUES (?, ?, 'converted_to_job', ?, 'programada', ?)`,
+      [id, req.session.user.id, request.status, JSON.stringify({ quote_id: quoteId, job_id: jobResult.insertId })]
+    );
+
+    await connection.query(
+      "UPDATE quote_requests SET status='programada' WHERE id=?",
+      [id]
+    );
+
+    await connection.commit();
+    connection.release();
+
+    await writeAudit(req, "request_converted_to_job", "quote_request", id, {
+      quote_id: quoteId,
+      job_id: jobResult.insertId
+    });
+
+    res.status(201).json({
+      success: true,
+      job_id: jobResult.insertId,
+      quote_id: quoteId,
+      quote_number: quoteNumber,
+      status: "programada"
+    });
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    connection.release();
+    logError("Error convirtiendo solicitud a trabajo", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo convertir la solicitud en trabajo." });
+  }
+});
 
 // =========================================================
 // PRESUPUESTOS - UTILIDADES
