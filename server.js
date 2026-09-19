@@ -4864,14 +4864,11 @@ app.get("/presupuesto/:token", (req, res) => {
   );
 });
 
-    app.listen(
+    httpServer = app.listen(
       PORT,
       () => {
-
-        console.log(
-          `⚡ JR Electricidad: http://localhost:${PORT}`
-        );
-
+        console.log(`⚡ JR Electricidad: http://localhost:${PORT}`);
+        console.log(`[PRODUCCIÓN] NODE_ENV=${process.env.NODE_ENV || "development"}`);
       }
     );
 
@@ -31947,5 +31944,71 @@ app.use((err, req, res, next) => {
     error: "Error interno del servidor."
   });
 });
+
+
+// =========================================================
+// FASE 19 — PRODUCCIÓN / OPERACIÓN
+// =========================================================
+
+let httpServer = null;
+let shuttingDown = false;
+
+function productionReadiness() {
+  const checks = {
+    env: Boolean(process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME && process.env.SESSION_SECRET),
+    appUrl: String(process.env.NODE_ENV || "").toLowerCase() !== "production" || Boolean(process.env.APP_URL),
+    trustProxy: String(process.env.NODE_ENV || "").toLowerCase() !== "production" || process.env.TRUST_PROXY === "true"
+  };
+  return {
+    ready: Object.values(checks).every(Boolean),
+    checks
+  };
+}
+
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logInfo("Shutdown iniciado", { signal });
+
+  if (httpServer) {
+    await new Promise(resolve => {
+      const timer = setTimeout(resolve, 10000);
+      timer.unref?.();
+      httpServer.close(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
+  await pool.end().catch(error => {
+    logError("Error cerrando pool MySQL", { error: error.message });
+  });
+
+  process.exit(0);
+}
+
+app.get("/health/ready", async (req, res) => {
+  try {
+    const readiness = productionReadiness();
+    await pool.query("SELECT 1");
+    readiness.checks.mysql = true;
+    readiness.ready = readiness.ready && readiness.checks.mysql;
+    return res.status(readiness.ready ? 200 : 503).json({
+      ok: readiness.ready,
+      service: "jr-electricidad",
+      checks: readiness.checks
+    });
+  } catch (error) {
+    return res.status(503).json({
+      ok: false,
+      service: "jr-electricidad",
+      checks: { ...productionReadiness().checks, mysql: false }
+    });
+  }
+});
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 start();
