@@ -22,6 +22,8 @@ const registerDashboardRoutes = require("./dashboard-routes");
 const registerNotificationRoutes = require("./notification-routes");
 const registerConfigurationRoutes = require("./configuration-routes");
 const registerSecurityRoutes = require("./security-routes");
+const registerAutomationRoutes = require("./automation-routes");
+const registerEvidenceRoutes = require("./evidence-routes");
 
 const app = express();
 app.disable("x-powered-by");
