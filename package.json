@@ -10,7 +10,8 @@
     "test": "node scripts/check-project.js",
     "test:v2": "node scripts/check-project.js && node scripts/check-v2-foundation.js",
     "migrate": "node scripts/run-migrations.js",
-    "test:v2-security": "node scripts/check-v2-security.js"
+    "test:v2-security": "node scripts/check-v2-security.js",
+    "test:v2-accounts": "node scripts/check-v2-accounts.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
