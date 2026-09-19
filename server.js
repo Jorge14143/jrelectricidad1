@@ -3290,7 +3290,7 @@ app.post("/api/admin/clients", requireAdmin, adminMutationLimiter, async (req, r
   }
 });
 
-app.get("/api/admin/clients/:id", requireAdmin, async (req, res) => {
+app.get("/api/admin/clients/:id(\\d+)", requireAdmin, async (req, res) => {
   try {
     const id=Number(req.params.id);
     if (!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
@@ -3303,7 +3303,7 @@ app.get("/api/admin/clients/:id", requireAdmin, async (req, res) => {
   }
 });
 
-app.put("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.put("/api/admin/clients/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req, res) => {
   try {
     const id=Number(req.params.id);
     if (!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
@@ -3328,7 +3328,7 @@ app.put("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (req
   }
 });
 
-app.delete("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (req, res) => {
+app.delete("/api/admin/clients/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req, res) => {
   try {
     const id=Number(req.params.id);
     if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
@@ -3342,7 +3342,7 @@ app.delete("/api/admin/clients/:id", requireAdmin, adminMutationLimiter, async (
   }
 });
 
-app.get("/api/admin/clients/:id/history", requireAdmin, async (req, res) => {
+app.get("/api/admin/clients/:id(\\d+)/history", requireAdmin, async (req, res) => {
   try {
     const id=Number(req.params.id);
     if(!Number.isInteger(id)||id<=0) return res.status(400).json({error:"ID de cliente inválido."});
