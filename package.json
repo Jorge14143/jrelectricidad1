@@ -22,7 +22,8 @@
     "test:v2-notifications": "node scripts/check-v2-notifications.js",
     "test:v2-email": "node scripts/check-v2-email.js",
     "test:v2-whatsapp": "node scripts/check-v2-whatsapp.js",
-    "test:v2-documents": "node scripts/check-v2-documents.js"
+    "test:v2-documents": "node scripts/check-v2-documents.js",
+    "test:v2-search": "node scripts/check-v2-search.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
