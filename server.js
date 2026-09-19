@@ -16,6 +16,7 @@ const fs = require("fs");
 const { createRequestId, info: logInfo, error: logError } = require("./lib/logger");
 const { runMigrations } = require("./lib/migrations");
 const { configureEmailService, queueEmail } = require("./lib/email");
+const { configureWhatsAppService, queueWhatsApp, buildWhatsAppLink, providerConfigured: whatsappProviderConfigured } = require("./lib/whatsapp");
 const {
   PASSWORD_MIN,
   PASSWORD_MAX,
@@ -186,6 +187,7 @@ const pool = mysql.createPool({
 });
 
 configureEmailService(pool);
+configureWhatsAppService(pool);
 
 
 // =========================================================
@@ -4744,6 +4746,25 @@ async function recordRequestHistory(req, requestId, action, oldStatus, newStatus
   );
 }
 
+async function notifyRequestWhatsApp(request, message, entityType="quote_request") {
+  try {
+    const settings=await whatsappBusinessEnabled();
+    if(!settings?.whatsapp_auto_notifications || !request?.whatsapp && !request?.phone) return false;
+    const phone=request.whatsapp || request.phone;
+    await queueWhatsApp({
+      to:phone,
+      message,
+      requestId:null,
+      entityType,
+      entityId:request.id
+    });
+    return true;
+  } catch(error) {
+    logError("No se pudo encolar WhatsApp de cliente",{requestId:null,error:error.message,entityId:request?.id});
+    return false;
+  }
+}
+
 async function notifyRequestCustomer(request, subject, message) {
   if (!request?.email) return false;
   try {
@@ -5088,7 +5109,7 @@ app.patch("/api/admin/quote-requests/:id(\\d+)", requireAdmin, adminMutationLimi
       }).catch(() => {});
 
       const [requestRows] = await pool.query(
-        "SELECT id,name,email,status FROM quote_requests WHERE id=? LIMIT 1",
+        "SELECT id,name,email,phone,whatsapp,service,status FROM quote_requests WHERE id=? LIMIT 1",
         [id]
       );
       if (requestRows.length) {
@@ -5096,6 +5117,10 @@ app.patch("/api/admin/quote-requests/:id(\\d+)", requireAdmin, adminMutationLimi
           requestRows[0],
           `Actualización de tu solicitud #${id} - JR Electricidad`,
           `El estado de tu solicitud cambió a: ${status.replace(/_/g, " ")}.`
+        );
+        await notifyRequestWhatsApp(
+          requestRows[0],
+          `JR Electricidad: tu solicitud #${id} cambió a ${status.replace(/_/g, " ")}.`
         );
       }
     }
@@ -8093,6 +8118,69 @@ app.get("/api/admin/email/outbox", requireAdmin, async (req,res) => {
   } catch(error) {
     logError("Error obteniendo cola de email",{requestId:req.requestId,error:error.message});
     res.status(500).json({error:"No se pudo obtener la cola de email."});
+  }
+});
+
+// =========================================================
+// V2 — WHATSAPP
+// =========================================================
+
+async function whatsappBusinessEnabled() {
+  const [rows] = await pool.query(
+    "SELECT whatsapp,whatsapp_enabled,whatsapp_auto_notifications FROM business_settings WHERE id=1 LIMIT 1"
+  );
+  return rows[0] || null;
+}
+
+app.get("/api/admin/whatsapp/status", requireAdmin, async (req,res) => {
+  try {
+    const settings=await whatsappBusinessEnabled();
+    const [rows]=await pool.query(
+      "SELECT status,COUNT(*) AS total,MAX(created_at) AS last_created,MAX(sent_at) AS last_sent FROM whatsapp_outbox GROUP BY status"
+    );
+    res.json({
+      success:true,
+      provider_configured: whatsappProviderConfigured(),
+      settings: settings || null,
+      statuses: rows
+    });
+  } catch(error) {
+    logError("Error obteniendo estado de WhatsApp",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el estado de WhatsApp."});
+  }
+});
+
+app.get("/api/admin/whatsapp/outbox", requireAdmin, async (req,res) => {
+  try {
+    const limit=Math.min(Math.max(Number(req.query.limit)||50,1),100);
+    const status=String(req.query.status||"").trim();
+    const params=[];
+    let sql=`SELECT id,to_phone,message,status,attempts,max_attempts,next_attempt_at,sent_at,last_error,provider_message_id,entity_type,entity_id,request_id,created_at,updated_at
+              FROM whatsapp_outbox WHERE 1=1`;
+    if(status){
+      const allowed=["queued","sending","sent","failed","skipped"];
+      if(!allowed.includes(status)) return res.status(400).json({error:"Estado de WhatsApp inválido."});
+      sql+=" AND status=?";
+      params.push(status);
+    }
+    sql+=" ORDER BY id DESC LIMIT "+limit;
+    const [rows]=await pool.query(sql,params);
+    res.json({success:true,messages:rows});
+  } catch(error) {
+    logError("Error obteniendo outbox de WhatsApp",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener la cola de WhatsApp."});
+  }
+});
+
+app.post("/api/admin/whatsapp/link", requireAdmin, async (req,res) => {
+  try {
+    const phone=String(req.body.phone||"").trim();
+    const message=String(req.body.message||"").trim();
+    const link=buildWhatsAppLink(phone,message);
+    if(!link) return res.status(400).json({error:"Número de WhatsApp inválido."});
+    res.json({success:true,link});
+  } catch(error) {
+    res.status(400).json({error:"No se pudo generar el enlace de WhatsApp."});
   }
 });
 
