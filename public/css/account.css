@@ -14,7 +14,9 @@
 .profile-avatar{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#080a0f;font-size:28px;font-weight:900;margin-bottom:14px}
 .account-profile h2{margin:0 0 4px;font-size:20px}.account-profile>p{margin:0;color:var(--muted);font-size:12px}
 .account-menu{display:grid;gap:6px;margin-top:25px}.account-menu a{padding:11px 12px;border-radius:10px;color:#aeb6c2;text-decoration:none;font-size:13px;transition:.2s}.account-menu a:hover{background:#151b24;color:#fff}.account-menu a.active{background:var(--accent);color:#080a0f;font-weight:900}
-.account-main{display:grid;gap:14px;min-width:0}
+.account-main{display:block;min-width:0}
+.account-view{display:none}
+.account-view.active{display:block}
 .account-current{padding:25px;border:1px solid #39351f;border-radius:21px;background:linear-gradient(135deg,rgba(255,196,0,.09),#11140f 48%,#0e1218);overflow:hidden}
 .account-current h2{margin:7px 0 5px;font-size:25px}.section-description{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
 .service-progress{display:grid;grid-template-columns:repeat(4,1fr);margin-top:25px}
