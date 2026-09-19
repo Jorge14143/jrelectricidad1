@@ -406,3 +406,22 @@ INSERT IGNORE INTO `email_templates` (`name`,`event_key`,`subject`,`body`) VALUE
 ('Turno confirmado','appointment_confirmed','Turno confirmado - JR Electricidad','Hola {cliente},\\n\\nTu turno quedó confirmado para el {fecha} a las {hora}.\\n\\nDetalle: {detalle}\\n\\nJR Electricidad'),
 ('Aviso de trabajo','job_notice','Actualización de trabajo - JR Electricidad','Hola {cliente},\\n\\nTenemos una actualización sobre tu trabajo: {trabajo}.\\n\\n{detalle}\\n\\nJR Electricidad'),
 ('Aviso de pago','payment_notice','Actualización de pago - JR Electricidad','Hola {cliente},\\n\\nTe informamos una actualización relacionada con el pago del servicio.\\n\\n{detalle}\\n\\nJR Electricidad');
+
+
+-- JR ELECTRICIDAD V3 — BLOQUE K: FIRMA DIGITAL
+CREATE TABLE IF NOT EXISTS `digital_signatures` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `quote_id` int DEFAULT NULL,
+  `document_type` varchar(60) NOT NULL DEFAULT 'quote',
+  `document_id` bigint unsigned DEFAULT NULL,
+  `signer_name` varchar(150) NOT NULL,
+  `signer_email` varchar(190) DEFAULT NULL,
+  `signature_data` longtext NOT NULL,
+  `signed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `evidence_hash` char(64) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`), KEY `idx_signature_quote` (`quote_id`), KEY `idx_signature_document` (`document_type`,`document_id`), KEY `idx_signature_date` (`signed_at`), UNIQUE KEY `uq_signature_quote_type` (`quote_id`,`document_type`),
+  CONSTRAINT `fk_signature_quote` FOREIGN KEY (`quote_id`) REFERENCES `quotes`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
