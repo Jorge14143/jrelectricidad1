@@ -1383,81 +1383,86 @@ app.put(
         hours: String(req.body.hours || "").trim(),
         logo_url: String(req.body.logo_url || "").trim(),
         pdf_footer: String(req.body.pdf_footer || "").trim(),
-        pdf_notes: String(req.body.pdf_notes || "").trim()
+        pdf_notes: String(req.body.pdf_notes || "").trim(),
+        currency_code: String(req.body.currency_code || "ARS").trim().toUpperCase(),
+        currency_symbol: String(req.body.currency_symbol || "$").trim(),
+        tax_enabled: Boolean(req.body.tax_enabled),
+        tax_name: String(req.body.tax_name || "IVA").trim(),
+        tax_rate: Number(req.body.tax_rate || 0),
+        quote_prefix: String(req.body.quote_prefix || "PR-").trim(),
+        quote_next_number: Number(req.body.quote_next_number || 1),
+        job_prefix: String(req.body.job_prefix || "TR-").trim(),
+        job_next_number: Number(req.body.job_next_number || 1),
+        quote_validity_days: Number(req.body.quote_validity_days || 15),
+        quote_default_notes: String(req.body.quote_default_notes || "").trim(),
+        quote_terms: String(req.body.quote_terms || "").trim(),
+        commercial_conditions: String(req.body.commercial_conditions || "").trim()
       };
 
-      if (!fields.business_name) {
-        return res.status(400).json({
-          error: "El nombre comercial es obligatorio."
-        });
+      if (!fields.business_name) return res.status(400).json({ error: "El nombre comercial es obligatorio." });
+      if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {
+        return res.status(400).json({ error: "Ingresá un email válido." });
       }
-
-      if (fields.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(fields.email)) {
-          return res.status(400).json({
-            error: "Ingresá un email válido."
-          });
-        }
+      if (!/^[A-Z0-9._-]{2,10}$/.test(fields.currency_code)) {
+        return res.status(400).json({ error: "El código de moneda debe tener entre 2 y 10 caracteres." });
+      }
+      if (!Number.isFinite(fields.tax_rate) || fields.tax_rate < 0 || fields.tax_rate > 100) {
+        return res.status(400).json({ error: "El impuesto debe estar entre 0 y 100%." });
+      }
+      if (!Number.isInteger(fields.quote_next_number) || fields.quote_next_number < 1 || fields.quote_next_number > 4294967295) {
+        return res.status(400).json({ error: "La numeración inicial de presupuestos no es válida." });
+      }
+      if (!Number.isInteger(fields.job_next_number) || fields.job_next_number < 1 || fields.job_next_number > 4294967295) {
+        return res.status(400).json({ error: "La numeración inicial de trabajos no es válida." });
+      }
+      if (!Number.isInteger(fields.quote_validity_days) || fields.quote_validity_days < 0 || fields.quote_validity_days > 3650) {
+        return res.status(400).json({ error: "La vigencia del presupuesto debe estar entre 0 y 3650 días." });
       }
 
       const limits = {
-        business_name: 150,
-        legal_name: 180,
-        phone: 50,
-        whatsapp: 50,
-        email: 190,
-        address: 255,
-        city: 120,
-        hours: 255,
-        logo_url: 500,
-        pdf_footer: 500,
-        pdf_notes: 5000
+        business_name: 150, legal_name: 180, phone: 50, whatsapp: 50, email: 190,
+        address: 255, city: 120, hours: 255, logo_url: 500, pdf_footer: 500,
+        pdf_notes: 5000, currency_symbol: 10, tax_name: 80, quote_prefix: 20,
+        job_prefix: 20, quote_default_notes: 10000, quote_terms: 10000,
+        commercial_conditions: 10000
       };
-
       for (const [key, max] of Object.entries(limits)) {
-        if (fields[key].length > max) {
-          return res.status(400).json({
-            error: `El campo ${key} supera el máximo permitido.`
-          });
-        }
+        if (fields[key].length > max) return res.status(400).json({ error: `El campo ${key} supera el máximo permitido.` });
       }
 
       await pool.query(
-        `
-        UPDATE business_settings
-        SET business_name=?, legal_name=?, phone=?, whatsapp=?,
-            whatsapp_enabled=?, whatsapp_auto_notifications=?,
-            email=?, address=?, city=?, hours=?, logo_url=?,
-            pdf_footer=?, pdf_notes=?
-        WHERE id=1
-        `,
+        `UPDATE business_settings
+         SET business_name=?, legal_name=?, phone=?, whatsapp=?,
+             whatsapp_enabled=?, whatsapp_auto_notifications=?,
+             email=?, address=?, city=?, hours=?, logo_url=?,
+             pdf_footer=?, pdf_notes=?, currency_code=?, currency_symbol=?,
+             tax_enabled=?, tax_name=?, tax_rate=?, quote_prefix=?,
+             quote_next_number=?, job_prefix=?, job_next_number=?,
+             quote_validity_days=?, quote_default_notes=?, quote_terms=?,
+             commercial_conditions=?
+         WHERE id=1`,
         [
-          fields.business_name,
-          fields.legal_name,
-          fields.phone,
-          fields.whatsapp,
-          fields.whatsapp_enabled ? 1 : 0,
-          fields.whatsapp_auto_notifications ? 1 : 0,
-          fields.email,
-          fields.address,
-          fields.city,
-          fields.hours,
-          fields.logo_url,
-          fields.pdf_footer,
-          fields.pdf_notes
+          fields.business_name, fields.legal_name, fields.phone, fields.whatsapp,
+          fields.whatsapp_enabled ? 1 : 0, fields.whatsapp_auto_notifications ? 1 : 0,
+          fields.email, fields.address, fields.city, fields.hours, fields.logo_url,
+          fields.pdf_footer, fields.pdf_notes, fields.currency_code, fields.currency_symbol,
+          fields.tax_enabled ? 1 : 0, fields.tax_name, fields.tax_rate, fields.quote_prefix,
+          fields.quote_next_number, fields.job_prefix, fields.job_next_number,
+          fields.quote_validity_days, fields.quote_default_notes, fields.quote_terms,
+          fields.commercial_conditions
         ]
       );
 
-      res.json({
-        success: true,
-        message: "Configuración guardada correctamente."
+      await writeAudit(req, "business_settings_updated", "business_settings", 1, {
+        currency_code: fields.currency_code,
+        tax_enabled: fields.tax_enabled,
+        tax_rate: fields.tax_rate
       });
+
+      res.json({ success: true, message: "Configuración guardada correctamente." });
     } catch (error) {
-      console.error("Error guardando configuración:", error);
-      res.status(500).json({
-        error: "No se pudo guardar la configuración."
-      });
+      logError("Error guardando configuración", { requestId: req.requestId, error: error.message });
+      res.status(500).json({ error: "No se pudo guardar la configuración." });
     }
   }
 );
@@ -1468,7 +1473,10 @@ app.get(
   async (req, res) => {
     try {
       const [rows] = await pool.query(
-        `SELECT business_name, phone, whatsapp, email, address, city, hours, logo_url
+        `SELECT business_name, legal_name, phone, whatsapp, email, address, city, hours, logo_url,
+                currency_code, currency_symbol, tax_enabled, tax_name, tax_rate,
+                quote_prefix, quote_next_number, job_prefix, job_next_number,
+                quote_validity_days, quote_default_notes, quote_terms, commercial_conditions
          FROM business_settings
          WHERE id=1
          LIMIT 1`
