@@ -21,6 +21,7 @@ const registerSignatureRoutes = require("./signature-routes");
 const registerDashboardRoutes = require("./dashboard-routes");
 const registerNotificationRoutes = require("./notification-routes");
 const registerConfigurationRoutes = require("./configuration-routes");
+const registerSecurityRoutes = require("./security-routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -343,6 +344,7 @@ registerSignatureRoutes({ app, pool, requireAdmin, requireAuth });
 registerDashboardRoutes({ app, pool, requireAdmin });
 registerNotificationRoutes({ app, pool, requireAdmin });
 registerConfigurationRoutes({ app, pool, requireAdmin });
+registerSecurityRoutes({ app, pool, requireAdmin, cleanUser });
 
 // =========================================================
 // EMAIL DE RECUPERACIÓN
@@ -1290,6 +1292,17 @@ app.post(
 
 
       const loggedUser = cleanUser(rows[0]);
+
+      if (rows[0].role === "admin") {
+        const [securityRows] = await pool.query("SELECT two_factor_enabled FROM admin_security WHERE id=1 LIMIT 1");
+        if (securityRows[0]?.two_factor_enabled) {
+          await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
+          req.session.pending2fa = { userId: rows[0].id, createdAt: Date.now() };
+          await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+          return res.json({ ok: true, requiresTwoFactor: true });
+        }
+      }
+
       await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
       req.session.user = loggedUser;
       await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
@@ -3954,6 +3967,13 @@ function validateProductionConfig() {
 // =========================================================
 // INICIAR SERVIDOR
 // =========================================================
+
+
+async function ensureAdvancedSecuritySchema() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS admin_security (id TINYINT UNSIGNED NOT NULL PRIMARY KEY,two_factor_enabled TINYINT(1) NOT NULL DEFAULT 0,two_factor_secret VARBINARY(64) DEFAULT NULL,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  await pool.query("INSERT INTO admin_security (id,two_factor_enabled) VALUES (1,0) ON DUPLICATE KEY UPDATE id=id");
+  await pool.query(`CREATE TABLE IF NOT EXISTS security_audit_log (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,user_id INT UNSIGNED NULL,action VARCHAR(120) NOT NULL,method VARCHAR(10) NOT NULL,path VARCHAR(255) NOT NULL,status_code SMALLINT UNSIGNED NOT NULL,ip_address VARCHAR(64) NULL,user_agent VARCHAR(500) NULL,details TEXT NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_security_audit_created (created_at),INDEX idx_security_audit_user (user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+}
 
 async function start() {
   validateProductionConfig();
