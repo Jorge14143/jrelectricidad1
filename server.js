@@ -2232,867 +2232,299 @@ app.post(
   }
 });
 // =========================================================
-// GALERÍA PÚBLICA
+// GALERÍA V2 — PÚBLICA + ADMIN
 // =========================================================
 
-app.get(
-  "/api/gallery",
-  async (req, res) => {
-
-    try {
-
-      const [rows] =
-        await pool.query(`
-          SELECT
-  id,
-  title,
-  description,
-  image_url,
-  featured,
-  sort_order
-FROM gallery
-WHERE active = 1
-ORDER BY
-  featured DESC,
-  sort_order ASC,
-  created_at DESC
-        `);
-
-
-      res.json(rows);
-
-
-    } catch (e) {
-
-      console.error(
-        "Error obteniendo galería pública:",
-        e
-      );
-
-
-      res.status(500).json({
-
-        error:
-          "No se pudieron cargar los trabajos."
-
-      });
-
-    }
-
-  }
-);
-
-
-// =========================================================
-// ADMIN - GALERÍA
-// =========================================================
-
-app.get(
-  "/api/admin/gallery",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const [rows] =
-        await pool.query(`
-          SELECT
-  id,
-  title,
-  description,
-  image_url,
-  active,
-  featured,
-  sort_order,
-  created_at
-FROM gallery
-ORDER BY
-  sort_order ASC,
-  created_at DESC
-        `);
-
-
-      res.json(rows);
-
-
-    } catch (e) {
-
-      console.error(
-        "Error obteniendo galería admin:",
-        e
-      );
-
-
-      res.status(500).json({
-
-        error:
-          "No se pudieron cargar los trabajos."
-
-      });
-
-    }
-
-  }
-);
-
-
-// =========================================================
-// AGREGAR TRABAJO
-// =========================================================
-
-app.post(
-  "/api/admin/gallery",
-  requireAdmin,
-  upload.single("image"),
-  validateUploadedImage,
-  async (req, res) => {
-
-    try {
-
-      const title =
-        String(
-          req.body.title || ""
-        ).trim();
-
-
-      const description =
-        String(
-          req.body.description || ""
-        ).trim();
-
-
-      const active =
-        req.body.active === "true" ||
-        req.body.active === "1"
-          ? 1
-          : 0;
-      const featured =
-  req.body.featured === "true" ||
-  req.body.featured === "1"
-    ? 1
-    : 0;
-
-      if (!title) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "El título es obligatorio."
-
-        });
-
-      }
-
-      if (title.length > 150) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "El título es demasiado largo."
-
-        });
-
-      }
-
-
-      if (description.length > 500) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "La descripción es demasiado larga."
-
-        });
-
-      }
-
-
-      if (!req.file) {
-
-        return res.status(400).json({
-
-          error:
-            "Debes seleccionar una imagen."
-
-        });
-
-      }
-
-
-      const imageUrl =
-        "/uploads/" +
-        req.file.filename;
-		const [orderRows] = await pool.query(
-  `
-  SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order
-  FROM gallery
-  `
-);
-
-const sortOrder =
-  orderRows[0].next_order;
-if (featured) {
-  await pool.query(
-    `
-    UPDATE gallery
-    SET featured=0
-    WHERE featured=1
-    `
-  );
+const GALLERY_CATEGORIES = [
+  "instalaciones",
+  "reparaciones",
+  "tableros",
+  "iluminacion",
+  "mantenimiento",
+  "otros"
+];
+
+function parseOptionalId(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-      await pool.query(
-        `
-        INSERT INTO gallery
-        (
-          title,
-          description,
-          image_url,
-          active,
-		  featured,
-		  sort_order
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          title,
-          description,
-          imageUrl,
-          active,
-          featured,
-          sortOrder
-        ]
-      );
-
-
-      res.json({
-
-        ok: true,
-
-        message:
-          "Trabajo agregado correctamente.",
-
-        image_url:
-          imageUrl
-
-      });
-
-
-    } catch (e) {
-
-      if (req.file) {
-
-        try {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        } catch {}
-
-      }
-
-
-      console.error(
-        "Error agregando trabajo:",
-        e
-      );
-
-
-      res.status(500).json({
-
-        error:
-          "No se pudo agregar el trabajo."
-
-      });
-
-    }
-
-  }
-);
-
-
-// =========================================================
-// EDITAR TRABAJO
-// =========================================================
-
-app.put(
-  "/api/admin/gallery/:id",
-  requireAdmin,
-  upload.single("image"),
-  validateUploadedImage,
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-
-      if (!Number.isInteger(id)) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "ID inválido."
-
-        });
-
-      }
-
-
-      const title =
-        String(
-          req.body.title || ""
-        ).trim();
-
-
-      const description =
-        String(
-          req.body.description || ""
-        ).trim();
-
-
-      const active =
-        req.body.active === "true" ||
-        req.body.active === "1"
-          ? 1
-          : 0;
-      const featured =
-  req.body.featured === "true" ||
-  req.body.featured === "1"
-    ? 1
-    : 0;
-
-      if (!title) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "El título es obligatorio."
-
-        });
-
-      }
-
-
-      if (title.length > 150) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "El título es demasiado largo."
-
-        });
-
-      }
-
-
-      if (description.length > 500) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(400).json({
-
-          error:
-            "La descripción es demasiado larga."
-
-        });
-
-      }
-
-
-      const [rows] =
-        await pool.query(
-          `
-          SELECT
-            image_url
-          FROM gallery
-          WHERE id=?
-          LIMIT 1
-          `,
-          [
-            id
-          ]
-        );
-
-
-      if (!rows.length) {
-
-        if (req.file) {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        }
-
-
-        return res.status(404).json({
-
-          error:
-            "Trabajo no encontrado."
-
-        });
-
-      }
-
-
-      let imageUrl =
-        rows[0].image_url;
-
-
-      if (req.file) {
-
-        imageUrl =
-          "/uploads/" +
-          req.file.filename;
-
-      }
-if (featured) {
-  await pool.query(
-    `
-    UPDATE gallery
-    SET featured=0
-    WHERE featured=1
-      AND id<>?
-    `,
-    [id]
-  );
+function validateGalleryCategory(value) {
+  const category = String(value || "otros").trim().toLowerCase();
+  return GALLERY_CATEGORIES.includes(category) ? category : null;
 }
 
-      await pool.query(
-        `
-        UPDATE gallery
-        SET
-          title=?,
-          description=?,
-          image_url=?,
-          active=?,
-		  featured=?
-        WHERE id=?
-        `,
-        [
-          title,
-          description,
-          imageUrl,
-          active,
-		  featured,
-          id
-        ]
-      );
+function galleryCategoryLabel(category) {
+  return ({
+    instalaciones: "Instalaciones",
+    reparaciones: "Reparaciones",
+    tableros: "Tableros eléctricos",
+    iluminacion: "Iluminación",
+    mantenimiento: "Mantenimiento",
+    otros: "Otros"
+  })[category] || "Otros";
+}
 
-
-      if (
-        req.file &&
-        rows[0].image_url
-      ) {
-
-        const oldFile =
-          path.join(
-            __dirname,
-            "public",
-            rows[0].image_url
-              .replace(/^\/+/, "")
-          );
-
-
-        if (fs.existsSync(oldFile)) {
-
-          try {
-
-            fs.unlinkSync(
-              oldFile
-            );
-
-          } catch (err) {
-
-            console.error(
-              "No se pudo eliminar imagen anterior:",
-              err.message
-            );
-
-          }
-
-        }
-
-      }
-
-
-      res.json({
-
-        ok: true,
-
-        message:
-          "Trabajo actualizado correctamente."
-
-      });
-
-
-    } catch (e) {
-
-      if (req.file) {
-
-        try {
-
-          fs.unlinkSync(
-            req.file.path
-          );
-
-        } catch {}
-
-      }
-
-
-      console.error(
-        "Error editando trabajo:",
-        e
-      );
-
-
-      res.status(500).json({
-
-        error:
-          "No se pudo actualizar el trabajo."
-
-      });
-
-    }
-
+async function validateGalleryRelations({ clientId, jobId, quoteId }) {
+  if (clientId !== null) {
+    const [rows] = await pool.query("SELECT id FROM clients WHERE id=? LIMIT 1", [clientId]);
+    if (!rows.length) return "El cliente vinculado no existe.";
   }
-);
-
-
-// =========================================================
-// ELIMINAR TRABAJO
-// =========================================================
-
-app.delete(
-  "/api/admin/gallery/:id",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-
-      if (!Number.isInteger(id)) {
-
-        return res.status(400).json({
-
-          error:
-            "ID inválido."
-
-        });
-
-      }
-
-
-      const [rows] =
-        await pool.query(
-          `
-          SELECT
-            image_url
-          FROM gallery
-          WHERE id=?
-          LIMIT 1
-          `,
-          [
-            id
-          ]
-        );
-
-
-      if (!rows.length) {
-
-        return res.status(404).json({
-
-          error:
-            "Trabajo no encontrado."
-
-        });
-
-      }
-
-
-      await pool.query(
-        `
-        DELETE FROM gallery
-        WHERE id=?
-        `,
-        [
-          id
-        ]
-      );
-
-      if (rows[0].image_url) {
-
-        const imageFile =
-          path.join(
-            __dirname,
-            "public",
-            rows[0].image_url
-              .replace(/^\/+/, "")
-          );
-
-
-        if (fs.existsSync(imageFile)) {
-
-          try {
-
-            fs.unlinkSync(
-              imageFile
-            );
-
-          } catch (err) {
-
-            console.error(
-              "No se pudo eliminar imagen:",
-              err.message
-            );
-
-          }
-
-        }
-
-      }
-
-
-      res.json({
-
-        ok: true,
-
-        message:
-          "Trabajo eliminado correctamente."
-
-      });
-
-
-    } catch (e) {
-
-      console.error(
-        "Error eliminando trabajo:",
-        e
-      );
-
-
-      res.status(500).json({
-
-        error:
-          "No se pudo eliminar el trabajo."
-
-      });
-
-    }
-
+  if (quoteId !== null) {
+    const [rows] = await pool.query("SELECT id, quote_request_id FROM quotes WHERE id=? LIMIT 1", [quoteId]);
+    if (!rows.length) return "El presupuesto vinculado no existe.";
   }
-);
-
-app.put(
-  "/api/admin/gallery/:id/order",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(req.params.id);
-
-      const direction =
-        req.body.direction;
-
-      if (!Number.isInteger(id)) {
-        return res.status(400).json({
-          error: "ID inválido."
-        });
-      }
-
-      if (
-        direction !== "up" &&
-        direction !== "down"
-      ) {
-        return res.status(400).json({
-          error: "Dirección inválida."
-        });
-      }
-
-      const [rows] =
-        await pool.query(
-          `
-          SELECT
-            id,
-            sort_order
-          FROM gallery
-          WHERE id=?
-          LIMIT 1
-          `,
-          [id]
-        );
-
-      if (!rows.length) {
-        return res.status(404).json({
-          error: "Trabajo no encontrado."
-        });
-      }
-
-      const current =
-        rows[0];
-
-      let comparison;
-      let orderDirection;
-
-      if (direction === "up") {
-
-        comparison = "<";
-        orderDirection = "DESC";
-
-      } else {
-
-        comparison = ">";
-        orderDirection = "ASC";
-
-      }
-
-      const [neighbors] =
-        await pool.query(
-          `
-          SELECT
-            id,
-            sort_order
-          FROM gallery
-          WHERE sort_order ${comparison} ?
-          ORDER BY sort_order ${orderDirection}
-          LIMIT 1
-          `,
-          [current.sort_order]
-        );
-
-      if (!neighbors.length) {
-        return res.json({
-          ok: true,
-          message:
-            direction === "up"
-              ? "Ya está primero."
-              : "Ya está último."
-        });
-      }
-
-      const neighbor =
-        neighbors[0];
-
-      await pool.query(
-        `
-        UPDATE gallery
-        SET sort_order=?
-        WHERE id=?
-        `,
-        [
-          neighbor.sort_order,
-          current.id
-        ]
-      );
-
-      await pool.query(
-        `
-        UPDATE gallery
-        SET sort_order=?
-        WHERE id=?
-        `,
-        [
-          current.sort_order,
-          neighbor.id
-        ]
-      );
-
-      res.json({
-        ok: true,
-        message:
-          "Orden actualizado correctamente."
-      });
-
-    } catch (e) {
-
-      console.error(
-        "Error cambiando orden de galería:",
-        e
-      );
-
-      res.status(500).json({
-        error:
-          "No se pudo cambiar el orden."
-      });
-
+  if (jobId !== null) {
+    const [rows] = await pool.query(
+      "SELECT j.id, j.status, j.quote_id FROM jobs j WHERE j.id=? LIMIT 1",
+      [jobId]
+    );
+    if (!rows.length) return "El trabajo vinculado no existe.";
+    if (!["finalizado", "cerrado"].includes(rows[0].status)) {
+      return "Solo se pueden publicar trabajos de la galería vinculados a trabajos finalizados o cerrados.";
     }
-
   }
-);
+  if (jobId !== null && quoteId !== null) {
+    const [rows] = await pool.query("SELECT id FROM jobs WHERE id=? AND quote_id=? LIMIT 1", [jobId, quoteId]);
+    if (!rows.length) return "El trabajo y el presupuesto vinculados no corresponden entre sí.";
+  }
+  if (jobId !== null && clientId !== null) {
+    const [rows] = await pool.query(
+      "SELECT j.id FROM jobs j INNER JOIN quotes q ON q.id=j.quote_id INNER JOIN quote_requests qr ON qr.id=q.quote_request_id WHERE j.id=? AND qr.client_id=? LIMIT 1",
+      [jobId, clientId]
+    );
+    if (!rows.length) return "El trabajo y el cliente vinculados no corresponden entre sí.";
+  }
+  return null;
+}
+
+async function deleteGalleryFile(imageUrl) {
+  if (!imageUrl || !String(imageUrl).startsWith("/uploads/")) return;
+  const imageFile = path.join(__dirname, "public", String(imageUrl).replace(/^\/+/, ""));
+  if (fs.existsSync(imageFile)) await fs.promises.unlink(imageFile).catch(() => {});
+}
+
+app.get("/api/gallery", async (req, res) => {
+  try {
+    const category = String(req.query.category || "").trim().toLowerCase();
+    const params = [];
+    let sql = "SELECT id,title,description,image_url,alt_text,category,featured,sort_order,client_id,job_id,quote_id,created_at FROM gallery WHERE active=1";
+    if (category && GALLERY_CATEGORIES.includes(category)) {
+      sql += " AND category=?";
+      params.push(category);
+    }
+    sql += " ORDER BY featured DESC,sort_order ASC,created_at DESC";
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo galería pública", {requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron cargar los trabajos."});
+  }
+});
+
+app.get("/api/admin/gallery", requireAdmin, async (req, res) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const category = String(req.query.category || "").trim().toLowerCase();
+    const status = String(req.query.status || "").trim().toLowerCase();
+    const params = [];
+    let sql = "SELECT g.id,g.title,g.description,g.image_url,g.alt_text,g.active,g.featured,g.sort_order,g.category,g.client_id,g.job_id,g.quote_id,g.created_at,g.updated_at,c.name AS client_name,j.status AS job_status,q.quote_number FROM gallery g LEFT JOIN clients c ON c.id=g.client_id LEFT JOIN jobs j ON j.id=g.job_id LEFT JOIN quotes q ON q.id=g.quote_id WHERE 1=1";
+    if (search) {
+      const v = "%" + search + "%";
+      sql += " AND (g.title LIKE ? OR g.description LIKE ? OR g.alt_text LIKE ? OR g.category LIKE ? OR c.name LIKE ? OR q.quote_number LIKE ?)";
+      params.push(v,v,v,v,v,v);
+    }
+    if (category && GALLERY_CATEGORIES.includes(category)) {
+      sql += " AND g.category=?";
+      params.push(category);
+    }
+    if (status === "active") sql += " AND g.active=1";
+    if (status === "inactive") sql += " AND g.active=0";
+    if (status === "featured") sql += " AND g.featured=1";
+    sql += " ORDER BY g.sort_order ASC,g.created_at DESC";
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo galería admin", {requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudieron cargar los trabajos."});
+  }
+});
+
+app.get("/api/admin/gallery/:id(\\d+)", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [rows] = await pool.query(
+      "SELECT g.*,c.name AS client_name,j.status AS job_status,q.quote_number FROM gallery g LEFT JOIN clients c ON c.id=g.client_id LEFT JOIN jobs j ON j.id=g.job_id LEFT JOIN quotes q ON q.id=g.quote_id WHERE g.id=? LIMIT 1",
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({error:"Trabajo de galería no encontrado."});
+    res.json(rows[0]);
+  } catch (error) {
+    logError("Error obteniendo detalle de galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el trabajo de galería."});
+  }
+});
+
+app.post("/api/admin/gallery", requireAdmin, adminMutationLimiter, upload.single("image"), validateUploadedImage, async (req, res) => {
+  try {
+    const title=String(req.body.title||"").trim();
+    const description=String(req.body.description||"").trim();
+    const altText=String(req.body.alt_text||req.body.altText||title).trim();
+    const category=validateGalleryCategory(req.body.category);
+    const active=["true","1"].includes(String(req.body.active))?1:0;
+    const featured=["true","1"].includes(String(req.body.featured))?1:0;
+    const clientId=parseOptionalId(req.body.client_id);
+    const jobId=parseOptionalId(req.body.job_id);
+    const quoteId=parseOptionalId(req.body.quote_id);
+
+    if(!title||title.length>150){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"El título es obligatorio y no puede superar 150 caracteres."});}
+    if(description.length>500){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"La descripción no puede superar 500 caracteres."});}
+    if(!altText||altText.length>255){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"El texto alternativo es obligatorio y no puede superar 255 caracteres."});}
+    if(!category){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"La categoría seleccionada no es válida."});}
+    const relationError=await validateGalleryRelations({clientId,jobId,quoteId});
+    if(relationError){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:relationError});}
+    if(!req.file)return res.status(400).json({error:"Debes seleccionar una imagen."});
+
+    const imageUrl="/uploads/"+req.file.filename;
+    const [[orderRow]]=await pool.query("SELECT COALESCE(MAX(sort_order),0)+1 AS next_order FROM gallery");
+    const sortOrder=Number(orderRow.next_order||1);
+    const [result]=await pool.query(
+      "INSERT INTO gallery (title,description,image_url,alt_text,category,active,featured,sort_order,client_id,job_id,quote_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      [title,description,imageUrl,altText,category,active,featured,sortOrder,clientId,jobId,quoteId]
+    );
+    await writeAudit(req,"gallery_created","gallery",result.insertId,{category,featured,jobId,quoteId,clientId});
+    res.status(201).json({ok:true,message:"Trabajo agregado correctamente.",id:result.insertId,image_url:imageUrl});
+  } catch(error) {
+    if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});
+    logError("Error agregando trabajo de galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo agregar el trabajo."});
+  }
+});
+
+app.put("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, upload.single("image"), validateUploadedImage, async (req, res) => {
+  try {
+    const id=Number(req.params.id);
+    const [[existing]]=await pool.query("SELECT * FROM gallery WHERE id=? LIMIT 1",[id]);
+    if(!existing){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(404).json({error:"Trabajo no encontrado."});}
+
+    const title=String(req.body.title||"").trim();
+    const description=String(req.body.description||"").trim();
+    const altText=String(req.body.alt_text||req.body.altText||title).trim();
+    const category=validateGalleryCategory(req.body.category);
+    const active=["true","1"].includes(String(req.body.active))?1:0;
+    const featured=["true","1"].includes(String(req.body.featured))?1:0;
+    const clientId=parseOptionalId(req.body.client_id);
+    const jobId=parseOptionalId(req.body.job_id);
+    const quoteId=parseOptionalId(req.body.quote_id);
+
+    if(!title||title.length>150){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"El título es obligatorio y no puede superar 150 caracteres."});}
+    if(description.length>500){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"La descripción no puede superar 500 caracteres."});}
+    if(!altText||altText.length>255){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"El texto alternativo es obligatorio y no puede superar 255 caracteres."});}
+    if(!category){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:"La categoría seleccionada no es válida."});}
+
+    const relationError=await validateGalleryRelations({clientId,jobId,quoteId});
+    if(relationError){if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});return res.status(400).json({error:relationError});}
+
+    let imageUrl=existing.image_url;
+    if(req.file)imageUrl="/uploads/"+req.file.filename;
+
+    await pool.query(
+      "UPDATE gallery SET title=?,description=?,image_url=?,alt_text=?,category=?,active=?,featured=?,client_id=?,job_id=?,quote_id=? WHERE id=?",
+      [title,description,imageUrl,altText,category,active,featured,clientId,jobId,quoteId,id]
+    );
+    if(req.file&&existing.image_url!==imageUrl)await deleteGalleryFile(existing.image_url);
+    await writeAudit(req,"gallery_updated","gallery",id,{category,featured,jobId,quoteId,clientId});
+    res.json({ok:true,message:"Trabajo actualizado correctamente."});
+  }catch(error){
+    if(req.file)await fs.promises.unlink(req.file.path).catch(()=>{});
+    logError("Error editando trabajo de galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar el trabajo."});
+  }
+});
+
+app.delete("/api/admin/gallery/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req,res)=>{
+  try{
+    const id=Number(req.params.id);
+    const [[existing]]=await pool.query("SELECT image_url FROM gallery WHERE id=? LIMIT 1",[id]);
+    if(!existing)return res.status(404).json({error:"Trabajo no encontrado."});
+    await pool.query("DELETE FROM gallery WHERE id=?",[id]);
+    await deleteGalleryFile(existing.image_url);
+    await writeAudit(req,"gallery_deleted","gallery",id);
+    res.json({ok:true,message:"Trabajo eliminado correctamente."});
+  }catch(error){
+    logError("Error eliminando trabajo de galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo eliminar el trabajo."});
+  }
+});
+
+app.put("/api/admin/gallery/:id(\\d+)/order", requireAdmin, adminMutationLimiter, async (req,res)=>{
+  try{
+    const id=Number(req.params.id);
+    const direction=String(req.body.direction||"");
+    if(!Number.isInteger(id)||id<=0)return res.status(400).json({error:"ID inválido."});
+    if(!["up","down"].includes(direction))return res.status(400).json({error:"Dirección inválida."});
+    const [[current]]=await pool.query("SELECT id,sort_order FROM gallery WHERE id=? LIMIT 1",[id]);
+    if(!current)return res.status(404).json({error:"Trabajo no encontrado."});
+    const comparison=direction==="up"?"<":">";
+    const orderDirection=direction==="up"?"DESC":"ASC";
+    const [[neighbor]]=await pool.query(
+      "SELECT id,sort_order FROM gallery WHERE sort_order "+comparison+" ? ORDER BY sort_order "+orderDirection+", id "+orderDirection+" LIMIT 1",
+      [current.sort_order]
+    );
+    if(!neighbor)return res.json({ok:true,message:direction==="up"?"Ya está primero.":"Ya está último."});
+    await pool.query("UPDATE gallery SET sort_order=? WHERE id=?",[neighbor.sort_order,current.id]);
+    await pool.query("UPDATE gallery SET sort_order=? WHERE id=?",[current.sort_order,neighbor.id]);
+    await writeAudit(req,"gallery_reordered","gallery",id,{direction});
+    res.json({ok:true,message:"Orden actualizado correctamente."});
+  }catch(error){
+    logError("Error cambiando orden de galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo cambiar el orden."});
+  }
+});
+
+app.post("/api/admin/gallery/from-job-attachment/:attachmentId(\\d+)", requireAdmin, adminMutationLimiter, async (req,res)=>{
+  try{
+    const attachmentId=Number(req.params.attachmentId);
+    const [[attachment]]=await pool.query(
+      "SELECT ja.*,j.status AS job_status,j.quote_id,qr.client_id,qr.service,qr.description,q.quote_number FROM job_attachments ja INNER JOIN jobs j ON j.id=ja.job_id INNER JOIN quotes q ON q.id=j.quote_id INNER JOIN quote_requests qr ON qr.id=q.quote_request_id WHERE ja.id=? LIMIT 1",
+      [attachmentId]
+    );
+    if(!attachment)return res.status(404).json({error:"La evidencia no existe."});
+    if(!["image/jpeg","image/png","image/webp","image/gif"].includes(attachment.mime_type))return res.status(400).json({error:"Solo se pueden publicar imágenes como trabajos de galería."});
+    if(!["finalizado","cerrado"].includes(attachment.job_status))return res.status(400).json({error:"Solo se pueden publicar evidencias de trabajos finalizados o cerrados."});
+
+    const title=String(req.body.title||attachment.service||"Trabajo realizado").trim();
+    const description=String(req.body.description||attachment.description||"").trim();
+    const altText=String(req.body.alt_text||title).trim();
+    const category=validateGalleryCategory(req.body.category||"otros");
+    const active=["true","1"].includes(String(req.body.active??"1"))?1:0;
+    const featured=["true","1"].includes(String(req.body.featured))?1:0;
+    if(!title||title.length>150)return res.status(400).json({error:"El título es obligatorio y no puede superar 150 caracteres."});
+    if(description.length>500)return res.status(400).json({error:"La descripción no puede superar 500 caracteres."});
+    if(!altText||altText.length>255)return res.status(400).json({error:"El texto alternativo no es válido."});
+    if(!category)return res.status(400).json({error:"La categoría no es válida."});
+
+    const [[duplicate]]=await pool.query("SELECT id FROM gallery WHERE job_id=? AND image_url=? LIMIT 1",[attachment.job_id,attachment.url]);
+    if(duplicate)return res.status(409).json({error:"Esta evidencia ya está publicada en la galería.",id:duplicate.id});
+
+    const [[orderRow]]=await pool.query("SELECT COALESCE(MAX(sort_order),0)+1 AS next_order FROM gallery");
+    const [result]=await pool.query(
+      "INSERT INTO gallery (title,description,image_url,alt_text,category,active,featured,sort_order,client_id,job_id,quote_id,source_job_attachment_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      [title,description,attachment.url,altText,category,active,featured,Number(orderRow.next_order||1),attachment.client_id||null,attachment.job_id,attachment.quote_id,attachmentId]
+    );
+    await writeAudit(req,"gallery_promoted_from_job_attachment","gallery",result.insertId,{attachmentId,jobId:attachment.job_id});
+    res.status(201).json({ok:true,id:result.insertId,message:"La evidencia fue publicada en la galería."});
+  }catch(error){
+    logError("Error promocionando evidencia a galería",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo publicar la evidencia en la galería."});
+  }
+});
+
+app.get("/api/admin/gallery/categories", requireAdmin, (req,res)=>{
+  res.json(GALLERY_CATEGORIES.map(value=>({value,label:galleryCategoryLabel(value)})));
+});
+
 // =========================================================
 // SERVICIOS PÚBLICOS
 // =========================================================
