@@ -32,7 +32,7 @@ const checks = [
   ["restore npm script", packageJson.scripts?.restore === "node scripts/restore-db.js"],
   ["health npm script", packageJson.scripts?.health === "node scripts/monitor-health.js"],
   ["preflight npm script", packageJson.scripts?.["prod:preflight"] === "node scripts/production-preflight.js"],
-  ["backup ignored", fs.readFileSync(path.join(root, ".gitignore"), "utf8").includes("backups/")
+  ["backup ignored", fs.readFileSync(path.join(root, ".gitignore"), "utf8").includes("backups/")]
 ];
 
 for (const [name, ok] of checks) {
