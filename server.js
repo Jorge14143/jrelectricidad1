@@ -4997,8 +4997,7 @@ app.get("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
         qr.phone AS client_phone,
         qr.email AS client_email,
         qr.service AS requested_service,
-        qr.description AS work_description,
-        qr.preferred_date,
+        qr.description AS work_description,        qr.preferred_date,
         qr.image_url
 
       FROM jobs j
@@ -7932,119 +7931,107 @@ app.get(
   }
 );
 app.get("/api/public/quotes/:token", authLimiter, async (req, res) => {
-
-    try {
-
-      const [rows] = await pool.query(
-        `
-        SELECT
-          q.id,
-          q.quote_number,
-          q.issue_date,
-          q.expiration_date,
-          q.notes,
-          q.status,
-          q.subtotal,
-          q.discount,
-          q.total,
-
-          qr.name AS client_name,
-          qr.email AS client_email,
-          qr.phone AS client_phone,
-          qr.service AS requested_service,
-
-          qi.id AS item_id,
-          qi.description,
-          qi.quantity,
-          qi.unit,
-          qi.unit_price,
-          qi.total AS item_total
-
-        FROM quotes q
-
-        INNER JOIN quote_requests qr
-          ON qr.id = q.quote_request_id
-
-        LEFT JOIN quote_items qi
-          ON qi.quote_id = q.id
-
-        WHERE q.access_token = ?
-
-        ORDER BY qi.id ASC
-        `,
-        [req.params.token]
-      );
-
-
-      if (!rows.length) {
-
-        return res.status(404).json({
-          error:
-            "Presupuesto no encontrado o enlace inválido."
-        });
-
-      }
-
-
-      const quote = {
-        id: rows[0].id,
-        quote_number: rows[0].quote_number,
-        issue_date: rows[0].issue_date,
-        expiration_date: rows[0].expiration_date,
-        notes: rows[0].notes,
-        status: rows[0].status,
-
-        subtotal: rows[0].subtotal,
-        discount: rows[0].discount,
-        total: rows[0].total,
-
-        client_name: rows[0].client_name,
-        client_email: rows[0].client_email,
-        client_phone: rows[0].client_phone,
-        requested_service: rows[0].requested_service,
-
-        items: []
-      };
-
-
-      for (const row of rows) {
-
-        if (row.item_id) {
-
-          quote.items.push({
-            id: row.item_id,
-            description: row.description,
-            quantity: row.quantity,
-            unit: row.unit,
-            unit_price: row.unit_price,
-            total: row.item_total
-          });
-
-        }
-
-      }
-
-
-      res.json(quote);
-
-
-    } catch (error) {
-
-      console.error(
-        "Error obteniendo presupuesto público:",
-        error
-      );
-
-
-      res.status(500).json({
-        error:
-          "No se pudo obtener el presupuesto."
-      });
-
+  try {
+    const token = String(req.params.token || "").trim();
+    if (!/^[A-Za-z0-9_-]{24,200}$/.test(token)) {
+      return res.status(404).json({ error: "Presupuesto no encontrado o enlace inválido." });
     }
 
+    const [rows] = await pool.query(
+      `SELECT
+        q.id, q.quote_number, q.issue_date, q.expiration_date, q.notes,
+        q.status, q.subtotal, q.discount, q.total, q.viewed_at,
+        qr.name AS client_name, qr.email AS client_email, qr.phone AS client_phone,
+        qr.service AS requested_service,
+        qi.id AS item_id, qi.description, qi.quantity, qi.unit, qi.unit_price,
+        qi.total AS item_total,
+        qa.id AS acceptance_id, qa.decision AS acceptance_decision,
+        qa.customer_name AS acceptance_customer_name,
+        qa.customer_email AS acceptance_customer_email,
+        qa.customer_phone AS acceptance_customer_phone,
+        qa.customer_note AS acceptance_note,
+        qa.consent_text AS acceptance_consent_text,
+        qa.signature_name AS acceptance_signature_name,
+        qa.ip_address AS acceptance_ip,
+        qa.user_agent AS acceptance_user_agent,
+        qa.created_at AS acceptance_created_at
+      FROM quotes q
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN quote_items qi ON qi.quote_id=q.id
+      LEFT JOIN (
+        SELECT qa1.*
+        FROM quote_acceptances qa1
+        INNER JOIN (
+          SELECT quote_id, MAX(id) AS max_id
+          FROM quote_acceptances
+          GROUP BY quote_id
+        ) latest ON latest.max_id=qa1.id
+      ) qa ON qa.quote_id=q.id
+      WHERE q.access_token=?
+      ORDER BY qi.id ASC`,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Presupuesto no encontrado o enlace inválido." });
+    }
+
+    await pool.query(
+      "UPDATE quotes SET viewed_at=COALESCE(viewed_at,NOW()) WHERE id=?",
+      [rows[0].id]
+    ).catch(() => {});
+
+    const row = rows[0];
+    const quote = {
+      id: row.id,
+      quote_number: row.quote_number,
+      issue_date: row.issue_date,
+      expiration_date: row.expiration_date,
+      notes: row.notes,
+      status: row.status,
+      viewed_at: row.viewed_at,
+      subtotal: row.subtotal,
+      discount: row.discount,
+      total: row.total,
+      client_name: row.client_name,
+      client_email: row.client_email,
+      client_phone: row.client_phone,
+      requested_service: row.requested_service,
+      items: [],
+      acceptance: row.acceptance_id ? {
+        id: row.acceptance_id,
+        decision: row.acceptance_decision,
+        customer_name: row.acceptance_customer_name,
+        customer_email: row.acceptance_customer_email,
+        customer_phone: row.acceptance_customer_phone,
+        note: row.acceptance_note,
+        consent_text: row.acceptance_consent_text,
+        signature_name: row.acceptance_signature_name,
+        ip_address: row.acceptance_ip,
+        user_agent: row.acceptance_user_agent,
+        created_at: row.acceptance_created_at
+      } : null
+    };
+
+    for (const item of rows) {
+      if (item.item_id) {
+        quote.items.push({
+          id: item.item_id,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
+          total: item.item_total
+        });
+      }
+    }
+
+    res.json(quote);
+  } catch (error) {
+    logError("Error obteniendo presupuesto público", { requestId:req.requestId, error:error.message });
+    res.status(500).json({ error:"No se pudo obtener el presupuesto." });
   }
-);
+});
 // ========================================
 // PRESUPUESTOS - ADMIN
 // ========================================
@@ -8629,294 +8616,218 @@ app.post(
         `
         UPDATE admin_notifications
         SET is_read = 1
-        WHERE id = ?
-        `,
-        [notificationId]
-      );
+  // =========================================================
+// V2 — ACEPTACIÓN DIGITAL DE PRESUPUESTOS
+// =========================================================
 
-      if (result.affectedRows === 0) {
+const ACCEPTANCE_CONSENT_TEXT =
+  "Declaro que revisé el presupuesto, sus conceptos, importes y condiciones, y autorizo a JR Electricidad a registrar digitalmente mi decisión.";
 
-        return res.status(404).json({
-          error: "Notificación no encontrada."
-        });
+function validatePublicCustomer(body) {
+  const name = String(body?.name || "").trim().replace(/\s+/g, " ");
+  const email = String(body?.email || "").trim().toLowerCase();
+  const phone = String(body?.phone || "").trim();
+  const note = String(body?.note || "").trim();
+  const signatureName = String(body?.signatureName || "").trim().replace(/\s+/g, " ");
 
-      }
+  if (name.length < 2 || name.length > 150) return { error:"Ingresá un nombre válido." };
+  if (!validEmail(email) || email.length > 190) return { error:"Ingresá un email válido." };
+  if (phone.length < 6 || phone.length > 50) return { error:"Ingresá un teléfono válido." };
+  if (note.length > 2000) return { error:"La observación no puede superar 2000 caracteres." };
+  if (signatureName.length < 2 || signatureName.length > 150) return { error:"Ingresá tu nombre como firma digital." };
+  return { name, email, phone, note, signatureName };
+}
 
-      res.json({
-        success: true,
-        message:
-          "Notificación marcada como leída."
-      });
+function publicQuoteToken(req) {
+  const token = String(req.params.token || "").trim();
+  return /^[A-Za-z0-9_-]{24,200}$/.test(token) ? token : null;
+}
 
-    } catch (error) {
+async function sendAcceptanceEmail({ to, quoteNumber, decision, customerName }) {
+  if (!to || !process.env.SMTP_HOST || !process.env.SMTP_USER ||
+      !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) return false;
 
-      console.error(
-        "Error marcando notificación como leída:",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "No se pudo actualizar la notificación."
-      });
-
-    }
-
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
+      auth: { user:process.env.SMTP_USER, pass:process.env.SMTP_PASSWORD }
+    });
+    const accepted = decision === "aceptado";
+    await transporter.sendMail({
+      from: process.env.MAIL_FROM,
+      to,
+      subject: `${accepted ? "Aceptación" : "Rechazo"} de presupuesto ${quoteNumber} - JR Electricidad`,
+      html: `<div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
+        <h2>JR Electricidad ⚡</h2>
+        <p>Hola ${String(customerName || "").replace(/[&<>"']/g, "")},</p>
+        <p>Registramos correctamente tu <strong>${accepted ? "aceptación" : "rechazo"}</strong> del presupuesto <strong>${String(quoteNumber || "").replace(/[&<>"']/g, "")}</strong>.</p>
+        <p>Fecha: ${new Date().toLocaleString("es-AR")}</p>
+        <p>Este correo es una constancia de la operación registrada.</p>
+      </div>`
+    });
+    return true;
+  } catch (error) {
+    logError("No se pudo enviar confirmación de aceptación", { error:error.message, quoteNumber });
+    return false;
   }
-);
+}
 
+async function processPublicQuoteDecision(req, res, decision) {
+  const token = publicQuoteToken(req);
+  if (!token) return res.status(404).json({ error:"Presupuesto no encontrado o enlace inválido." });
 
-// =====================================================
-// MARCAR TODAS LAS NOTIFICACIONES COMO LEÍDAS
-// =====================================================
+  const customer = validatePublicCustomer(req.body || {});
+  if (customer.error) return res.status(400).json({ error:customer.error });
 
-app.post(
-  "/api/admin/notifications/read-all",
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      await pool.query(
-        `
-        UPDATE admin_notifications
-        SET is_read = 1
-        WHERE is_read = 0
-        `
-      );
-
-      res.json({
-        success: true,
-        message:
-          "Todas las notificaciones fueron marcadas como leídas."
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Error marcando todas las notificaciones como leídas:",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "No se pudieron marcar las notificaciones como leídas."
-      });
-
-    }
-
+  if (decision === "aceptado" && req.body?.consent !== true) {
+    return res.status(400).json({ error:"Debés aceptar la constancia digital antes de confirmar." });
   }
-);
 
-
-
-// ---------------------------------------------------------
-// ACEPTAR PRESUPUESTO PÚBLICO
-// ---------------------------------------------------------
-
-app.post("/api/public/quotes/:token/accept", authLimiter, async (req, res) => {
   const connection = await pool.getConnection();
-
   try {
     await connection.beginTransaction();
 
-    const [result] = await connection.query(
-      `
-      UPDATE quotes
-      SET status = 'aceptado',
-          accepted_at = NOW()
-      WHERE access_token = ?
-        AND status = 'enviado'
-        AND (
-          expiration_date IS NULL
-          OR expiration_date >= CURDATE()
-        )
-      `,
-      [req.params.token]
+    const [rows] = await connection.query(
+      `SELECT q.*, qr.name AS client_name, qr.email AS client_email, qr.phone AS client_phone
+       FROM quotes q
+       INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       WHERE q.access_token=? LIMIT 1 FOR UPDATE`,
+      [token]
     );
 
-    if (result.affectedRows === 0) {
+    if (!rows.length) {
       await connection.rollback();
+      return res.status(404).json({ error:"Presupuesto no encontrado o enlace inválido." });
+    }
 
-      const [rows] = await connection.query(
-        `
-        SELECT status
-        FROM quotes
-        WHERE access_token = ?
-        `,
-        [req.params.token]
+    const quote = rows[0];
+    if (["cerrado","vencido"].includes(quote.status) ||
+        (quote.expiration_date && new Date(quote.expiration_date).getTime() < Date.now() - 86400000)) {
+      await connection.rollback();
+      return res.status(409).json({ error:"Este presupuesto está vencido o cerrado y ya no admite una decisión." });
+    }
+
+    if (quote.status === decision) {
+      await connection.rollback();
+      return res.json({ success:true, status:decision, already_decided:true, message:`El presupuesto ya figura como ${decision}.` });
+    }
+
+    if (quote.status !== "enviado") {
+      await connection.rollback();
+      return res.status(409).json({ error:"Este presupuesto no está disponible para una nueva decisión." });
+    }
+
+    const ip = req.ip || null;
+    const userAgent = String(req.get("user-agent") || "").slice(0,512) || null;
+
+    await connection.query(
+      `INSERT INTO quote_acceptances
+       (quote_id, decision, customer_name, customer_email, customer_phone,
+        customer_note, consent_text, signature_name, ip_address, user_agent)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [quote.id, decision, customer.name, customer.email, customer.phone,
+       customer.note || null, decision === "aceptado" ? ACCEPTANCE_CONSENT_TEXT : null,
+       customer.signatureName, ip, userAgent]
+    );
+
+    if (decision === "aceptado") {
+      await connection.query(
+        `UPDATE quotes
+         SET status='aceptado', accepted_at=NOW()
+         WHERE id=?`,
+        [quote.id]
       );
-
-      if (!rows.length) {
-        return res.status(404).json({
-          error: "Presupuesto no encontrado."
-        });
-      }
-
-      if (rows[0].status === "aceptado") {
-        return res.json({
-          success: true,
-          status: "aceptado",
-          message: "El presupuesto ya fue aceptado."
-        });
-      }
-
-      return res.status(400).json({
-        error: "Este presupuesto ya no puede modificarse."
-      });
+      await connection.query(
+        "UPDATE quote_requests SET status='aceptada' WHERE id=? AND status NOT IN ('cerrada','finalizada')",
+        [quote.quote_request_id]
+      );
+      await connection.query(
+        `INSERT INTO jobs (quote_id,status) VALUES (?, 'aceptado')
+         ON DUPLICATE KEY UPDATE status='aceptado', updated_at=CURRENT_TIMESTAMP`,
+        [quote.id]
+      );
+    } else {
+      await connection.query(
+        "UPDATE quotes SET status='rechazado', rejected_at=NOW() WHERE id=?",
+        [quote.id]
+      );
     }
-
-    const [quoteRows] = await connection.query(
-      `
-      SELECT
-        q.id,
-        q.quote_number,
-        qr.name AS client_name
-      FROM quotes q
-      INNER JOIN quote_requests qr
-        ON qr.id = q.quote_request_id
-      WHERE q.access_token = ?
-      LIMIT 1
-      `,
-      [req.params.token]
-    );
-
-    if (!quoteRows.length) {
-      await connection.rollback();
-      return res.status(404).json({
-        error: "Presupuesto no encontrado."
-      });
-    }
-
-    const quote = quoteRows[0];
 
     await connection.query(
       `INSERT INTO quote_history
-        (quote_id, action, old_status, new_status, metadata)
-       SELECT q.id, 'customer_accepted', 'enviado', 'aceptado', ?
-       FROM quotes q
-       WHERE q.id = ?`,
-      [JSON.stringify({ source: "public" }), quote.id]
+       (quote_id, action, old_status, new_status, metadata)
+       VALUES (?, 'customer_decision', 'enviado', ?, ?)`,
+      [quote.id, decision, JSON.stringify({
+        source:"public",
+        acceptance_id: null,
+        customer_name:customer.name,
+        customer_email:customer.email,
+        consent:decision === "aceptado"
+      })]
     );
 
     await connection.query(
-      `
-      INSERT INTO jobs
-      (
-        quote_id,
-        status
-      )
-      VALUES (?, 'aceptado')
-      ON DUPLICATE KEY UPDATE
-        status = 'aceptado'
-      `,
-      [quote.id]
-    );
-
-    await connection.query(
-      `
-      INSERT INTO admin_notifications
-      (
-        type,
-        quote_id,
-        message
-      )
-      VALUES (?, ?, ?)
-      `,
+      `INSERT INTO admin_notifications (type, quote_id, message)
+       VALUES (?, ?, ?)`,
       [
-        "quote_accepted",
+        decision === "aceptado" ? "quote_accepted" : "quote_rejected",
         quote.id,
-        `El cliente ${quote.client_name} aceptó el presupuesto ${quote.quote_number}.`
+        `El cliente ${quote.client_name} registró ${decision === "aceptado" ? "la aceptación" : "el rechazo"} del presupuesto ${quote.quote_number}.`
       ]
     );
 
     await connection.commit();
 
-    res.json({
-      success: true,
-      status: "aceptado",
-      message: "Presupuesto aceptado correctamente."
+    const emailSent = await sendAcceptanceEmail({
+      to: customer.email,
+      quoteNumber:quote.quote_number,
+      decision,
+      customerName:customer.name
     });
 
+    await writeAudit(req, `quote_${decision}_public`, "quote", quote.id, {
+      customer_name:customer.name,
+      customer_email:customer.email,
+      ip,
+      user_agent:userAgent,
+      email_sent:emailSent
+    });
+
+    res.json({
+      success:true,
+      status:decision,
+      email_sent:emailSent,
+      message:decision === "aceptado"
+        ? "Presupuesto aceptado. Se registró tu aceptación y se creó el trabajo."
+        : "Presupuesto rechazado. Se registró tu decisión correctamente."
+    });
   } catch (error) {
     await connection.rollback().catch(() => {});
-
-    console.error(
-      "Error aceptando presupuesto:",
-      error
-    );
-
-    res.status(500).json({
-      error:
-        "No se pudo aceptar el presupuesto."
-    });
+    logError("Error procesando decisión pública del presupuesto", { requestId:req.requestId, error:error.message });
+    res.status(500).json({ error:"No se pudo registrar la decisión del presupuesto." });
   } finally {
     connection.release();
   }
+}
+
+app.post("/api/public/quotes/:token/accept", authLimiter, async (req,res) => {
+  return processPublicQuoteDecision(req,res,"aceptado");
 });
 
-// ---------------------------------------------------------
-// RECHAZAR PRESUPUESTO PÚBLICO
-// ---------------------------------------------------------
+app.post("/api/public/quotes/:token/reject", authLimiter, async (req,res) => {
+  return processPublicQuoteDecision(req,res,"rechazado");
+});
 
-app.post("/api/public/quotes/:token/reject", authLimiter, async (req, res) => {
-  const connection = await pool.getConnection();
+// Página pública del presupuesto.
+app.get("/presupuesto/:token", (req,res) => {
+  const token = publicQuoteToken(req);
+  if (!token) return res.status(404).send("Presupuesto no encontrado.");
+  res.sendFile(path.join(__dirname,"public","presupuesto.html"));
+});
 
-  try {
-    await connection.beginTransaction();
-
-    const [result] = await connection.query(
-      `
-      UPDATE quotes
-      SET status = 'rechazado'
-      WHERE access_token = ?
-        AND status = 'enviado'
-        AND (
-          expiration_date IS NULL
-          OR expiration_date >= CURDATE()
-        )
-      `,
-      [req.params.token]
-    );
-
-    if (result.affectedRows === 0) {
-      await connection.rollback();
-
-      const [rows] = await connection.query(
-        `
-        SELECT status
-        FROM quotes
-        WHERE access_token = ?
-        `,
-        [req.params.token]
-      );
-
-      if (!rows.length) {
-        return res.status(404).json({
-          error: "Presupuesto no encontrado."
-        });
-      }
-
-      if (rows[0].status === "rechazado") {
-        return res.json({
-          success: true,
-          status: "rechazado",
-          message: "El presupuesto ya fue rechazado."
-        });
-      }
-
-      return res.status(400).json({
-        error: "Este presupuesto ya no puede modificarse."
-      });
-    }
-
-    const [quoteRows] = await connection.query(
-      `
-      SELECT
-        q.id,
-        q.quote_number,
-        qr.name AS client_name
-      FROM quotes q
+M quotes q
       INNER JOIN quote_requests qr
         ON qr.id = q.quote_request_id
       WHERE q.access_token = ?
