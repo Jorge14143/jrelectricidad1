@@ -1534,17 +1534,21 @@ app.post(
 app.post(
   "/api/logout",
   (req, res) => {
+    const userId = req.session?.user?.id || null;
+    const sessionId = req.sessionID;
 
     req.session.destroy(
       () => {
+        removeActiveSession(sessionId);
+        if (userId) {
+          writeAudit(req, "logout", "user", userId);
+        }
 
         res.json({
           ok: true
         });
-
       }
     );
-
   }
 );
 
