@@ -457,3 +457,38 @@ CREATE TABLE IF NOT EXISTS automation_rules (id INT UNSIGNED NOT NULL AUTO_INCRE
 CREATE TABLE IF NOT EXISTS automation_logs (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,rule_id INT UNSIGNED NULL,event_key VARCHAR(100) NOT NULL,target_type VARCHAR(50) NULL,target_id INT NULL,status ENUM('executed','skipped','failed') NOT NULL,message VARCHAR(1000) NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_automation_logs_created(created_at),INDEX idx_automation_logs_event(event_key)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS job_evidence (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,job_id INT UNSIGNED NOT NULL,quote_id INT UNSIGNED NULL,evidence_type ENUM('general','before','after','document') NOT NULL DEFAULT 'general',title VARCHAR(180) NOT NULL,description VARCHAR(1000) DEFAULT '',file_url VARCHAR(500) NOT NULL,original_name VARCHAR(255) NOT NULL,mime_type VARCHAR(100) NOT NULL,file_size INT UNSIGNED NOT NULL DEFAULT 0,sort_order INT NOT NULL DEFAULT 0,created_by INT UNSIGNED NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_job_evidence_job(job_id,evidence_type,sort_order),INDEX idx_job_evidence_quote(quote_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =========================================================
+-- WHATSAPP V3
+-- =========================================================
+CREATE TABLE IF NOT EXISTS whatsapp_templates (
+  id int unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(120) NOT NULL,
+  event_key varchar(80) NOT NULL,
+  body text NOT NULL,
+  active tinyint(1) NOT NULL DEFAULT 1,
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_whatsapp_template_event_name (event_key,name),
+  KEY idx_whatsapp_template_event_active (event_key,active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  id bigint unsigned NOT NULL AUTO_INCREMENT,
+  template_id int unsigned DEFAULT NULL,
+  event_key varchar(80) NOT NULL,
+  recipient_name varchar(180) DEFAULT '',
+  recipient_phone varchar(50) NOT NULL,
+  message_text text NOT NULL,
+  target_type varchar(50) DEFAULT '',
+  target_id bigint unsigned DEFAULT NULL,
+  status enum('prepared','opened','sent','failed') NOT NULL DEFAULT 'prepared',
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  opened_at timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_whatsapp_messages_created (created_at),
+  KEY idx_whatsapp_messages_target (target_type,target_id),
+  KEY idx_whatsapp_messages_phone (recipient_phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
