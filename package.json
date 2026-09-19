@@ -12,7 +12,8 @@
     "restore": "node scripts/restore-db.js",
     "health": "node scripts/monitor-health.js",
     "prod:preflight": "node scripts/production-preflight.js",
-    "prod:check": "node scripts/production-check.js"
+    "prod:check": "node scripts/production-check.js",
+    "release:v3": "node scripts/launch-v3.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
