@@ -1,3 +1,50 @@
+
+function setupAdminMobileNavigation() {
+
+  const page = document.querySelector(".admin-page");
+  const toggle = document.getElementById("adminMobileMenu");
+  const backdrop = document.getElementById("adminMobileBackdrop");
+  const sidebar = document.getElementById("adminSidebar");
+
+  if (!page || !toggle || !sidebar) return;
+
+  const isMobile = () => window.matchMedia("(max-width: 900px)").matches;
+
+  function closeMenu() {
+    page.classList.remove("admin-mobile-menu-open");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", "Abrir menú");
+    if (backdrop) backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function toggleMenu() {
+    if (!isMobile()) return;
+    const open = page.classList.toggle("admin-mobile-menu-open");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
+    if (backdrop) backdrop.setAttribute("aria-hidden", String(!open));
+  }
+
+  toggle.addEventListener("click", toggleMenu);
+  backdrop?.addEventListener("click", closeMenu);
+
+  sidebar.querySelectorAll("a[href^='#']").forEach(link => {
+    link.addEventListener("click", () => {
+      if (isMobile()) closeMenu();
+    });
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && page.classList.contains("admin-mobile-menu-open")) {
+      closeMenu();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!isMobile()) closeMenu();
+  });
+}
+
 // =========================================================
 // NAVEGACIÓN ADMIN — UNA SECCIÓN A LA VEZ
 // =========================================================
@@ -224,3 +271,8 @@ function setupBusinessSettings() {
     }
   });
 }
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupAdminMobileNavigation();
+});
