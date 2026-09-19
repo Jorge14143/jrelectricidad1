@@ -8049,6 +8049,498 @@ app.get("/api/public/quotes/:token", authLimiter, async (req, res) => {
 // PRESUPUESTOS - ADMIN
 // ========================================
 
+// =========================================================
+// PRESUPUESTOS V2 — ADMIN
+// =========================================================
+
+const QUOTE_STATUSES = [
+  "borrador",
+  "enviado",
+  "aceptado",
+  "rechazado",
+  "vencido",
+  "cerrado"
+];
+
+function validateQuoteId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function validateQuoteStatus(value) {
+  return QUOTE_STATUSES.includes(String(value || "").trim());
+}
+
+function validateQuoteDate(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const text = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return undefined;
+  return text;
+}
+
+async function recordQuoteHistory(req, quoteId, action, oldStatus, newStatus, metadata = null, db = pool) {
+  await db.query(
+    `INSERT INTO quote_history
+      (quote_id, actor_user_id, action, old_status, new_status, metadata)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      quoteId,
+      req.session?.user?.id || null,
+      action,
+      oldStatus || null,
+      newStatus || null,
+      metadata ? JSON.stringify(metadata) : null
+    ]
+  );
+}
+
+async function sendQuoteEmail(quote) {
+  if (!quote?.email) return false;
+
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER ||
+      !process.env.SMTP_PASSWORD || !process.env.MAIL_FROM) {
+    return false;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: String(process.env.SMTP_SECURE).toLowerCase() === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD
+      }
+    });
+
+    const publicUrl =
+      `${process.env.APP_URL || ""}/presupuesto/${encodeURIComponent(quote.access_token)}`;
+
+    await transporter.sendMail({
+      from: process.env.MAIL_FROM,
+      to: quote.email,
+      subject: `Presupuesto ${quote.quote_number} - JR Electricidad`,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto">
+          <h2>JR Electricidad ⚡</h2>
+          <p>Hola ${String(quote.name || "").replace(/[&<>"]/g, "")},</p>
+          <p>Tu presupuesto <strong>${String(quote.quote_number || "").replace(/[&<>"]/g, "")}</strong> ya está disponible.</p>
+          <p><strong>Total: ${quoteMoney(quote.total)}</strong></p>
+          <p><a href="${publicUrl}" style="display:inline-block;padding:12px 18px;background:#ffc400;color:#080a0f;text-decoration:none;border-radius:8px;font-weight:bold">Ver presupuesto</a></p>
+          <p>Saludos,<br>JR Electricidad · Electricista Matriculado Cat. 3</p>
+        </div>
+      `
+    });
+
+    return true;
+  } catch (error) {
+    logError("No se pudo enviar el presupuesto por email", {
+      requestId: null,
+      quoteId: quote.id,
+      error: error.message
+    });
+    return false;
+  }
+}
+
+// PDF del presupuesto.
+app.get("/api/admin/quotes/:id(\\d+)/pdf", requireAdmin, async (req, res) => {
+  try {
+    const id = validateQuoteId(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de presupuesto inválido." });
+
+    const quote = await getQuoteDetail(pool, id);
+    if (!quote) return res.status(404).json({ error: "Presupuesto no encontrado." });
+
+    const doc = buildQuotePdf(quote);
+    const pdf = await pdfToBuffer(doc);
+    const filename = quote.pdf_filename || `presupuesto-${quote.quote_number || id}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${String(filename).replace(/[^a-zA-Z0-9._-]/g, "_")}"`
+    );
+    res.setHeader("Content-Length", pdf.length);
+    res.send(pdf);
+  } catch (error) {
+    logError("Error generando PDF del presupuesto", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo generar el PDF del presupuesto." });
+  }
+});
+
+// Listado con búsqueda y filtros.
+app.get("/api/admin/quotes", requireAdmin, async (req, res) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const status = String(req.query.status || "").trim();
+    const dateFrom = String(req.query.date_from || "").trim();
+    const dateTo = String(req.query.date_to || "").trim();
+
+    if (status && !validateQuoteStatus(status)) {
+      return res.status(400).json({ error: "Estado de presupuesto inválido." });
+    }
+
+    const params = [];
+    let sql = `
+      SELECT
+        q.id,q.quote_number,q.access_token,q.issue_date,q.expiration_date,
+        q.subtotal,q.discount,q.total,q.status,q.sent_at,q.accepted_at,
+        q.rejected_at,q.created_at,q.updated_at,
+        qr.id AS quote_request_id,qr.name AS client_name,qr.email AS client_email,
+        qr.phone AS client_phone,qr.service AS requested_service,
+        COUNT(qi.id) AS items_count,
+        j.id AS job_id,j.status AS job_status
+      FROM quotes q
+      INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+      LEFT JOIN quote_items qi ON qi.quote_id=q.id
+      LEFT JOIN jobs j ON j.quote_id=q.id
+      WHERE 1=1
+    `;
+
+    if (search) {
+      const v = `%${search}%`;
+      sql += " AND (q.quote_number LIKE ? OR qr.name LIKE ? OR qr.email LIKE ? OR qr.phone LIKE ? OR qr.service LIKE ?)";
+      params.push(v,v,v,v,v);
+    }
+    if (status) {
+      sql += " AND q.status=?";
+      params.push(status);
+    }
+    if (dateFrom) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) return res.status(400).json({ error: "Fecha desde inválida." });
+      sql += " AND DATE(q.created_at)>=?";
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) return res.status(400).json({ error: "Fecha hasta inválida." });
+      sql += " AND DATE(q.created_at)<=?";
+      params.push(dateTo);
+    }
+
+    sql += `
+      GROUP BY q.id,q.quote_number,q.access_token,q.issue_date,q.expiration_date,
+        q.subtotal,q.discount,q.total,q.status,q.sent_at,q.accepted_at,q.rejected_at,
+        q.created_at,q.updated_at,qr.id,qr.name,qr.email,qr.phone,qr.service,j.id,j.status
+      ORDER BY q.created_at DESC,q.id DESC
+    `;
+
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    logError("Error obteniendo presupuestos", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudieron obtener los presupuestos." });
+  }
+});
+
+// Detalle completo.
+app.get("/api/admin/quotes/:id(\\d+)", requireAdmin, async (req, res) => {
+  try {
+    const id = validateQuoteId(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de presupuesto inválido." });
+
+    const quote = await getQuoteDetail(pool, id);
+    if (!quote) return res.status(404).json({ error: "Presupuesto no encontrado." });
+
+    const [history] = await pool.query(
+      `SELECT h.*,u.name AS actor_name
+       FROM quote_history h
+       LEFT JOIN users u ON u.id=h.actor_user_id
+       WHERE h.quote_id=?
+       ORDER BY h.created_at DESC,h.id DESC`,
+      [id]
+    );
+
+    const [jobs] = await pool.query(
+      "SELECT id,status,started_at,completed_at,created_at,updated_at FROM jobs WHERE quote_id=? ORDER BY id DESC",
+      [id]
+    );
+
+    res.json({ ...quote, history, jobs });
+  } catch (error) {
+    logError("Error obteniendo detalle de presupuesto", { requestId: req.requestId, error: error.message });
+    res.status(500).json({ error: "No se pudo obtener el presupuesto." });
+  }
+});
+
+// Crear presupuesto.
+app.post("/api/admin/quotes", requireAdmin, adminMutationLimiter, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const body = req.body || {};
+    const requestId = validateRequestId(body.quote_request_id);
+    if (!requestId) {
+      connection.release();
+      return res.status(400).json({ error: "La solicitud asociada es obligatoria." });
+    }
+
+    const issueDate = validateQuoteDate(body.issue_date);
+    const expirationDate = validateQuoteDate(body.expiration_date);
+    if (issueDate === undefined || expirationDate === undefined) {
+      connection.release();
+      return res.status(400).json({ error: "Las fechas del presupuesto no son válidas." });
+    }
+
+    const discount = Number(body.discount || 0);
+    if (!Number.isFinite(discount) || discount < 0 || discount > 1000000000) {
+      connection.release();
+      return res.status(400).json({ error: "El descuento no es válido." });
+    }
+
+    const items = cleanQuoteItems(body.items);
+    const subtotal = items.reduce((sum,item) => sum + item.total, 0);
+    if (discount > subtotal) {
+      connection.release();
+      return res.status(400).json({ error: "El descuento no puede superar el subtotal." });
+    }
+    const total = subtotal - discount;
+    const notes = String(body.notes || "").trim();
+    if (notes.length > 5000) {
+      connection.release();
+      return res.status(400).json({ error: "Las notas no pueden superar 5000 caracteres." });
+    }
+
+    await connection.beginTransaction();
+
+    const [requestRows] = await connection.query(
+      "SELECT * FROM quote_requests WHERE id=? LIMIT 1 FOR UPDATE",
+      [requestId]
+    );
+    if (!requestRows.length) {
+      await connection.rollback(); connection.release();
+      return res.status(404).json({ error: "Solicitud no encontrada." });
+    }
+
+    const quoteNumber = `PR-${new Date().toISOString().replace(/\D/g,"").slice(0,14)}-${requestId}`;
+    const accessToken = crypto.randomBytes(32).toString("hex");
+
+    const [result] = await connection.query(
+      `INSERT INTO quotes
+       (quote_request_id,quote_number,access_token,issue_date,expiration_date,notes,status,subtotal,discount,total)
+       VALUES (?,?,?,?,?,?,'borrador',?,?,?)`,
+      [requestId,quoteNumber,accessToken,issueDate || new Date().toISOString().slice(0,10),expirationDate,notes,subtotal,discount,total]
+    );
+
+    for (const item of items) {
+      await connection.query(
+        `INSERT INTO quote_items (quote_id,description,quantity,unit,unit_price,total)
+         VALUES (?,?,?,?,?,?)`,
+        [result.insertId,item.description,item.quantity,item.unit,item.unit_price,item.total]
+      );
+    }
+
+    await connection.query(
+      `INSERT INTO quote_history (quote_id,actor_user_id,action,new_status,metadata)
+       VALUES (?,?,'quote_created','borrador',?)`,
+      [result.insertId,req.session.user.id,JSON.stringify({ quote_request_id: requestId, items: items.length })]
+    );
+
+    await connection.commit();
+    connection.release();
+
+    await writeAudit(req,"quote_created","quote",result.insertId,{quote_request_id:requestId,total});
+
+    res.status(201).json({
+      success:true,
+      id:result.insertId,
+      quote_id:result.insertId,
+      quote_number:quoteNumber,
+      total
+    });
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    connection.release();
+    logError("Error creando presupuesto", { requestId:req.requestId, error:error.message });
+    res.status(500).json({ error:"No se pudo crear el presupuesto." });
+  }
+});
+
+// Actualizar presupuesto.
+app.put("/api/admin/quotes/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const id = validateQuoteId(req.params.id);
+    if (!id) { connection.release(); return res.status(400).json({error:"ID de presupuesto inválido."}); }
+
+    const body = req.body || {};
+    const issueDate = validateQuoteDate(body.issue_date);
+    const expirationDate = validateQuoteDate(body.expiration_date);
+    if (issueDate === undefined || expirationDate === undefined) {
+      connection.release(); return res.status(400).json({error:"Las fechas del presupuesto no son válidas."});
+    }
+
+    const discount = Number(body.discount || 0);
+    if (!Number.isFinite(discount) || discount < 0 || discount > 1000000000) {
+      connection.release(); return res.status(400).json({error:"El descuento no es válido."});
+    }
+
+    const items = cleanQuoteItems(body.items);
+    const subtotal = items.reduce((sum,item)=>sum+item.total,0);
+    if (discount > subtotal) {
+      connection.release(); return res.status(400).json({error:"El descuento no puede superar el subtotal."});
+    }
+    const total = subtotal-discount;
+    const notes = String(body.notes || "").trim();
+    if (notes.length > 5000) {
+      connection.release(); return res.status(400).json({error:"Las notas no pueden superar 5000 caracteres."});
+    }
+
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query("SELECT * FROM quotes WHERE id=? LIMIT 1 FOR UPDATE",[id]);
+    if (!rows.length) {
+      await connection.rollback(); connection.release();
+      return res.status(404).json({error:"Presupuesto no encontrado."});
+    }
+
+    const current = rows[0];
+    if (["aceptado","cerrado"].includes(current.status)) {
+      await connection.rollback(); connection.release();
+      return res.status(409).json({error:"No se puede modificar un presupuesto aceptado o cerrado."});
+    }
+
+    await connection.query(
+      `UPDATE quotes
+       SET issue_date=?,expiration_date=?,notes=?,subtotal=?,discount=?,total=?
+       WHERE id=?`,
+      [issueDate || current.issue_date,expirationDate,notes,subtotal,discount,total,id]
+    );
+
+    await connection.query("DELETE FROM quote_items WHERE quote_id=?",[id]);
+    for (const item of items) {
+      await connection.query(
+        `INSERT INTO quote_items (quote_id,description,quantity,unit,unit_price,total)
+         VALUES (?,?,?,?,?,?)`,
+        [id,item.description,item.quantity,item.unit,item.unit_price,item.total]
+      );
+    }
+
+    await connection.query(
+      `INSERT INTO quote_history (quote_id,actor_user_id,action,old_status,new_status,metadata)
+       VALUES (?,?,'quote_updated',?,?,?)`,
+      [id,req.session.user.id,current.status,current.status,JSON.stringify({subtotal,discount,total,items:items.length})]
+    );
+
+    await connection.commit();
+    connection.release();
+
+    await writeAudit(req,"quote_updated","quote",id,{subtotal,discount,total});
+
+    res.json({success:true,message:"Presupuesto actualizado correctamente.",total});
+  } catch (error) {
+    try { await connection.rollback(); } catch {}
+    connection.release();
+    logError("Error actualizando presupuesto",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo actualizar el presupuesto."});
+  }
+});
+
+// Cambiar estado y enviar al cliente.
+app.patch("/api/admin/quotes/:id(\\d+)/status", requireAdmin, adminMutationLimiter, async (req,res)=>{
+  const id=validateQuoteId(req.params.id);
+  const status=String(req.body?.status||"").trim();
+
+  if(!id || !validateQuoteStatus(status)) {
+    return res.status(400).json({error:"Estado de presupuesto inválido."});
+  }
+
+  try {
+    const [rows]=await pool.query(
+      `SELECT q.*,qr.name,qr.email
+       FROM quotes q INNER JOIN quote_requests qr ON qr.id=q.quote_request_id
+       WHERE q.id=? LIMIT 1`,[id]
+    );
+    if(!rows.length) return res.status(404).json({error:"Presupuesto no encontrado."});
+    const current=rows[0];
+
+    if(["aceptado","cerrado"].includes(current.status) && current.status!==status) {
+      return res.status(409).json({error:"El presupuesto ya está cerrado para cambios."});
+    }
+
+    const allowedTransitions={
+      borrador:["borrador","enviado","cerrado"],
+      enviado:["enviado","aceptado","rechazado","vencido","cerrado"],
+      aceptado:["aceptado","cerrado"],
+      rechazado:["rechazado","borrador","cerrado"],
+      vencido:["vencido","borrador","cerrado"],
+      cerrado:["cerrado"]
+    };
+
+    if(!allowedTransitions[current.status]?.includes(status)) {
+      return res.status(409).json({error:`No se puede pasar de "${current.status}" a "${status}".`});
+    }
+
+    const sentAt=status==="enviado" ? new Date() : current.sent_at;
+    const acceptedAt=status==="aceptado" ? new Date() : current.accepted_at;
+    const rejectedAt=status==="rechazado" ? new Date() : current.rejected_at;
+
+    await pool.query(
+      `UPDATE quotes SET status=?,sent_at=?,accepted_at=?,rejected_at=? WHERE id=?`,
+      [status,sentAt,acceptedAt,rejectedAt,id]
+    );
+
+    await recordQuoteHistory(req,id,"quote_status_changed",current.status,status,{});
+
+    await writeAudit(req,"quote_status_changed","quote",id,{old_status:current.status,new_status:status});
+
+    if(status==="enviado") {
+      const sent=await sendQuoteEmail({...current,status,total:current.total});
+      res.json({success:true,status,email_sent:sent,message:sent?"Presupuesto enviado al cliente.":"Presupuesto marcado como enviado; email no disponible o no configurado."});
+      return;
+    }
+
+    if(status==="aceptado") {
+      await pool.query(
+        "UPDATE quote_requests SET status='aceptada' WHERE id=? AND status NOT IN ('cerrada','finalizada')",
+        [current.quote_request_id]
+      );
+    }
+
+    res.json({success:true,status});
+  } catch(error) {
+    logError("Error cambiando estado del presupuesto",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo cambiar el estado del presupuesto."});
+  }
+});
+
+// Eliminar solamente borradores.
+app.delete("/api/admin/quotes/:id(\\d+)", requireAdmin, adminMutationLimiter, async (req,res)=>{
+  try {
+    const id=validateQuoteId(req.params.id);
+    if(!id) return res.status(400).json({error:"ID de presupuesto inválido."});
+
+    const [rows]=await pool.query("SELECT status,quote_number FROM quotes WHERE id=? LIMIT 1",[id]);
+    if(!rows.length) return res.status(404).json({error:"Presupuesto no encontrado."});
+    if(rows[0].status!=="borrador") return res.status(409).json({error:"Solo se pueden eliminar presupuestos en borrador."});
+
+    await pool.query("DELETE FROM quotes WHERE id=?",[id]);
+    await writeAudit(req,"quote_deleted","quote",id,{quote_number:rows[0].quote_number});
+    res.json({success:true,message:"Presupuesto eliminado."});
+  } catch(error) {
+    logError("Error eliminando presupuesto",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo eliminar el presupuesto."});
+  }
+});
+
+// Historial del presupuesto.
+app.get("/api/admin/quotes/:id(\\d+)/history", requireAdmin, async (req,res)=>{
+  try {
+    const id=validateQuoteId(req.params.id);
+    if(!id) return res.status(400).json({error:"ID de presupuesto inválido."});
+    const [rows]=await pool.query(
+      `SELECT h.*,u.name AS actor_name
+       FROM quote_history h LEFT JOIN users u ON u.id=h.actor_user_id
+       WHERE h.quote_id=? ORDER BY h.created_at DESC,h.id DESC`,[id]
+    );
+    res.json(rows);
+  } catch(error) {
+    logError("Error obteniendo historial de presupuesto",{requestId:req.requestId,error:error.message});
+    res.status(500).json({error:"No se pudo obtener el historial del presupuesto."});
+  }
+});
+
 // =====================================================
 // NOTIFICACIONES DEL ADMINISTRADOR
 // =====================================================
