@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/css/materials.css">
   <link rel="stylesheet" href="/css/whatsapp.css">
   <link rel="stylesheet" href="/css/email.css">
+  <link rel="stylesheet" href="/css/signatures.css">
 </head>
 
 <body class="admin-page">
@@ -164,6 +165,11 @@
     <a href="#emailSection" class="admin-nav-item">
       <span>✉️</span>
       <span>Email</span>
+    </a>
+
+    <a href="#signaturesSection" class="admin-nav-item">
+      <span>✍️</span>
+      <span>Firma digital</span>
     </a>
 
     <a href="#materialsSection" class="admin-nav-item">
@@ -2416,6 +2422,49 @@
 </section>
 
 <!-- =========================================================
+     FIRMA DIGITAL — BLOQUE K
+========================================================= -->
+<section id="signaturesSection" class="admin-section">
+  <div class="admin-section-header">
+    <div>
+      <span class="admin-section-eyebrow">EVIDENCIA</span>
+      <h2>✍️ Firma digital</h2>
+      <p>Registro de firmas electrónicas asociadas a presupuestos y documentos.</p>
+    </div>
+  </div>
+
+  <div class="signature-admin-grid">
+    <div class="signature-card">
+      <h3>Vista de firma</h3>
+      <p class="signature-help">El cliente firma desde el presupuesto público. Esta herramienta permite comprobar el área de captura.</p>
+      <div class="signature-canvas-wrap">
+        <canvas id="signatureCanvas" class="signature-canvas" width="900" height="240"></canvas>
+      </div>
+      <div style="margin-top:12px">
+        <button id="clearSignature" type="button" class="btn tiny">Limpiar firma</button>
+      </div>
+    </div>
+
+    <div class="signature-card">
+      <h3>Historial</h3>
+      <p class="signature-help">Cada registro conserva firmante, documento, fecha y hash de evidencia.</p>
+      <button id="refreshSignatureHistory" type="button" class="btn tiny">🔄 Actualizar</button>
+    </div>
+  </div>
+
+  <div class="signature-card" style="margin-top:18px">
+    <div class="table-wrap">
+      <table class="materials-table">
+        <thead><tr><th>Fecha</th><th>Presupuesto</th><th>Firmante</th><th>Email</th><th>Documento</th><th>Hash</th></tr></thead>
+        <tbody id="signatureHistoryList"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <form id="signatureTestForm" style="display:none"></form>
+</section>
+
+<!-- =========================================================
      MATERIALES TÉCNICOS — BLOQUE H
 ========================================================= -->
 <section id="materialsSection" class="admin-section">
@@ -2744,6 +2793,7 @@
 <script src="/js/admin-materials.js"></script>
 <script src="/js/admin-whatsapp.js"></script>
 <script src="/js/admin-email.js"></script>
+<script src="/js/admin-signatures.js"></script>
 <script src="/js/admin-navigation.js"></script>
 <script src="/js/admin-bootstrap.js"></script>
 
